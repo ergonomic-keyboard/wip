@@ -29,6 +29,7 @@ This is the primary way to inspect the keyboard. Open `assembly.scad` in OpenSCA
 cd /home/a/git/git/keyboard/wip
 openscad builds/<name>/assembly.scad
 ```
+(Right click to move the board/frame/fixed position).
 
 **Controls:**
 - **Left-drag** — rotate
@@ -56,6 +57,23 @@ openscad builds/<name>/assembly.scad
 show_cables = true;   // horizontal cables
 show_hinge  = true;   // center hinge
 ```
+
+**Folding simulation:**
+
+The keyboard is two separate halves connected by a hinge. You can visualize folding by changing the `fold_angle` variable:
+```
+fold_angle = 0;    // flat (working position)
+fold_angle = 90;   // half folded
+fold_angle = 180;  // fully closed for transport
+```
+
+Or use the OpenSCAD Customizer panel (**View → Hide Customizer** to toggle) — it provides a slider for `fold_angle` from 0 to 180.
+
+**Connection points:**
+
+When `fold_angle = 0` (flat), red ring markers show where the two halves connect:
+- 2 markers at the hinge (left and right mounting flanges)
+- 4 markers at cable attachment points (top-left, top-right, bottom-left, bottom-right)
 
 The assembly.scad regenerates automatically when you re-run `generate.sh`. Keeping OpenSCAD open and pressing F5 reloads the file.
 
@@ -98,7 +116,6 @@ xdg-open builds/<name>/outlines/frame.svg
 ```bash
 freecad builds/<name>/outlines/frame_with_holes.dxf
 ```
-
 This outline includes the mounting hole positions for accurate drilling.
 
 ## Generated files summary

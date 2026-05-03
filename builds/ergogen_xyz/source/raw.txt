@@ -56,9 +56,9 @@ outlines:
     size:
     - 15
     - 15
-  _thumb_bridge:
+  _thumb_bridge_left:
   - what: rectangle
-    where: /home_thumb/
+    where: thumbfan_home_thumb
     size:
     - 68
     - 65
@@ -66,9 +66,19 @@ outlines:
       shift:
       - 0
       - 10
-  _thumb_bridge_frame:
+  _thumb_bridge_right:
   - what: rectangle
-    where: /home_thumb/
+    where: mirror_thumbfan_home_thumb
+    size:
+    - 68
+    - 65
+    adjust:
+      shift:
+      - 0
+      - 10
+  _thumb_bridge_frame_left:
+  - what: rectangle
+    where: thumbfan_home_thumb
     size:
     - 70
     - 67
@@ -76,6 +86,26 @@ outlines:
       shift:
       - 0
       - 10
+  _thumb_bridge_frame_right:
+  - what: rectangle
+    where: mirror_thumbfan_home_thumb
+    size:
+    - 70
+    - 67
+    adjust:
+      shift:
+      - 0
+      - 10
+  _center_cut:
+  - what: rectangle
+    where: matrix_pinky_home
+    size:
+    - 4
+    - 200
+    adjust:
+      shift:
+      - 116.88
+      - 0
   board:
   - what: rectangle
     where: true
@@ -85,7 +115,12 @@ outlines:
     bound: true
     fillet: 2
   - what: outline
-    name: _thumb_bridge
+    name: _thumb_bridge_left
+  - what: outline
+    name: _thumb_bridge_right
+  - what: outline
+    name: _center_cut
+    operation: subtract
   switch_cutouts:
   - what: rectangle
     where: true
@@ -135,7 +170,12 @@ outlines:
     bound: true
     fillet: 3
   - what: outline
-    name: _thumb_bridge_frame
+    name: _thumb_bridge_frame_left
+  - what: outline
+    name: _thumb_bridge_frame_right
+  - what: outline
+    name: _center_cut
+    operation: subtract
   frame_with_holes:
   - what: rectangle
     where: true
@@ -145,7 +185,12 @@ outlines:
     bound: true
     fillet: 3
   - what: outline
-    name: _thumb_bridge_frame
+    name: _thumb_bridge_frame_left
+  - what: outline
+    name: _thumb_bridge_frame_right
+  - what: outline
+    name: _center_cut
+    operation: subtract
   - what: circle
     where:
       ref: matrix_pinky_top
