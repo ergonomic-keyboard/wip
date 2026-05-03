@@ -1233,7 +1233,7 @@ thumbfan_far_thumb:
             - 0
             - 0
 mirror_matrix_pinky_bottom:
-    x: 228.3840128
+    x: 238.3840128
     'y': 0
     r: 7
     meta:
@@ -1301,7 +1301,7 @@ mirror_matrix_pinky_bottom:
             - 0
             - 0
 mirror_matrix_pinky_home:
-    x: 226.0684953
+    x: 236.0684953
     'y': 18.8583768
     r: 7
     meta:
@@ -1369,7 +1369,7 @@ mirror_matrix_pinky_home:
             - 10
             - 0
 mirror_matrix_pinky_top:
-    x: 223.7529777
+    x: 233.7529777
     'y': 37.7167537
     r: 7
     meta:
@@ -1437,7 +1437,7 @@ mirror_matrix_pinky_top:
             - 10
             - 0
 mirror_matrix_ring_bottom:
-    x: 206.6011818
+    x: 216.6011818
     'y': 8.2889556
     r: 12
     meta:
@@ -1510,7 +1510,7 @@ mirror_matrix_ring_bottom:
             - 0
             - 10
 mirror_matrix_ring_home:
-    x: 202.6508596
+    x: 212.6508596
     'y': 26.87376
     r: 12
     meta:
@@ -1583,7 +1583,7 @@ mirror_matrix_ring_home:
             - 10
             - 10
 mirror_matrix_ring_top:
-    x: 198.7005375
+    x: 208.7005375
     'y': 45.4585644
     r: 12
     meta:
@@ -1656,7 +1656,7 @@ mirror_matrix_ring_top:
             - 10
             - 0
 mirror_matrix_middle_bottom:
-    x: 186.97681899999998
+    x: 196.97681899999998
     'y': 9.2293715
     r: 12
     meta:
@@ -1725,7 +1725,7 @@ mirror_matrix_middle_bottom:
             - 0
             - 10
 mirror_matrix_middle_home:
-    x: 183.0264968
+    x: 193.0264968
     'y': 27.8141759
     r: 12
     meta:
@@ -1794,7 +1794,7 @@ mirror_matrix_middle_home:
             - 10
             - 10
 mirror_matrix_middle_top:
-    x: 179.0761747
+    x: 189.0761747
     'y': 46.3989803
     r: 12
     meta:
@@ -1863,7 +1863,7 @@ mirror_matrix_middle_top:
             - 10
             - 0
 mirror_matrix_index_bottom:
-    x: 169.84739639999998
+    x: 179.84739639999998
     'y': -1.5679838
     r: 12
     meta:
@@ -1932,7 +1932,7 @@ mirror_matrix_index_bottom:
             - 0
             - 0
 mirror_matrix_index_home:
-    x: 165.89707429999999
+    x: 175.89707429999999
     'y': 17.0168206
     r: 12
     meta:
@@ -2001,7 +2001,7 @@ mirror_matrix_index_home:
             - 10
             - 10
 mirror_matrix_index_top:
-    x: 161.9467521
+    x: 171.9467521
     'y': 35.601625
     r: 12
     meta:
@@ -2070,7 +2070,7 @@ mirror_matrix_index_top:
             - 10
             - 10
 mirror_matrix_inner_bottom:
-    x: 151.67841529999998
+    x: 161.67841529999998
     'y': -7.4746012
     r: 12
     meta:
@@ -2139,7 +2139,7 @@ mirror_matrix_inner_bottom:
             - 0
             - 0
 mirror_matrix_inner_home:
-    x: 147.7280932
+    x: 157.7280932
     'y': 11.1102032
     r: 12
     meta:
@@ -2208,7 +2208,7 @@ mirror_matrix_inner_home:
             - 10
             - 10
 mirror_matrix_inner_top:
-    x: 143.77777099999997
+    x: 153.77777099999997
     'y': 29.6950076
     r: 12
     meta:
@@ -2277,7 +2277,7 @@ mirror_matrix_inner_top:
             - 10
             - 10
 mirror_thumbfan_near_thumb:
-    x: 162.4757707
+    x: 172.4757707
     'y': -24.6040237
     r: 12
     meta:
@@ -2337,7 +2337,7 @@ mirror_thumbfan_near_thumb:
             - 0
             - 0
 mirror_thumbfan_home_thumb:
-    x: 140.26846289999997
+    x: 150.26846289999997
     'y': -36.0408677
     r: 40
     meta:
@@ -2402,7 +2402,7 @@ mirror_thumbfan_home_thumb:
             - 0
             - 0
 mirror_thumbfan_far_thumb:
-    x: 125.14911199999999
+    x: 135.149112
     'y': -55.9248093
     r: 68
     meta:

@@ -1,8 +1,11 @@
-# 3D Rendering
+# 3D Rendering & Interactive Viewer
 
 ## Install
 
 ```bash
+# OpenSCAD (interactive 3D viewer for full assembly)
+sudo apt install openscad
+
 # KiCad (PCB 3D viewer) — use pcbnew to open .kicad_pcb files
 sudo apt install kicad
 
@@ -11,30 +14,65 @@ sudo snap install freecad
 
 # STL viewers (any of these work)
 sudo apt install meshlab
-# or
-sudo snap install prusa-slicer
 ```
 
 macOS:
 ```bash
-brew install --cask kicad freecad meshlab
+brew install --cask openscad kicad freecad meshlab
 ```
+
+## Interactive 3D assembly viewer (OpenSCAD)
+
+This is the primary way to inspect the keyboard. Open `assembly.scad` in OpenSCAD for a fully interactive 3D view with all components:
+
+```bash
+cd /home/a/git/git/keyboard/wip
+openscad builds/<name>/assembly.scad
+```
+
+**Controls:**
+- **Left-drag** — rotate
+- **Right-drag** — pan
+- **Scroll** — zoom
+- **View → Show Edges** — see wireframe
+- **View → Show Axes** — orientation reference
+
+**Cross-section (inspect internals):**
+- **View → Thrown Together** — see through transparent surfaces
+- Or add `#` before any shape in the .scad file to make it transparent
+
+**Components visible:**
+- Wooden frame (brown, 3.8mm)
+- Bottom plate (grey, 1.0mm)
+- PCB (green, 1.6mm) — directly on bottom plate
+- Switch plate (grey, 1.2mm) — with cutouts for Cherry ULP switches
+- nice!nano MCU (green PCB with black chip) — one per half
+- USB-C connectors (grey) — on the nice!nano, inner edge of each half
+- Lockable ball bearing hinge (center, between halves)
+- Two horizontal cables with hooks (top and bottom, connecting halves)
+
+**Toggle components** by editing variables at the top of assembly.scad:
+```
+show_cables = true;   // horizontal cables
+show_hinge  = true;   // center hinge
+```
+
+The assembly.scad regenerates automatically when you re-run `generate.sh`. Keeping OpenSCAD open and pressing F5 reloads the file.
+
+A pre-rendered `assembly.png` is also generated if OpenSCAD is installed.
 
 ## View the PCB in 3D (KiCad)
 
 ```bash
 cd /home/a/git/git/keyboard/wip
-export CHERRY_MX_ULP_DIR=$(realpath ../Cherry_MX_ULP/Cherry_ULP.pretty)
 pcbnew builds/<name>/pcbs/keyboard_v7.kicad_pcb
 ```
 
-Then: **View → 3D Viewer** — shows the PCB with Cherry ULP switch STEP models.
+Then: **View → 3D Viewer** — shows the PCB with component footprints.
 
 Note: use `pcbnew`, not `kicad`. Use the `_v7` file for KiCad 7+.
 
 ## View cases/plates as STL
-
-The STL files are generated automatically by `generate.sh`. View them with:
 
 ```bash
 meshlab builds/<name>/cases/switch_plate.stl
@@ -44,52 +82,18 @@ meshlab builds/<name>/cases/wooden_frame.stl
 
 Or drag into any online STL viewer: https://www.viewstl.com/
 
-## View cases (JSCAD v1 browser viewer)
-
-The `.jscad` files use OpenJSCAD v1 API. Paste contents into:
-
-https://3d.hrg.hr/jscad/V1/
-
-## View outlines (FreeCAD)
+## View outlines (FreeCAD / browser)
 
 ```bash
+# DXF outlines
 freecad builds/<name>/outlines/board.dxf
-```
 
-Use Part → Extrude to give thickness:
-- board.dxf → 1.5mm (switch plate)
-- frame.dxf → 5mm (wooden frame)
-
-## View SVG outlines (browser, no install)
-
-```bash
+# SVG outlines (opens in browser, no install needed)
 xdg-open builds/<name>/outlines/board.svg
-xdg-open builds/<name>/outlines/switch_cutouts.svg
 xdg-open builds/<name>/outlines/frame.svg
 ```
 
-## View full assembly (OpenSCAD)
-
-The `assembly.scad` file shows all layers stacked together:
-- Wooden frame (brown, 5mm)
-- Bottom plate (grey, 1.2mm)
-- Standoffs at mounting holes (brass, 3mm)
-- PCB (green, 1.6mm)
-- Switch plate (grey, 1.5mm)
-
-```bash
-# Install OpenSCAD
-sudo apt install openscad
-
-# Open interactive 3D view
-openscad builds/<name>/assembly.scad
-```
-
-A pre-rendered `assembly.png` is also generated automatically if OpenSCAD is installed.
-
 ## View wood cutting files
-
-The DXF files for CNC/laser cutting the wooden frame:
 
 ```bash
 freecad builds/<name>/outlines/frame_with_holes.dxf
@@ -99,15 +103,13 @@ This outline includes the mounting hole positions for accurate drilling.
 
 ## Generated files summary
 
-| File | Format | Viewer |
-|------|--------|--------|
-| `assembly.scad` | OpenSCAD | `openscad` |
-| `assembly.png` | PNG | any image viewer |
-| `pcbs/keyboard_v7.kicad_pcb` | KiCad 7 | `pcbnew` |
-| `pcbs/keyboard.kicad_pcb` | KiCad 5 (legacy) | older KiCad |
-| `cases/*.stl` | STL | meshlab, viewstl.com, any slicer |
-| `cases/*.jscad` | OpenJSCAD v1 | 3d.hrg.hr/jscad/V1/ |
-| `outlines/frame_with_holes.dxf` | DXF | FreeCAD — wood cutting template |
-| `outlines/mounting_holes.dxf` | DXF | FreeCAD — drill positions |
-| `outlines/*.dxf` | DXF | FreeCAD, any CAD |
-| `outlines/*.svg` | SVG | any browser |
+| File | Format | Viewer | Description |
+|------|--------|--------|-------------|
+| `assembly.scad` | OpenSCAD | `openscad` | Interactive 3D: all components, cables, hinge, MCU |
+| `assembly.png` | PNG | any image viewer | Static render of assembly |
+| `pcbs/keyboard_v7.kicad_pcb` | KiCad 7 | `pcbnew` | PCB with footprints |
+| `pcbs/keyboard.kicad_pcb` | KiCad 5 | older KiCad | Legacy format |
+| `cases/*.stl` | STL | meshlab, viewstl.com | Individual plates/frame |
+| `outlines/frame_with_holes.dxf` | DXF | FreeCAD | Wood cutting template |
+| `outlines/mounting_holes.dxf` | DXF | FreeCAD | Drill positions |
+| `outlines/*.svg` | SVG | any browser | 2D outlines |

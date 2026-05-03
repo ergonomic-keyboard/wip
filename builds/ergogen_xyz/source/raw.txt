@@ -48,7 +48,7 @@ points:
   rotate: -20
   mirror:
     ref: matrix_pinky_home
-    distance: 223.7529778
+    distance: 233.7529778
 outlines:
   _keycaps:
   - what: rectangle
@@ -56,6 +56,26 @@ outlines:
     size:
     - 15
     - 15
+  _thumb_bridge:
+  - what: rectangle
+    where: /home_thumb/
+    size:
+    - 68
+    - 65
+    adjust:
+      shift:
+      - 0
+      - 10
+  _thumb_bridge_frame:
+  - what: rectangle
+    where: /home_thumb/
+    size:
+    - 70
+    - 67
+    adjust:
+      shift:
+      - 0
+      - 10
   board:
   - what: rectangle
     where: true
@@ -64,6 +84,8 @@ outlines:
     - 18
     bound: true
     fillet: 2
+  - what: outline
+    name: _thumb_bridge
   switch_cutouts:
   - what: rectangle
     where: true
@@ -112,6 +134,8 @@ outlines:
     - 20
     bound: true
     fillet: 3
+  - what: outline
+    name: _thumb_bridge_frame
   frame_with_holes:
   - what: rectangle
     where: true
@@ -120,6 +144,8 @@ outlines:
     - 20
     bound: true
     fillet: 3
+  - what: outline
+    name: _thumb_bridge_frame
   - what: circle
     where:
       ref: matrix_pinky_top
@@ -160,22 +186,22 @@ cases:
   bottom_plate:
   - what: outline
     name: board
-    extrude: 1.2
+    extrude: 1.0
   switch_plate:
   - what: outline
     name: board
-    extrude: 1.5
+    extrude: 1.2
   - what: outline
     name: switch_cutouts
-    extrude: 1.5
+    extrude: 1.2
     operation: subtract
   wooden_frame:
   - what: outline
     name: frame
-    extrude: 5
+    extrude: 3.8
   - what: outline
     name: board
-    extrude: 5
+    extrude: 3.8
     operation: subtract
 pcbs:
   keyboard:

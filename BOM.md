@@ -51,22 +51,30 @@ Cherry ULP switches clip into the alignment holes on the assembled PCB. The SMD 
 
 | Qty | Component | Unit Price | Total | Source |
 |-----|-----------|-----------|-------|--------|
-| 2 | Walnut sheet 200×120×5mm | €8.00 | €16.00 | Local hardwood supplier or [Etsy](https://www.etsy.com/search?q=walnut+sheet+5mm) |
+| 2 | Walnut sheet 200×150×4mm | €8.00 | €16.00 | Local hardwood supplier or [Etsy](https://www.etsy.com/search?q=walnut+sheet+4mm) |
 
 Cut using the `frame_with_holes.dxf` file — CNC router or laser cutter.
 
-## Tenting Mount (wire + turnbuckle + ball bearing)
+## Folding Hinge (lockable ball bearing)
 
 | Qty | Component | Unit Price | Total | Source |
 |-----|-----------|-----------|-------|--------|
-| 4 | M3×50mm turnbuckle | €1.50 | €6.00 | [AliExpress](https://www.aliexpress.com/w/wholesale-m3-turnbuckle.html) |
-| 4 | M3 ball bearing rod end (SA3T/K) | €1.20 | €4.80 | [AliExpress](https://www.aliexpress.com/w/wholesale-SA3T-K-rod-end-bearing.html) |
-| 2 | 2mm stainless steel wire 200mm | €0.50 | €1.00 | Hardware store or [Amazon](https://www.amazon.com/s?k=2mm+stainless+steel+wire) |
-| 4 | M3 insert nut (press-fit for wood) | €0.30 | €1.20 | [AliExpress](https://www.aliexpress.com/w/wholesale-m3-insert-nut-wood.html) |
+| 1 | Lockable ball bearing hinge (friction hinge, 8mm barrel) | €5.00 | €5.00 | [AliExpress](https://www.aliexpress.com/w/wholesale-lockable-friction-hinge-small.html) |
+| 4 | M2×6mm screw (for hinge flanges) | €0.05 | €0.20 | [AliExpress](https://www.aliexpress.com/w/wholesale-m2-6mm-screw.html) |
 
-**Phase 1 total: ~€29**
+The hinge mounts at the inner edge between the two halves. Friction/lockable type stays at the set angle without a separate lock mechanism.
 
-Setup: Press M3 insert nuts into the wooden frame bottom. Thread turnbuckles into rod end bearings. Rod ends attach to the wire running under each half. Adjust turnbuckle length to set tenting angle. Gravity keeps the keyboard stable; the two wires prevent rotation.
+## Cables with Hooks (connects halves)
+
+| Qty | Component | Unit Price | Total | Source |
+|-----|-----------|-----------|-------|--------|
+| 2 | Braided steel cable 1.5mm × 250mm | €0.50 | €1.00 | Hardware store or [Amazon](https://www.amazon.com/s?k=braided+steel+cable+1.5mm) |
+| 2 | Small carabiner hook (for detachable end) | €0.80 | €1.60 | [AliExpress](https://www.aliexpress.com/w/wholesale-mini-carabiner-10mm.html) |
+| 2 | Cable crimp eyelet (for fixed end) | €0.20 | €0.40 | Hardware store |
+
+Setup: One cable runs across the top (Q-to-P row), one across the bottom (Z-to-M row). Fixed eyelet on the left side, carabiner hook on the right side for quick detach. Unclip hooks to fold keyboard closed; wrap cables around to keep it shut.
+
+**Phase 1 total: ~€24**
 
 ---
 
@@ -76,23 +84,29 @@ Setup: Press M3 insert nuts into the wooden frame bottom. Thread turnbuckles int
 
 | Qty | Component | Unit Price | Total | Source |
 |-----|-----------|-----------|-------|--------|
-| 8 | M2×8mm screw (pan head) | €0.05 | €0.40 | [AliExpress](https://www.aliexpress.com/w/wholesale-m2-8mm-screw.html), [McMaster](https://www.mcmaster.com) |
+| 8 | M2×5mm screw (pan head) | €0.05 | €0.40 | [AliExpress](https://www.aliexpress.com/w/wholesale-m2-5mm-screw.html), [McMaster](https://www.mcmaster.com) |
 | 8 | M2 nut | €0.02 | €0.16 | [AliExpress](https://www.aliexpress.com/w/wholesale-m2-nut.html) |
-| 8 | M2×3mm brass standoff (female-female) | €0.10 | €0.80 | [AliExpress](https://www.aliexpress.com/w/wholesale-m2-standoff-3mm.html) |
 
-**Phase 2 total: ~€1.36**
+**Phase 2 total: ~€0.56**
 
 ### Assembly order (per half)
-1. Place bottom plate inside wooden frame
-2. Insert M2 screws from below through bottom plate mounting holes
-3. Thread 3mm standoffs onto screws (creates gap for PCB clearance)
-4. Place PCB onto standoffs, aligning M2 mounting holes
-5. Place switch plate on top of PCB
-6. Secure from top with M2 nuts through switch plate holes
-7. Press Cherry ULP switches into plate cutouts
+1. Place bottom plate (1.0mm) inside wooden frame
+2. Place PCB directly on bottom plate
+3. Insert M2 screws from below through all layers
+4. Place switch plate (1.2mm) on top of PCB
+5. Secure from top with M2 nuts
+6. Press Cherry ULP switches into plate cutouts
+7. Drop nice!nano onto Mill-Max sockets
+
+Total assembled thickness: **3.8mm** (1.0 bottom + 1.6 PCB + 1.2 switch plate)
 
 Screw positions: 4 per half at the corners — see `outlines/mounting_holes.dxf` for exact coordinates.
 
+### Folding & cables
+1. Attach hinge flanges to inner edge of each half with M2 screws
+2. Clip cables between eyelets (left) and carabiner hooks (right)
+3. To fold: unclip hooks, fold halves inward, wrap cables around to hold shut
+
 ---
 
-**Grand total (all phases): ~€225**
+**Grand total (all phases): ~€220**
