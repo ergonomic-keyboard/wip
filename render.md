@@ -1,28 +1,80 @@
 # 3D Rendering
 
-## Option 1: OpenJSCAD (browser)
+## Install
 
-Open https://openjscad.xyz/ and drag in any `.jscad` file from `builds/<name>/cases/`:
+```bash
+# KiCad (PCB 3D viewer) — use pcbnew to open .kicad_pcb files
+sudo apt install kicad
 
-- `switch_plate.jscad` — the plate with switch cutouts
-- `bottom_plate.jscad` — the base plate
-- `wooden_frame.jscad` — the frame surround (subtract of board from larger outline)
+# FreeCAD (via snap — not in apt on some distros)
+sudo snap install freecad
 
-## Option 2: KiCad 3D Viewer
-
-1. Open `builds/<name>/pcbs/keyboard.kicad_pcb` in KiCad
-2. View → 3D Viewer
-3. The Cherry ULP STEP model will render if `CHERRY_MX_ULP_DIR` environment variable points to `Cherry_MX_ULP/Cherry_ULP.pretty/`
-
-```
-export CHERRY_MX_ULP_DIR=/path/to/keyboard/Cherry_MX_ULP/Cherry_ULP.pretty
+# STL viewers (any of these work)
+sudo apt install meshlab
+# or
+sudo snap install prusa-slicer
 ```
 
-## Option 3: FreeCAD
+macOS:
+```bash
+brew install --cask kicad freecad meshlab
+```
 
-1. Import the DXF outlines from `builds/<name>/outlines/`
-2. Extrude them to the correct thicknesses:
-   - bottom_plate: 1.2mm aluminum
-   - switch_plate: 1.5mm steel/FR4
-   - wooden_frame: 5mm hardwood
-3. Stack them and render
+## View the PCB in 3D (KiCad)
+
+```bash
+cd /home/a/git/git/keyboard/wip
+export CHERRY_MX_ULP_DIR=$(realpath ../Cherry_MX_ULP/Cherry_ULP.pretty)
+pcbnew builds/<name>/pcbs/keyboard_v7.kicad_pcb
+```
+
+Then: **View → 3D Viewer** — shows the PCB with Cherry ULP switch STEP models.
+
+Note: use `pcbnew`, not `kicad`. Use the `_v7` file for KiCad 7+.
+
+## View cases/plates as STL
+
+The STL files are generated automatically by `generate.sh`. View them with:
+
+```bash
+meshlab builds/<name>/cases/switch_plate.stl
+meshlab builds/<name>/cases/bottom_plate.stl
+meshlab builds/<name>/cases/wooden_frame.stl
+```
+
+Or drag into any online STL viewer: https://www.viewstl.com/
+
+## View cases (JSCAD v1 browser viewer)
+
+The `.jscad` files use OpenJSCAD v1 API. Paste contents into:
+
+https://3d.hrg.hr/jscad/V1/
+
+## View outlines (FreeCAD)
+
+```bash
+freecad builds/<name>/outlines/board.dxf
+```
+
+Use Part → Extrude to give thickness:
+- board.dxf → 1.5mm (switch plate)
+- frame.dxf → 5mm (wooden frame)
+
+## View SVG outlines (browser, no install)
+
+```bash
+xdg-open builds/<name>/outlines/board.svg
+xdg-open builds/<name>/outlines/switch_cutouts.svg
+xdg-open builds/<name>/outlines/frame.svg
+```
+
+## Generated files summary
+
+| File | Format | Viewer |
+|------|--------|--------|
+| `pcbs/keyboard_v7.kicad_pcb` | KiCad 7 | `pcbnew` |
+| `pcbs/keyboard.kicad_pcb` | KiCad 5 (legacy) | older KiCad |
+| `cases/*.stl` | STL | meshlab, viewstl.com, any slicer |
+| `cases/*.jscad` | OpenJSCAD v1 | 3d.hrg.hr/jscad/V1/ |
+| `outlines/*.dxf` | DXF | FreeCAD, any CAD |
+| `outlines/*.svg` | SVG | any browser |
