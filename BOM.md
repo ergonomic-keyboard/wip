@@ -42,3 +42,57 @@ The nice!nano supports all three modes out of the box:
 
 ### Switches (no solder)
 Cherry ULP switches clip into the alignment holes on the assembled PCB. The SMD contact pads are pre-soldered by JLCPCB during assembly.
+
+---
+
+# Bill of Materials — Phase 1
+
+## Wooden Frame
+
+| Qty | Component | Unit Price | Total | Source |
+|-----|-----------|-----------|-------|--------|
+| 2 | Walnut sheet 200×120×5mm | €8.00 | €16.00 | Local hardwood supplier or [Etsy](https://www.etsy.com/search?q=walnut+sheet+5mm) |
+
+Cut using the `frame_with_holes.dxf` file — CNC router or laser cutter.
+
+## Tenting Mount (wire + turnbuckle + ball bearing)
+
+| Qty | Component | Unit Price | Total | Source |
+|-----|-----------|-----------|-------|--------|
+| 4 | M3×50mm turnbuckle | €1.50 | €6.00 | [AliExpress](https://www.aliexpress.com/w/wholesale-m3-turnbuckle.html) |
+| 4 | M3 ball bearing rod end (SA3T/K) | €1.20 | €4.80 | [AliExpress](https://www.aliexpress.com/w/wholesale-SA3T-K-rod-end-bearing.html) |
+| 2 | 2mm stainless steel wire 200mm | €0.50 | €1.00 | Hardware store or [Amazon](https://www.amazon.com/s?k=2mm+stainless+steel+wire) |
+| 4 | M3 insert nut (press-fit for wood) | €0.30 | €1.20 | [AliExpress](https://www.aliexpress.com/w/wholesale-m3-insert-nut-wood.html) |
+
+**Phase 1 total: ~€29**
+
+Setup: Press M3 insert nuts into the wooden frame bottom. Thread turnbuckles into rod end bearings. Rod ends attach to the wire running under each half. Adjust turnbuckle length to set tenting angle. Gravity keeps the keyboard stable; the two wires prevent rotation.
+
+---
+
+# Bill of Materials — Phase 2
+
+## Assembly Hardware
+
+| Qty | Component | Unit Price | Total | Source |
+|-----|-----------|-----------|-------|--------|
+| 8 | M2×8mm screw (pan head) | €0.05 | €0.40 | [AliExpress](https://www.aliexpress.com/w/wholesale-m2-8mm-screw.html), [McMaster](https://www.mcmaster.com) |
+| 8 | M2 nut | €0.02 | €0.16 | [AliExpress](https://www.aliexpress.com/w/wholesale-m2-nut.html) |
+| 8 | M2×3mm brass standoff (female-female) | €0.10 | €0.80 | [AliExpress](https://www.aliexpress.com/w/wholesale-m2-standoff-3mm.html) |
+
+**Phase 2 total: ~€1.36**
+
+### Assembly order (per half)
+1. Place bottom plate inside wooden frame
+2. Insert M2 screws from below through bottom plate mounting holes
+3. Thread 3mm standoffs onto screws (creates gap for PCB clearance)
+4. Place PCB onto standoffs, aligning M2 mounting holes
+5. Place switch plate on top of PCB
+6. Secure from top with M2 nuts through switch plate holes
+7. Press Cherry ULP switches into plate cutouts
+
+Screw positions: 4 per half at the corners — see `outlines/mounting_holes.dxf` for exact coordinates.
+
+---
+
+**Grand total (all phases): ~€225**

@@ -14,12 +14,71 @@ outlines:
       where: true
       size: [14.2, 12.8]
       bound: false
+  mounting_holes:
+    - what: circle
+      where:
+        ref: matrix_pinky_top
+      adjust:
+        shift: [-5, 5]
+      radius: 1.1
+    - what: circle
+      where:
+        ref: matrix_pinky_bottom
+      adjust:
+        shift: [-5, -5]
+      radius: 1.1
+    - what: circle
+      where:
+        ref: matrix_inner_top
+      adjust:
+        shift: [5, 5]
+      radius: 1.1
+    - what: circle
+      where:
+        ref: matrix_inner_bottom
+      adjust:
+        shift: [5, -5]
+      radius: 1.1
   frame:
     - what: rectangle
       where: true
       size: [20, 20]
       bound: true
       fillet: 3
+  frame_with_holes:
+    - what: rectangle
+      where: true
+      size: [20, 20]
+      bound: true
+      fillet: 3
+    - what: circle
+      where:
+        ref: matrix_pinky_top
+      adjust:
+        shift: [-5, 5]
+      radius: 1.1
+      operation: subtract
+    - what: circle
+      where:
+        ref: matrix_pinky_bottom
+      adjust:
+        shift: [-5, -5]
+      radius: 1.1
+      operation: subtract
+    - what: circle
+      where:
+        ref: matrix_inner_top
+      adjust:
+        shift: [5, 5]
+      radius: 1.1
+      operation: subtract
+    - what: circle
+      where:
+        ref: matrix_inner_bottom
+      adjust:
+        shift: [5, -5]
+      radius: 1.1
+      operation: subtract
 cases:
   bottom_plate:
     - what: outline
@@ -63,3 +122,27 @@ pcbs:
           to: "{{row_net}}"
         adjust:
           shift: [0, 5]
+      mh_top_left:
+        what: mountinghole
+        where:
+          ref: matrix_pinky_top
+        adjust:
+          shift: [-5, 5]
+      mh_bottom_left:
+        what: mountinghole
+        where:
+          ref: matrix_pinky_bottom
+        adjust:
+          shift: [-5, -5]
+      mh_top_right:
+        what: mountinghole
+        where:
+          ref: matrix_inner_top
+        adjust:
+          shift: [5, 5]
+      mh_bottom_right:
+        what: mountinghole
+        where:
+          ref: matrix_inner_bottom
+        adjust:
+          shift: [5, -5]

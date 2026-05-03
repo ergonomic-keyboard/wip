@@ -68,13 +68,46 @@ xdg-open builds/<name>/outlines/switch_cutouts.svg
 xdg-open builds/<name>/outlines/frame.svg
 ```
 
+## View full assembly (OpenSCAD)
+
+The `assembly.scad` file shows all layers stacked together:
+- Wooden frame (brown, 5mm)
+- Bottom plate (grey, 1.2mm)
+- Standoffs at mounting holes (brass, 3mm)
+- PCB (green, 1.6mm)
+- Switch plate (grey, 1.5mm)
+
+```bash
+# Install OpenSCAD
+sudo apt install openscad
+
+# Open interactive 3D view
+openscad builds/<name>/assembly.scad
+```
+
+A pre-rendered `assembly.png` is also generated automatically if OpenSCAD is installed.
+
+## View wood cutting files
+
+The DXF files for CNC/laser cutting the wooden frame:
+
+```bash
+freecad builds/<name>/outlines/frame_with_holes.dxf
+```
+
+This outline includes the mounting hole positions for accurate drilling.
+
 ## Generated files summary
 
 | File | Format | Viewer |
 |------|--------|--------|
+| `assembly.scad` | OpenSCAD | `openscad` |
+| `assembly.png` | PNG | any image viewer |
 | `pcbs/keyboard_v7.kicad_pcb` | KiCad 7 | `pcbnew` |
 | `pcbs/keyboard.kicad_pcb` | KiCad 5 (legacy) | older KiCad |
 | `cases/*.stl` | STL | meshlab, viewstl.com, any slicer |
 | `cases/*.jscad` | OpenJSCAD v1 | 3d.hrg.hr/jscad/V1/ |
+| `outlines/frame_with_holes.dxf` | DXF | FreeCAD — wood cutting template |
+| `outlines/mounting_holes.dxf` | DXF | FreeCAD — drill positions |
 | `outlines/*.dxf` | DXF | FreeCAD, any CAD |
 | `outlines/*.svg` | SVG | any browser |
