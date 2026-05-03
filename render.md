@@ -43,19 +43,22 @@ openscad builds/<name>/assembly.scad
 - Or add `#` before any shape in the .scad file to make it transparent
 
 **Components visible:**
-- Wooden frame (brown, 3.8mm)
+- Bamboo plywood frame (warm tan, 4.8mm total height, 4mm wall)
 - Bottom plate (grey, 1.0mm)
-- PCB (green, 1.6mm) — directly on bottom plate
+- Cork gaskets (brown, 0.5mm each) — between bottom plate/PCB and PCB/switch plate
+- PCB (green, 1.6mm) — on cork gasket
 - Switch plate (grey, 1.2mm) — with cutouts for Cherry ULP switches
 - nice!nano MCU (green PCB with black chip) — one per half
 - USB-C connectors (grey) — on the nice!nano, inner edge of each half
-- Lockable ball bearing hinge (center, between halves)
-- Two horizontal cables with hooks (top and bottom, connecting halves)
+- 301230 LiPo battery (blue, 30x12x3mm) — along board edge near MCU
+- Ball joint hinge (center, rod-end bearing with thumb nut lock)
+- Two turnbuckle cables with quick-release clevis pins (top and bottom)
 
 **Toggle components** by editing variables at the top of assembly.scad:
 ```
-show_cables = true;   // horizontal cables
-show_hinge  = true;   // center hinge
+show_cables  = true;   // turnbuckle cables with clevis pins
+show_hinge   = true;   // ball joint hinge
+show_battery = true;   // LiPo battery
 ```
 
 **Folding simulation:**
@@ -64,10 +67,10 @@ The keyboard is two separate halves connected by a hinge. You can visualize fold
 ```
 fold_angle = 0;    // flat (working position)
 fold_angle = 90;   // half folded
-fold_angle = 180;  // fully closed for transport
+fold_angle = 160;  // fully closed for transport (ball joint limit)
 ```
 
-Or use the OpenSCAD Customizer panel (**View → Hide Customizer** to toggle) — it provides a slider for `fold_angle` from 0 to 180.
+Or use the OpenSCAD Customizer panel (**View → Hide Customizer** to toggle) — it provides a slider for `fold_angle` from 0 to 160.
 
 **Connection points:**
 
@@ -122,7 +125,7 @@ This outline includes the mounting hole positions for accurate drilling.
 
 | File | Format | Viewer | Description |
 |------|--------|--------|-------------|
-| `assembly.scad` | OpenSCAD | `openscad` | Interactive 3D: all components, cables, hinge, MCU |
+| `assembly.scad` | OpenSCAD | `openscad` | Interactive 3D: all components, cables, ball joint, battery, MCU |
 | `assembly.png` | PNG | any image viewer | Static render of assembly |
 | `pcbs/keyboard_v7.kicad_pcb` | KiCad 7 | `pcbnew` | PCB with footprints |
 | `pcbs/keyboard.kicad_pcb` | KiCad 5 | older KiCad | Legacy format |

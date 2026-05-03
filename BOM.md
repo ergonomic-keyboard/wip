@@ -47,34 +47,46 @@ Cherry ULP switches clip into the alignment holes on the assembled PCB. The SMD 
 
 # Bill of Materials — Phase 1
 
-## Wooden Frame
+## Bamboo Plywood Frame
 
 | Qty | Component | Unit Price | Total | Source |
 |-----|-----------|-----------|-------|--------|
-| 2 | Walnut sheet 200×150×4mm | €8.00 | €16.00 | Local hardwood supplier or [Etsy](https://www.etsy.com/search?q=walnut+sheet+4mm) |
+| 2 | Bamboo plywood sheet 200×150×2mm | €6.00 | €12.00 | [Amazon](https://www.amazon.com/s?k=bamboo+plywood+2mm), [AliExpress](https://www.aliexpress.com/w/wholesale-bamboo-plywood-2mm.html) |
 
-Cut using the `frame_with_holes.dxf` file — CNC router or laser cutter.
+Two-part milled frame per half — bottom piece (backbone + edge lip) and top bezel. Cut using `frame_with_holes.dxf` — CNC router or laser cutter. Bamboo plywood is cross-laminated (MOR 40-60 MPa), viable at 2mm thickness with 4mm wall width.
 
-## Folding Hinge (lockable ball bearing)
+## Cork Gaskets
 
 | Qty | Component | Unit Price | Total | Source |
 |-----|-----------|-----------|-------|--------|
-| 1 | Lockable ball bearing hinge (friction hinge, 8mm barrel) | €5.00 | €5.00 | [AliExpress](https://www.aliexpress.com/w/wholesale-lockable-friction-hinge-small.html) |
-| 4 | M2×6mm screw (for hinge flanges) | €0.05 | €0.20 | [AliExpress](https://www.aliexpress.com/w/wholesale-m2-6mm-screw.html) |
+| 1 | Natural cork gasket sheet 0.5mm, A4 | €5.00 | €5.00 | [Amazon](https://www.amazon.com/s?k=cork+gasket+sheet+0.5mm), [AliExpress](https://www.aliexpress.com/w/wholesale-cork-gasket-sheet-0.5mm.html) |
 
-The hinge mounts at the inner edge between the two halves. Friction/lockable type stays at the set angle without a separate lock mechanism.
+Cut two gaskets per half from `board.dxf` outline. Placed between layers: bottom plate → cork → PCB → cork → switch plate. Eliminates rattle, dampens acoustics, compensates tolerances.
 
-## Cables with Hooks (connects halves)
+## Ball Joint Hinge
+
+| Qty | Component | Unit Price | Total | Source |
+|-----|-----------|-----------|-------|--------|
+| 1 | M6 rod-end bearing (ball joint) | €3.00 | €3.00 | [AliExpress](https://www.aliexpress.com/w/wholesale-m6-rod-end-bearing.html), [eBay](https://www.ebay.com/sch/i.html?_nkw=m6+rod+end+bearing) |
+| 1 | M6 thumb nut (locking) | €0.50 | €0.50 | [AliExpress](https://www.aliexpress.com/w/wholesale-m6-thumb-nut.html) |
+| 2 | M6 threaded rod stub 15mm | €0.30 | €0.60 | Hardware store |
+| 2 | Mounting plate (flat bracket, drilled for M2) | €1.00 | €2.00 | Hardware store or 3D-printed |
+
+Rod-end bearing mounts at the inner edge between halves. Provides free tilt in all axes for tenting adjustment. Thumb nut locks chosen angle. Range: ~140-160° fold (not full 180° flat).
+
+## Turnbuckle Cables with Quick-Release Clevis Pins
 
 | Qty | Component | Unit Price | Total | Source |
 |-----|-----------|-----------|-------|--------|
 | 2 | Braided steel cable 1.5mm × 250mm | €0.50 | €1.00 | Hardware store or [Amazon](https://www.amazon.com/s?k=braided+steel+cable+1.5mm) |
-| 2 | Small carabiner hook (for detachable end) | €0.80 | €1.60 | [AliExpress](https://www.aliexpress.com/w/wholesale-mini-carabiner-10mm.html) |
-| 2 | Cable crimp eyelet (for fixed end) | €0.20 | €0.40 | Hardware store |
+| 2 | Small turnbuckle (M3, ~40mm body) | €1.50 | €3.00 | [AliExpress](https://www.aliexpress.com/w/wholesale-small-turnbuckle-m3.html), hardware store |
+| 2 | Quick-release clevis pin (spring-loaded ball detent) | €2.50 | €5.00 | [AliExpress](https://www.aliexpress.com/w/wholesale-quick-release-clevis-pin.html), [McMaster](https://www.mcmaster.com) |
+| 2 | Clevis bracket (recessed into frame edge) | €1.00 | €2.00 | Hardware store or 3D-printed |
+| 4 | Cable crimp eyelet | €0.20 | €0.80 | Hardware store |
 
-Setup: One cable runs across the top (Q-to-P row), one across the bottom (Z-to-M row). Fixed eyelet on the left side, carabiner hook on the right side for quick detach. Unclip hooks to fold keyboard closed; wrap cables around to keep it shut.
+Cables serve dual purpose: structural support (prevents collapse under gravity) and tenting angle adjustment via turnbuckle length. One cable top, one bottom. Quick-release clevis pins allow one-handed press-button detach for folding.
 
-**Phase 1 total: ~€24**
+**Phase 1 total: ~€35**
 
 ---
 
@@ -84,29 +96,36 @@ Setup: One cable runs across the top (Q-to-P row), one across the bottom (Z-to-M
 
 | Qty | Component | Unit Price | Total | Source |
 |-----|-----------|-----------|-------|--------|
-| 8 | M2×5mm screw (pan head) | €0.05 | €0.40 | [AliExpress](https://www.aliexpress.com/w/wholesale-m2-5mm-screw.html), [McMaster](https://www.mcmaster.com) |
-| 8 | M2 nut | €0.02 | €0.16 | [AliExpress](https://www.aliexpress.com/w/wholesale-m2-nut.html) |
+| 14 | M2×5mm countersunk flat-head screw | €0.05 | €0.70 | [AliExpress](https://www.aliexpress.com/w/wholesale-m2-5mm-countersunk-screw.html), [McMaster](https://www.mcmaster.com) |
+| 14 | M2 heat-set brass threaded insert | €0.15 | €2.10 | [AliExpress](https://www.aliexpress.com/w/wholesale-m2-heat-set-insert.html), [CNCKitchen](https://cnckitchen.store) |
 
-**Phase 2 total: ~€0.56**
+Heat-set inserts are pressed into the bamboo frame from below using a soldering iron (set to ~200°C). Countersunk flat-head screws sit flush from the top.
+
+**Phase 2 total: ~€2.80**
 
 ### Assembly order (per half)
-1. Place bottom plate (1.0mm) inside wooden frame
-2. Place PCB directly on bottom plate
-3. Insert M2 screws from below through all layers
-4. Place switch plate (1.2mm) on top of PCB
-5. Secure from top with M2 nuts
-6. Press Cherry ULP switches into plate cutouts
-7. Drop nice!nano onto Mill-Max sockets
+1. Press M2 heat-set inserts into bottom frame piece (7 per half)
+2. Place bottom plate (1.0mm) inside frame
+3. Place cork gasket (0.5mm) on bottom plate
+4. Place PCB on cork gasket
+5. Place cork gasket (0.5mm) on PCB
+6. Place switch plate (1.2mm) on cork gasket
+7. Place top bezel frame piece
+8. Secure from top with M2 countersunk screws into heat-set inserts (flush)
+9. Press Cherry ULP switches into plate cutouts
+10. Drop nice!nano onto Mill-Max sockets
 
-Total assembled thickness: **3.8mm** (1.0 bottom + 1.6 PCB + 1.2 switch plate)
+Total assembled thickness: **4.8mm** (1.0 bottom + 0.5 cork + 1.6 PCB + 0.5 cork + 1.2 switch plate)
 
-Screw positions: 4 per half at the corners — see `outlines/mounting_holes.dxf` for exact coordinates.
+Screw positions: 7 per half — see `outlines/mounting_holes.dxf` for exact coordinates.
 
 ### Folding & cables
-1. Attach hinge flanges to inner edge of each half with M2 screws
-2. Clip cables between eyelets (left) and carabiner hooks (right)
-3. To fold: unclip hooks, fold halves inward, wrap cables around to hold shut
+1. Mount ball joint at inner edge between halves, secure with mounting plates
+2. Tighten thumb nut to lock ball joint at desired tenting angle
+3. Attach turnbuckle cables between clevis brackets (one top, one bottom)
+4. Adjust turnbuckle length to set tenting tension
+5. To fold: press clevis pin buttons to release cables, fold halves inward
 
 ---
 
-**Grand total (all phases): ~€220**
+**Grand total (all phases): ~€233**

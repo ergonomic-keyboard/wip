@@ -62,6 +62,7 @@ outlines:
     size:
     - 68
     - 65
+    fillet: 8
     adjust:
       shift:
       - 0
@@ -72,6 +73,7 @@ outlines:
     size:
     - 68
     - 65
+    fillet: 8
     adjust:
       shift:
       - 0
@@ -80,8 +82,9 @@ outlines:
   - what: rectangle
     where: thumbfan_home_thumb
     size:
-    - 70
-    - 67
+    - 76
+    - 73
+    fillet: 10
     adjust:
       shift:
       - 0
@@ -90,8 +93,9 @@ outlines:
   - what: rectangle
     where: mirror_thumbfan_home_thumb
     size:
-    - 70
-    - 67
+    - 76
+    - 73
+    fillet: 10
     adjust:
       shift:
       - 0
@@ -113,7 +117,7 @@ outlines:
     - 18
     - 18
     bound: true
-    fillet: 2
+    fillet: 8
   - what: outline
     name: _thumb_bridge_left
   - what: outline
@@ -161,14 +165,38 @@ outlines:
       - 5
       - -5
     radius: 1.1
+  - what: circle
+    where:
+      ref: matrix_middle_top
+    adjust:
+      shift:
+      - 0
+      - 5
+    radius: 1.1
+  - what: circle
+    where:
+      ref: thumbfan_near_thumb
+    adjust:
+      shift:
+      - 0
+      - -5
+    radius: 1.1
+  - what: circle
+    where:
+      ref: matrix_index_bottom
+    adjust:
+      shift:
+      - 0
+      - -5
+    radius: 1.1
   frame:
   - what: rectangle
     where: true
     size:
-    - 20
-    - 20
+    - 26
+    - 26
     bound: true
-    fillet: 3
+    fillet: 10
   - what: outline
     name: _thumb_bridge_frame_left
   - what: outline
@@ -180,10 +208,10 @@ outlines:
   - what: rectangle
     where: true
     size:
-    - 20
-    - 20
+    - 26
+    - 26
     bound: true
-    fillet: 3
+    fillet: 10
   - what: outline
     name: _thumb_bridge_frame_left
   - what: outline
@@ -227,6 +255,33 @@ outlines:
       - -5
     radius: 1.1
     operation: subtract
+  - what: circle
+    where:
+      ref: matrix_middle_top
+    adjust:
+      shift:
+      - 0
+      - 5
+    radius: 1.1
+    operation: subtract
+  - what: circle
+    where:
+      ref: thumbfan_near_thumb
+    adjust:
+      shift:
+      - 0
+      - -5
+    radius: 1.1
+    operation: subtract
+  - what: circle
+    where:
+      ref: matrix_index_bottom
+    adjust:
+      shift:
+      - 0
+      - -5
+    radius: 1.1
+    operation: subtract
 cases:
   bottom_plate:
   - what: outline
@@ -243,10 +298,10 @@ cases:
   wooden_frame:
   - what: outline
     name: frame
-    extrude: 3.8
+    extrude: 4.8
   - what: outline
     name: board
-    extrude: 3.8
+    extrude: 4.8
     operation: subtract
 pcbs:
   keyboard:
@@ -303,4 +358,28 @@ pcbs:
         adjust:
           shift:
           - 5
+          - -5
+      mh_middle_top:
+        what: mountinghole
+        where:
+          ref: matrix_middle_top
+        adjust:
+          shift:
+          - 0
+          - 5
+      mh_thumb_near:
+        what: mountinghole
+        where:
+          ref: thumbfan_near_thumb
+        adjust:
+          shift:
+          - 0
+          - -5
+      mh_index_bottom:
+        what: mountinghole
+        where:
+          ref: matrix_index_bottom
+        adjust:
+          shift:
+          - 0
           - -5
