@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Keyboard Builder</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #111; color: #eee; overflow: hidden; height: 100vh; }
+a { color: #6bf; }
+
+/* ── Header / Steps ── */
+header { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; background: #1a1a1a; border-bottom: 1px solid #333; height: 48px; z-index: 10; }
+.steps { display: flex; gap: 4px; }
+.step-btn { padding: 6px 16px; border-radius: 4px; font-size: 13px; border: 1px solid #444; background: #222; color: #888; cursor: default; transition: all 0.2s; }
+.step-btn.active { background: #2a4a6a; color: #fff; border-color: #4a8abf; }
+.step-btn.done { background: #1a3a1a; color: #6c6; border-color: #3a6a3a; cursor: pointer; }
+.nav-btns { display: flex; gap: 8px; }
+.nav-btns button { padding: 6px 20px; border-radius: 4px; font-size: 13px; border: 1px solid #555; background: #333; color: #ddd; cursor: pointer; }
+.nav-btns button:hover:not(:disabled) { background: #444; }
+.nav-btns button:disabled { opacity: 0.3; cursor: default; }
+.nav-btns button.primary { background: #2a6abf; border-color: #4a8adf; color: #fff; }
+.nav-btns button.primary:hover:not(:disabled) { background: #3a7adf; }
+
+/* ── Pages ── */
+.page { display: none; height: calc(100vh - 48px); }
+.page.active { display: flex; flex-direction: column; }
+
+/* ── Page 1: Finger Input ── */
+#page1 .toolbar { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: #1a1a1a; border-bottom: 1px solid #333; flex-wrap: wrap; }
+#page1 .toolbar .col-btn { padding: 4px 12px; border-radius: 3px; font-size: 12px; border: 2px solid transparent; cursor: pointer; color: #000; font-weight: 600; }
+#page1 .toolbar .col-btn.active { border-color: #fff; box-shadow: 0 0 8px rgba(255,255,255,0.4); }
+#page1 .toolbar .col-btn .count { font-size: 10px; opacity: 0.7; margin-left: 4px; }
+#page1 .toolbar .sep { width: 1px; height: 24px; background: #444; margin: 0 4px; }
+#page1 .toolbar .tool-btn { padding: 4px 10px; border-radius: 3px; font-size: 11px; border: 1px solid #555; background: #333; color: #ccc; cursor: pointer; }
+#page1 .toolbar .tool-btn:hover { background: #444; }
+.canvas-wrap { flex: 1; position: relative; background: #0a0a0a; overflow: hidden; }
+.canvas-wrap canvas { display: block; width: 100%; height: 100%; }
+.canvas-hint { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #444; font-size: 18px; pointer-events: none; text-align: center; line-height: 1.6; }
+.canvas-hint.hidden { display: none; }
+
+/* ── Page 2: 3D View ── */
+#page2 .toolbar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #1a1a1a; border-bottom: 1px solid #333; flex-wrap: wrap; }
+#page2 .toolbar label { font-size: 12px; color: #aaa; display: flex; align-items: center; gap: 4px; }
+#page2 .toolbar input[type=range] { width: 120px; }
+#page2 .toolbar input[type=checkbox] { accent-color: #4a8abf; }
+#viewport { flex: 1; position: relative; background: #0a0a0a; }
+#viewport canvas { display: block; }
+#loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #888; font-size: 16px; }
+
+/* ── Page 3: BOM ── */
+#page3 { overflow-y: auto; padding: 20px; }
+#page3 h2 { margin: 20px 0 10px; font-size: 18px; color: #adf; }
+#page3 h2:first-child { margin-top: 0; }
+#page3 table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 13px; }
+#page3 th { text-align: left; padding: 6px 10px; background: #222; border-bottom: 2px solid #444; color: #aaa; font-weight: 600; }
+#page3 td { padding: 6px 10px; border-bottom: 1px solid #2a2a2a; }
+#page3 tr:hover td { background: #1a1a2a; }
+#page3 .phase-total { text-align: right; font-weight: 600; color: #8c8; padding: 8px 10px; }
+#page3 .grand-total { font-size: 18px; font-weight: 700; color: #adf; text-align: right; padding: 16px 0; border-top: 2px solid #444; margin-top: 8px; }
+.download-row { display: flex; gap: 12px; margin-top: 16px; }
+.download-row button { padding: 10px 24px; border-radius: 6px; font-size: 14px; border: 1px solid #4a8adf; background: #2a5a9f; color: #fff; cursor: pointer; }
+.download-row button:hover { background: #3a6abf; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="steps">
+    <div class="step-btn active" data-step="1">1. Finger Positions</div>
+    <div class="step-btn" data-step="2">2. 3D Preview</div>
+    <div class="step-btn" data-step="3">3. Bill of Materials</div>
+  </div>
+  <div class="nav-btns">
+    <button id="btn-back" disabled>Back</button>
+    <button id="btn-next" class="primary" disabled>Next</button>
+  </div>
+</header>
+
+<!-- ═══════════════ PAGE 1: Finger Input ═══════════════ -->
+<div id="page1" class="page active">
+  <div class="toolbar" id="col-toolbar"></div>
+  <div class="canvas-wrap">
+    <canvas id="tap-canvas"></canvas>
+    <div class="canvas-hint" id="canvas-hint">
+      Select a finger column above, then<br>tap 3 positions: bottom, home, top row
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ PAGE 2: 3D Preview ═══════════════ -->
+<div id="page2" class="page">
+  <div class="toolbar">
+    <label>Fold: <input type="range" id="fold-slider" min="0" max="160" step="5" value="0"> <span id="fold-val">0</span>&deg;</label>
+    <label><input type="checkbox" id="show-cables" checked> Cables</label>
+    <label><input type="checkbox" id="show-hinge" checked> Hinge</label>
+    <label><input type="checkbox" id="show-battery" checked> Battery</label>
+  </div>
+  <div id="viewport">
+    <div id="loading">Processing layout...</div>
+  </div>
+</div>
+
+<!-- ═══════════════ PAGE 3: BOM ═══════════════ -->
+<div id="page3" class="page">
+  <div id="bom-content"></div>
+  <div class="download-row">
+    <button id="btn-download">Download Design Files (.zip)</button>
+  </div>
+</div>
+
+<!-- ═══════════════ Three.js Import Map (ESM) ═══════════════ -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<!-- ═══════════════ CDN Dependencies ═══════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/js-yaml@3.14.1/dist/js-yaml.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjs@15.0.0/lib/browser/math.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/makerjs@0.18.1/dist/browser.maker.js"></script>
+
+<!-- ═══════════════ Hull.js (inlined, not on CDN) ═══════════════ -->
+<script>
+window.hull = (function() {
+  // intersect.js
+  function ccw(x1,y1,x2,y2,x3,y3) {
+    var cw = ((y3-y1)*(x2-x1)) - ((y2-y1)*(x3-x1));
+    return cw > 0 ? true : cw < 0 ? false : true;
+  }
+  function intersect(seg1, seg2) {
+    var x1=seg1[0][0],y1=seg1[0][1],x2=seg1[1][0],y2=seg1[1][1],
+        x3=seg2[0][0],y3=seg2[0][1],x4=seg2[1][0],y4=seg2[1][1];
+    return ccw(x1,y1,x3,y3,x4,y4) !== ccw(x2,y2,x3,y3,x4,y4) &&
+           ccw(x1,y1,x2,y2,x3,y3) !== ccw(x1,y1,x2,y2,x4,y4);
+  }
+  // format.js
+  var formatUtil = {
+    toXy: function(ps, fmt) {
+      if (!fmt) return ps.slice();
+      var xn=fmt[0].slice(1), yn=fmt[1].slice(1);
+      return ps.map(function(p){return [p[xn],p[yn]];});
+    },
+    fromXy: function(ps, fmt) {
+      if (!fmt) return ps.slice();
+      var xn=fmt[0].slice(1), yn=fmt[1].slice(1);
+      return ps.map(function(p){var o={};o[xn]=p[0];o[yn]=p[1];return o;});
+    }
+  };
+  // grid.js
+  function Grid(points, cellSize) {
+    this._cells=[]; this._cellSize=cellSize; this._reverseCellSize=1/cellSize;
+    for (var i=0;i<points.length;i++) {
+      var p=points[i], x=this.coordToCellNum(p[0]), y=this.coordToCellNum(p[1]);
+      if (!this._cells[x]) { var a=[]; a[y]=[p]; this._cells[x]=a; }
+      else if (!this._cells[x][y]) { this._cells[x][y]=[p]; }
+      else { this._cells[x][y].push(p); }
+    }
+  }
+  Grid.prototype = {
+    cellPoints: function(x,y) { return (this._cells[x]!==undefined&&this._cells[x][y]!==undefined)?this._cells[x][y]:[]; },
+    rangePoints: function(bbox) {
+      var tlX=this.coordToCellNum(bbox[0]),tlY=this.coordToCellNum(bbox[1]),brX=this.coordToCellNum(bbox[2]),brY=this.coordToCellNum(bbox[3]),pts=[];
+      for(var x=tlX;x<=brX;x++) for(var y=tlY;y<=brY;y++) { var cp=this.cellPoints(x,y); for(var i=0;i<cp.length;i++) pts.push(cp[i]); }
+      return pts;
+    },
+    removePoint: function(point) {
+      var cx=this.coordToCellNum(point[0]),cy=this.coordToCellNum(point[1]),cell=this._cells[cx][cy];
+      for(var i=0;i<cell.length;i++) if(cell[i][0]===point[0]&&cell[i][1]===point[1]){cell.splice(i,1);break;}
+      return cell;
+    },
+    coordToCellNum: function(x) { return Math.trunc(x*this._reverseCellSize); },
+    extendBbox: function(bbox, sf) { return [bbox[0]-sf*this._cellSize,bbox[1]-sf*this._cellSize,bbox[2]+sf*this._cellSize,bbox[3]+sf*this._cellSize]; }
+  };
+  function grid(points, cellSize) { return new Grid(points, cellSize); }
+  // convex.js
+  function _ccw(p1,p2,p3) { return (p2[0]-p1[0])*(p3[1]-p1[1])-(p2[1]-p1[1])*(p3[0]-p1[0])<=0; }
+  function _tangent(ps) { var r=[]; for(var t=0;t<ps.length;t++){while(r.length>1&&_ccw(r[r.length-2],r[r.length-1],ps[t]))r.pop();r.push(ps[t]);}r.pop();return r; }
+  function convexHull(ps) { var u=_tangent(ps),l=_tangent(ps.reverse()),c=l.concat(u);c.push(ps[0]);return c; }
+  // hull.js
+  var MAX_CONCAVE_ANGLE_COS = Math.cos(90/(180/Math.PI));
+  var MAX_SEARCH_BBOX_SIZE_PERCENT = 0.6;
+  function _filterDuplicates(ps) { var u=[ps[0]],lp=ps[0]; for(var i=1;i<ps.length;i++){var c=ps[i];if(lp[0]!==c[0]||lp[1]!==c[1])u.push(c);lp=c;} return u; }
+  function _sortByX(ps) { return ps.sort(function(a,b){return(a[0]-b[0])||(a[1]-b[1]);}); }
+  function _sqLength(a,b) { return Math.pow(b[0]-a[0],2)+Math.pow(b[1]-a[1],2); }
+  function _cos(o,a,b) { var as=[a[0]-o[0],a[1]-o[1]],bs=[b[0]-o[0],b[1]-o[1]]; return(as[0]*bs[0]+as[1]*bs[1])/Math.sqrt(_sqLength(o,a)*_sqLength(o,b)); }
+  function _intersect(seg,ps) { for(var i=0;i<ps.length-1;i++){var s=[ps[i],ps[i+1]];if(seg[0][0]===s[0][0]&&seg[0][1]===s[0][1]||seg[0][0]===s[1][0]&&seg[0][1]===s[1][1])continue;if(intersect(seg,s))return true;}return false; }
+  function _occupiedArea(ps) { var mnX=Infinity,mnY=Infinity,mxX=-Infinity,mxY=-Infinity; for(var i=ps.length-1;i>=0;i--){if(ps[i][0]<mnX)mnX=ps[i][0];if(ps[i][1]<mnY)mnY=ps[i][1];if(ps[i][0]>mxX)mxX=ps[i][0];if(ps[i][1]>mxY)mxY=ps[i][1];}return[mxX-mnX,mxY-mnY]; }
+  function _bBoxAround(e) { return[Math.min(e[0][0],e[1][0]),Math.min(e[0][1],e[1][1]),Math.max(e[0][0],e[1][0]),Math.max(e[0][1],e[1][1])]; }
+  function _midPoint(edge,innerPts,convex) {
+    var pt=null,a1c=MAX_CONCAVE_ANGLE_COS,a2c=MAX_CONCAVE_ANGLE_COS;
+    for(var i=0;i<innerPts.length;i++){var c1=_cos(edge[0],edge[1],innerPts[i]),c2=_cos(edge[1],edge[0],innerPts[i]);
+      if(c1>a1c&&c2>a2c&&!_intersect([edge[0],innerPts[i]],convex)&&!_intersect([edge[1],innerPts[i]],convex)){a1c=c1;a2c=c2;pt=innerPts[i];}}
+    return pt;
+  }
+  function _concave(convex,maxSqEdgeLen,maxSearchArea,g,skipList) {
+    var inserted=false;
+    for(var i=0;i<convex.length-1;i++){var edge=[convex[i],convex[i+1]],key=edge[0][0]+','+edge[0][1]+','+edge[1][0]+','+edge[1][1];
+      if(_sqLength(edge[0],edge[1])<maxSqEdgeLen||skipList.has(key))continue;
+      var sf=0,bb=_bBoxAround(edge),bw,bh,mp;
+      do{bb=g.extendBbox(bb,sf);bw=bb[2]-bb[0];bh=bb[3]-bb[1];mp=_midPoint(edge,g.rangePoints(bb),convex);sf++;}while(mp===null&&(maxSearchArea[0]>bw||maxSearchArea[1]>bh));
+      if(bw>=maxSearchArea[0]&&bh>=maxSearchArea[1])skipList.add(key);
+      if(mp!==null){convex.splice(i+1,0,mp);g.removePoint(mp);inserted=true;}}
+    if(inserted)return _concave(convex,maxSqEdgeLen,maxSearchArea,g,skipList);
+    return convex;
+  }
+  function hull(pointset, concavity, format) {
+    var maxEdgeLen=concavity||20;
+    var points=_filterDuplicates(_sortByX(formatUtil.toXy(pointset,format)));
+    if(points.length<4){var c=points.concat([points[0]]);return format?formatUtil.fromXy(c,format):c;}
+    var oa=_occupiedArea(points),msa=[oa[0]*MAX_SEARCH_BBOX_SIZE_PERCENT,oa[1]*MAX_SEARCH_BBOX_SIZE_PERCENT];
+    var cv=convexHull(points),inner=points.filter(function(p){return cv.indexOf(p)<0;});
+    var cs=Math.ceil(1/(points.length/(oa[0]*oa[1])));
+    var cc=_concave(cv,Math.pow(maxEdgeLen,2),msa,grid(inner,cs),new Set());
+    return format?formatUtil.fromXy(cc,format):cc;
+  }
+  return hull;
+})();
+</script>
+
+<!-- KLE stub (not used, ergogen checks for it) -->
+<script>window.kle = { deserialize: function() { return {}; } };</script>
+
+<!-- Global fixups for ergogen UMD -->
+<script>
+// browser.maker.js uses browserify which overwrites global `require` and registers
+// the module as "makerjs" internally. We extract it via browserify's require.
+window.makerjs = require('makerjs');
+window.jszip = window.JSZip;
+</script>
+
+<!-- Ergogen UMD bundle -->
+<script src="ergogen.js"></script>
+
+<!-- ═══════════════ Main Application ═══════════════ -->
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
+
+'use strict';
+
+// ══════════════════════════════════════════════════════════════════
+// ERGOPAD → ERGOGEN CONVERTER (ported from ergopad_to_ergogen.py)
+// ══════════════════════════════════════════════════════════════════
+
+const MATRIX_COLUMNS = ['pinky', 'ring', 'middle', 'index', 'index_far'];
+const ERGOGEN_NAMES  = ['pinky', 'ring', 'middle', 'index', 'inner'];
+
+function fitLine(points) {
+  const n = points.length;
+  if (n === 0) return { angle: 0, cx: 0, cy: 0, distances: [] };
+  if (n === 1) return { angle: 0, cx: points[0].x, cy: points[0].y, distances: [] };
+  const xs = points.map(p => p.x), ys = points.map(p => p.y);
+  const cx = xs.reduce((a,b)=>a+b,0)/n, cy = ys.reduce((a,b)=>a+b,0)/n;
+  const sorted = points.slice().sort((a,b) => a.y - b.y);
+  const bot = sorted[0], top = sorted[n-1];
+  const dx = top.x - bot.x, dy = top.y - bot.y;
+  let angle = 0;
+  if (Math.abs(dy) >= 0.01 || Math.abs(dx) >= 0.01) {
+    angle = Math.atan2(dx, dy) * 180 / Math.PI;
+  }
+  const rad = angle * Math.PI / 180;
+  const axX = Math.sin(rad), axY = Math.cos(rad);
+  const projs = sorted.map(p => (p.x - cx)*axX + (p.y - cy)*axY);
+  const distances = [];
+  for (let i = 1; i < projs.length; i++) distances.push(Math.abs(projs[i] - projs[i-1]));
+  return { angle, cx, cy, distances };
+}
+
+function analyzeColumn(points) {
+  if (!points || !points.length) return null;
+  const { angle, cx, cy, distances } = fitLine(points);
+  const padding = distances.length ? distances.reduce((a,b)=>a+b,0)/distances.length : 18.0;
+  return { center: [cx, cy], angle, padding, nKeys: points.length };
+}
+
+function estimateScale(data, keySpacing) {
+  const allDist = [];
+  for (const col of Object.keys(data)) {
+    if (data[col].length < 2) continue;
+    const { distances } = fitLine(data[col]);
+    allDist.push(...distances);
+  }
+  if (!allDist.length) return 1.0;
+  const avg = allDist.reduce((a,b)=>a+b,0) / allDist.length;
+  return avg < 0.01 ? 1.0 : avg / keySpacing;
+}
+
+function rd(v) { return Math.round(v * 10) / 10; }
+
+function ergopadToErgogen(data, mirrorDist, keySpacing) {
+  mirrorDist = mirrorDist || 22;
+  keySpacing = keySpacing || 18;
+  // Flip Y
+  const flipped = {};
+  for (const col of Object.keys(data)) {
+    flipped[col] = data[col].map(p => ({ x: p.x, y: -p.y }));
+  }
+  // Scale
+  let ppm = estimateScale(flipped, keySpacing);
+  if (ppm <= 0) ppm = 1.0;
+  const scaled = {};
+  for (const col of Object.keys(flipped)) {
+    scaled[col] = flipped[col].map(p => ({ x: p.x/ppm, y: p.y/ppm }));
+  }
+  // Analyze matrix columns
+  const analyses = {};
+  for (const col of MATRIX_COLUMNS) {
+    if (scaled[col] && scaled[col].length) analyses[col] = analyzeColumn(scaled[col]);
+  }
+  // Analyze thumb
+  const thumbPts = scaled.thumb || [];
+  const thumbInfo = thumbPts.length ? analyzeColumn(thumbPts) : null;
+
+  // Build ergogen columns
+  const columns = {};
+  let prevCenter = null, cumulativeAngle = 0;
+  MATRIX_COLUMNS.forEach((ergopadCol, i) => {
+    const info = analyses[ergopadCol];
+    if (!info) return;
+    const ergogenName = ERGOGEN_NAMES[i];
+    const colDef = { key: { column_net: `C${i}` } };
+    if (i === 0) {
+      const splay = info.angle;
+      if (Math.abs(splay) > 0.5) colDef.key.splay = rd(splay);
+      colDef.key.padding = rd(info.padding);
+      prevCenter = info.center;
+      cumulativeAngle = splay;
+    } else {
+      const [cx, cy] = info.center;
+      const [px, py] = prevCenter;
+      const dx = cx - px, dy = cy - py;
+      const rad = -cumulativeAngle * Math.PI / 180;
+      const spread = dx*Math.cos(rad) - dy*Math.sin(rad);
+      const stagger = dx*Math.sin(rad) + dy*Math.cos(rad);
+      const splay = info.angle - cumulativeAngle;
+      colDef.key.spread = rd(spread);
+      colDef.key.stagger = rd(stagger);
+      if (Math.abs(splay) > 0.5) colDef.key.splay = rd(splay);
+      colDef.key.padding = rd(info.padding);
+      prevCenter = info.center;
+      cumulativeAngle += splay;
+    }
+    columns[ergogenName] = colDef;
+  });
+
+  // Build thumb zone
+  let thumbZone = null;
+  if (thumbInfo && analyses.index_far) {
+    const inner = analyses.index_far;
+    const [icx, icy] = inner.center;
+    const iRad = inner.angle * Math.PI / 180;
+    const ibx = icx - inner.padding * Math.sin(iRad);
+    const iby = icy - inner.padding * Math.cos(iRad);
+    const [tcx, tcy] = thumbInfo.center;
+    const shiftX = rd(tcx - ibx), shiftY = rd(tcy - iby);
+    const thumbSplay = thumbInfo.angle;
+    const nThumb = thumbInfo.nKeys;
+    const thumbCols = {};
+    if (nThumb <= 1) {
+      thumbCols.t_inner = { key: { column_net: `C${MATRIX_COLUMNS.length}`, splay: rd(thumbSplay), spread: keySpacing } };
+    } else {
+      const names = ['t_inner', 't_middle', 't_outer'];
+      for (let j = 0; j < Math.min(nThumb, 3); j++) {
+        const col = { key: { column_net: `C${MATRIX_COLUMNS.length + j}`, spread: keySpacing } };
+        if (j === 0 && Math.abs(thumbSplay) > 0.5) col.key.splay = rd(thumbSplay);
+        thumbCols[names[j]] = col;
+      }
+    }
+    thumbZone = { anchor: { ref: 'matrix_inner_bottom', shift: [shiftX, shiftY] }, columns: thumbCols, rows: { cluster: { row_net: 'R3' } } };
+  }
+
+  // Assemble config
+  const config = {
+    meta: { engine: '4.1.0' },
+    units: { kx: keySpacing, ky: keySpacing, px: 'kx + 1', py: 'ky + 1' },
+    points: {
+      mirror: { ref: 'matrix_inner_home', distance: mirrorDist },
+      zones: {
+        matrix: {
+          anchor: { shift: [100, -100] },
+          columns: columns,
+          rows: { bottom: { row_net: 'R2' }, home: { row_net: 'R1' }, top: { row_net: 'R0' } }
+        }
+      }
+    },
+    outlines: {
+      _keycaps: [{ what: 'rectangle', where: true, size: ['kx - 0.5', 'ky - 0.5'] }],
+      board: [{ what: 'rectangle', where: true, size: ['px', 'py'], bound: true, fillet: 2 }],
+      switch_cutouts: [{ what: 'rectangle', where: true, size: [13.8, 13.8], bound: false }]
+    },
+    cases: {
+      bottom_plate: [{ what: 'outline', name: 'board', extrude: 1.0 }],
+      switch_plate: [
+        { what: 'outline', name: 'board', extrude: 1.2 },
+        { what: 'outline', name: 'switch_cutouts', extrude: 1.2, operation: 'subtract' }
+      ]
+    },
+    pcbs: {
+      keyboard: {
+        outlines: { main: { outline: 'board', layer: 'Edge.Cuts' } },
+        footprints: {
+          cherry_ulp: { what: 'cherry_ulp', where: true, params: { from: '{{column_net}}', to: '{{colrow}}', keycaps: true } },
+          diode: { what: 'diode', where: true, params: { from: '{{colrow}}', to: '{{row_net}}' }, adjust: { shift: [0, 5] } }
+        }
+      }
+    }
+  };
+  if (thumbZone) config.points.zones.thumb = thumbZone;
+  return config;
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// BOM DATA (from BOM.md)
+// ══════════════════════════════════════════════════════════════════
+
+const BOM = [
+  { name: 'Phase 0: Electronics', total: 195, items: [
+    { qty: 36, component: 'Cherry MX ULP Tactile switch', price: 0.90, total: 32.40, url: 'https://keeb.supply/products/cherry-mx-ulp' },
+    { qty: 36, component: '1N4148W SOD-123 diode', price: 0.02, total: 0.72, url: 'https://www.lcsc.com/product-detail/C81598.html' },
+    { qty: 36, component: 'ULP keycap (15x15mm)', price: 1.50, total: 54, url: 'https://www.aliexpress.com/item/1005005578673316.html' },
+    { qty: 2, component: 'nice!nano v2 controller', price: 25, total: 50, url: 'https://nicekeyboards.com/nice-nano/' },
+    { qty: 2, component: 'Mill-Max 315 socket strip (12-pin)', price: 4, total: 16, url: 'https://splitkb.com/products/mill-max-low-profile-sockets' },
+    { qty: 2, component: '301230 LiPo battery (110mAh)', price: 3, total: 6, url: 'https://www.aliexpress.com/w/wholesale-301230-lipo.html' },
+    { qty: 2, component: 'MSK-12C02 power switch', price: 0.20, total: 0.40, url: 'https://www.lcsc.com/product-detail/C431541.html' },
+    { qty: 1, component: 'USB-C cable', price: 5, total: 5, url: '' },
+    { qty: 2, component: 'PCB (assembled, PCBA)', price: 15, total: 30, url: 'https://jlcpcb.com/pcb-assembly' },
+  ]},
+  { name: 'Phase 1: Mechanical', total: 35, items: [
+    { qty: 2, component: 'Bamboo plywood sheet 200x150x2mm', price: 6, total: 12, url: 'https://www.aliexpress.com/w/wholesale-bamboo-plywood-2mm.html' },
+    { qty: 1, component: 'Natural cork gasket sheet 0.5mm, A4', price: 5, total: 5, url: 'https://www.aliexpress.com/w/wholesale-cork-gasket-sheet-0.5mm.html' },
+    { qty: 1, component: 'M6 rod-end bearing (ball joint)', price: 3, total: 3, url: 'https://www.aliexpress.com/w/wholesale-m6-rod-end-bearing.html' },
+    { qty: 1, component: 'M6 thumb nut (locking)', price: 0.50, total: 0.50, url: 'https://www.aliexpress.com/w/wholesale-m6-thumb-nut.html' },
+    { qty: 2, component: 'M6 threaded rod stub 15mm', price: 0.30, total: 0.60, url: '' },
+    { qty: 2, component: 'Mounting plate (flat bracket)', price: 1, total: 2, url: '' },
+    { qty: 2, component: 'Braided steel cable 1.5mm x 250mm', price: 0.50, total: 1, url: 'https://www.amazon.com/s?k=braided+steel+cable+1.5mm' },
+    { qty: 2, component: 'Small turnbuckle (M3)', price: 1.50, total: 3, url: 'https://www.aliexpress.com/w/wholesale-small-turnbuckle-m3.html' },
+    { qty: 2, component: 'Quick-release clevis pin', price: 2.50, total: 5, url: 'https://www.aliexpress.com/w/wholesale-quick-release-clevis-pin.html' },
+    { qty: 2, component: 'Clevis bracket (recessed)', price: 1, total: 2, url: '' },
+    { qty: 4, component: 'Cable crimp eyelet', price: 0.20, total: 0.80, url: '' },
+  ]},
+  { name: 'Phase 2: Assembly Hardware', total: 2.80, items: [
+    { qty: 14, component: 'M2x5mm countersunk flat-head screw', price: 0.05, total: 0.70, url: 'https://www.aliexpress.com/w/wholesale-m2-5mm-countersunk-screw.html' },
+    { qty: 14, component: 'M2 heat-set brass threaded insert', price: 0.15, total: 2.10, url: 'https://www.aliexpress.com/w/wholesale-m2-heat-set-insert.html' },
+  ]}
+];
+
+
+// ══════════════════════════════════════════════════════════════════
+// GLOBAL STATE
+// ══════════════════════════════════════════════════════════════════
+
+const COLUMNS = [
+  { id: 'pinky',     label: 'Pinky',     color: '#A5FAFA' },
+  { id: 'ring',      label: 'Ring',      color: '#59BDBD' },
+  { id: 'middle',    label: 'Middle',    color: '#CF9393' },
+  { id: 'index',     label: 'Index',     color: '#9C9CB8' },
+  { id: 'index_far', label: 'Inner',     color: '#7474E8' },
+  { id: 'thumb',     label: 'Thumb',     color: '#aaa' },
+];
+
+const positions = {};
+COLUMNS.forEach(c => positions[c.id] = []);
+let activeColumn = 'middle';
+let currentPage = 1;
+let ergogenResults = null;
+let generatedConfig = null;
+
+// Expose state on window for testability
+window.positions = positions;
+window.ergogenResults = null;
+window.generatedConfig = null;
+
+// ══════════════════════════════════════════════════════════════════
+// WIZARD NAVIGATION
+// ══════════════════════════════════════════════════════════════════
+
+const pages = [null, document.getElementById('page1'), document.getElementById('page2'), document.getElementById('page3')];
+const stepBtns = document.querySelectorAll('.step-btn');
+const btnBack = document.getElementById('btn-back');
+const btnNext = document.getElementById('btn-next');
+
+function goToPage(n) {
+  if (n < 1 || n > 3) return;
+  pages[currentPage].classList.remove('active');
+  currentPage = n;
+  pages[currentPage].classList.add('active');
+  stepBtns.forEach(s => { const sn = +s.dataset.step; s.classList.toggle('active', sn === n); s.classList.toggle('done', sn < n); });
+  btnBack.disabled = n === 1;
+  btnNext.disabled = (n === 1 && !canAdvance()) || n === 3;
+  btnNext.textContent = n === 3 ? 'Done' : 'Next';
+  if (n === 2) initPage2();
+  if (n === 3) renderBOM();
+}
+
+function canAdvance() {
+  return COLUMNS.every(c => positions[c.id].length >= 2);
+}
+
+btnNext.addEventListener('click', () => { if (currentPage < 3 && (currentPage !== 1 || canAdvance())) goToPage(currentPage + 1); });
+btnBack.addEventListener('click', () => { if (currentPage > 1) goToPage(currentPage - 1); });
+stepBtns.forEach(s => s.addEventListener('click', () => { const sn = +s.dataset.step; if (sn < currentPage) goToPage(sn); }));
+
+
+// ══════════════════════════════════════════════════════════════════
+// PAGE 1: FINGER INPUT
+// ══════════════════════════════════════════════════════════════════
+
+const canvas = document.getElementById('tap-canvas');
+const ctx = canvas.getContext('2d');
+const toolbar = document.getElementById('col-toolbar');
+const hint = document.getElementById('canvas-hint');
+
+// Build toolbar
+COLUMNS.forEach(c => {
+  const btn = document.createElement('div');
+  btn.className = 'col-btn' + (c.id === activeColumn ? ' active' : '');
+  btn.style.background = c.color;
+  btn.innerHTML = `${c.label}<span class="count">(0)</span>`;
+  btn.dataset.col = c.id;
+  btn.addEventListener('click', () => { activeColumn = c.id; updateToolbar(); });
+  toolbar.appendChild(btn);
+});
+const sep = document.createElement('div'); sep.className = 'sep'; toolbar.appendChild(sep);
+const resetColBtn = document.createElement('div'); resetColBtn.className = 'tool-btn'; resetColBtn.textContent = 'Reset Column';
+resetColBtn.addEventListener('click', () => { positions[activeColumn] = []; drawCanvas(); updateToolbar(); });
+toolbar.appendChild(resetColBtn);
+const resetAllBtn = document.createElement('div'); resetAllBtn.className = 'tool-btn'; resetAllBtn.textContent = 'Reset All';
+resetAllBtn.addEventListener('click', () => { COLUMNS.forEach(c => positions[c.id] = []); drawCanvas(); updateToolbar(); });
+toolbar.appendChild(resetAllBtn);
+
+function updateToolbar() {
+  document.querySelectorAll('#col-toolbar .col-btn').forEach(b => {
+    const cid = b.dataset.col;
+    b.classList.toggle('active', cid === activeColumn);
+    b.querySelector('.count').textContent = `(${positions[cid].length})`;
+  });
+  const show = !COLUMNS.some(c => positions[c.id].length > 0);
+  hint.classList.toggle('hidden', !show);
+  btnNext.disabled = !canAdvance();
+}
+
+function resizeCanvas() {
+  const wrap = canvas.parentElement;
+  canvas.width = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+  drawCanvas();
+}
+window.addEventListener('resize', resizeCanvas);
+setTimeout(resizeCanvas, 50);
+
+canvas.addEventListener('pointerdown', e => {
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+  const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+  positions[activeColumn].push({ x, y });
+  drawCanvas();
+  updateToolbar();
+});
+
+function drawCanvas() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // Draw grid
+  ctx.strokeStyle = '#1a1a1a';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < canvas.width; x += 50) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke(); }
+  for (let y = 0; y < canvas.height; y += 50) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke(); }
+
+  COLUMNS.forEach(col => {
+    const pts = positions[col.id];
+    if (!pts.length) return;
+    const isActive = col.id === activeColumn;
+    // Draw points
+    pts.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, isActive ? 10 : 7, 0, Math.PI * 2);
+      ctx.fillStyle = col.color + (isActive ? 'cc' : '66');
+      ctx.fill();
+      ctx.strokeStyle = col.color;
+      ctx.lineWidth = isActive ? 2 : 1;
+      ctx.stroke();
+    });
+    // Draw trend line and key outlines if 2+ points
+    if (pts.length >= 2) {
+      const { angle, cx, cy, distances } = fitLine(pts);
+      const rad = angle * Math.PI / 180;
+      // Trend line
+      const axX = Math.sin(rad), axY = Math.cos(rad);
+      const len = 200;
+      ctx.beginPath();
+      ctx.moveTo(cx - axX*len, cy - axY*len);
+      ctx.lineTo(cx + axX*len, cy + axY*len);
+      ctx.strokeStyle = col.color + '44';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([5, 5]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // Key outlines at fitted positions
+      const padding = distances.length ? distances.reduce((a,b)=>a+b,0)/distances.length : 40;
+      const sorted = pts.slice().sort((a,b) => a.y - b.y);
+      const nKeys = Math.min(sorted.length, 3);
+      const startOffset = -(nKeys-1)/2 * padding;
+      for (let k = 0; k < nKeys; k++) {
+        const off = startOffset + k * padding;
+        const kx = cx + axX * off;
+        const ky = cy + axY * off;
+        ctx.save();
+        ctx.translate(kx, ky);
+        ctx.rotate(rad);
+        ctx.strokeStyle = col.color + '88';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(-18, -18, 36, 36);
+        ctx.restore();
+      }
+    }
+  });
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// PAGE 2: 3D PREVIEW
+// ══════════════════════════════════════════════════════════════════
+
+let scene, camera, renderer, controls;
+let leftGroup, rightGroup, cablesGroup, hingeGroup, batteryGroup;
+let hingeX = 0;
+let page2Initialized = false;
+
+function initPage2() {
+  const loading = document.getElementById('loading');
+  loading.style.display = 'block';
+  // Run converter + ergogen asynchronously
+  setTimeout(async () => {
+    try {
+      generatedConfig = ergopadToErgogen(positions);
+      window.generatedConfig = generatedConfig;
+      const yamlStr = jsyaml.dump(generatedConfig, { sortKeys: false, lineWidth: 200 });
+      ergogenResults = await ergogen.process(yamlStr, { debug: true, svg: true });
+      window.ergogenResults = ergogenResults;
+      loading.style.display = 'none';
+      build3DScene();
+    } catch(e) {
+      loading.textContent = 'Error: ' + e.message;
+      console.error(e);
+    }
+  }, 50);
+}
+
+function build3DScene() {
+  const viewport = document.getElementById('viewport');
+  // Clean up previous
+  if (renderer) { viewport.removeChild(renderer.domElement); renderer.dispose(); }
+
+  const w = viewport.clientWidth, h = viewport.clientHeight;
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x1a1a1a);
+  camera = new THREE.PerspectiveCamera(50, w/h, 0.1, 2000);
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(w, h);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  viewport.appendChild(renderer.domElement);
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+
+  // Lights
+  scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+  const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+  dir.position.set(50, 100, 80);
+  scene.add(dir);
+  const dir2 = new THREE.DirectionalLight(0xffffff, 0.3);
+  dir2.position.set(-50, -50, 50);
+  scene.add(dir2);
+
+  // Parse board SVG (ergogen returns {dxf, svg, yaml} per outline)
+  const boardSvg = ergogenResults.outlines.board.svg;
+  const switchSvg = ergogenResults.outlines.switch_cutouts.svg;
+
+  // Get board shapes from SVG
+  const loader = new SVGLoader();
+  const boardData = loader.parse(boardSvg);
+  const switchData = loader.parse(switchSvg);
+
+  // Extract shapes
+  const boardShapes = [];
+  boardData.paths.forEach(path => {
+    const shapes = SVGLoader.createShapes(path);
+    boardShapes.push(...shapes);
+  });
+  const switchShapes = [];
+  switchData.paths.forEach(path => {
+    const shapes = SVGLoader.createShapes(path);
+    switchShapes.push(...shapes);
+  });
+
+  if (!boardShapes.length) {
+    console.error('No board shapes parsed from SVG');
+    return;
+  }
+
+  // Colors
+  const bambooMat = new THREE.MeshPhongMaterial({ color: 0xd2b88d, flatShading: true });
+  const plateMat  = new THREE.MeshPhongMaterial({ color: 0xc0c0c0, flatShading: true });
+  const corkMat   = new THREE.MeshPhongMaterial({ color: 0xc29a6b, flatShading: true });
+  const pcbMat    = new THREE.MeshPhongMaterial({ color: 0x1a591a, flatShading: true });
+  const steelMat  = new THREE.MeshPhongMaterial({ color: 0xa8a8ad, flatShading: true });
+  const blackMat  = new THREE.MeshPhongMaterial({ color: 0x262626, flatShading: true });
+  const copperMat = new THREE.MeshPhongMaterial({ color: 0xb87333, flatShading: true });
+  const redMat    = new THREE.MeshPhongMaterial({ color: 0xdd3333, flatShading: true });
+
+  // Helper: create extruded mesh from shapes
+  function extrudeShapes(shapes, depth, material, zOffset) {
+    const group = new THREE.Group();
+    shapes.forEach(shape => {
+      const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false });
+      const mesh = new THREE.Mesh(geo, material);
+      mesh.position.z = zOffset;
+      group.add(mesh);
+    });
+    return group;
+  }
+
+  // Layer stack: SVG y-down, Three.js y-up. SVGLoader auto-handles this.
+  // But we need to flip the geometry. SVG paths come in with y increasing down.
+  // We'll create everything in SVG coords then rotate at the end.
+
+  // Build layers
+  const boardGroup = new THREE.Group();
+
+  // Frame (board shapes extruded tall, acts as the frame visually)
+  // We approximate the frame by scaling the board shapes slightly outward
+  const frameMeshes = extrudeShapes(boardShapes, 4.8, bambooMat, 0);
+  // Make it slightly transparent to see internals
+  bambooMat.transparent = true;
+  bambooMat.opacity = 0.4;
+  boardGroup.add(frameMeshes);
+
+  // Bottom plate
+  boardGroup.add(extrudeShapes(boardShapes, 1.0, plateMat, 0.5));
+  // Cork 1
+  boardGroup.add(extrudeShapes(boardShapes, 0.5, corkMat, 1.5));
+  // PCB
+  boardGroup.add(extrudeShapes(boardShapes, 1.6, pcbMat, 2.0));
+  // Cork 2
+  boardGroup.add(extrudeShapes(boardShapes, 0.5, corkMat, 3.6));
+  // Switch plate
+  boardGroup.add(extrudeShapes(boardShapes, 1.2, plateMat, 4.1));
+
+  // Compute bounding box to find center and hinge position
+  const bbox = new THREE.Box3().setFromObject(boardGroup);
+  const center = new THREE.Vector3();
+  bbox.getCenter(center);
+  hingeX = center.x;
+
+  // Split into left and right groups
+  leftGroup = new THREE.Group();
+  rightGroup = new THREE.Group();
+
+  // Clone board group for each half with clipping
+  // Simple approach: just add both to scene and use position
+  // Since ergogen mirrors, the SVG has two halves. We split at hingeX.
+  boardGroup.children.forEach(layerGroup => {
+    layerGroup.children.forEach(mesh => {
+      // Clone mesh for left and right
+      const lMesh = mesh.clone();
+      const rMesh = mesh.clone();
+      leftGroup.add(lMesh);
+      rightGroup.add(rMesh);
+    });
+  });
+
+  // Add clipping planes
+  const clipLeft = new THREE.Plane(new THREE.Vector3(1, 0, 0), -hingeX);
+  const clipRight = new THREE.Plane(new THREE.Vector3(-1, 0, 0), hingeX);
+
+  leftGroup.traverse(obj => { if (obj.isMesh) { obj.material = obj.material.clone(); obj.material.clippingPlanes = [clipLeft]; obj.material.clipShadows = true; } });
+  rightGroup.traverse(obj => { if (obj.isMesh) { obj.material = obj.material.clone(); obj.material.clippingPlanes = [clipRight]; obj.material.clipShadows = true; } });
+  renderer.localClippingEnabled = true;
+
+  scene.add(leftGroup);
+  scene.add(rightGroup);
+
+  // ── Procedural components ──
+
+  // Hinge (ball joint at center)
+  hingeGroup = new THREE.Group();
+  const hingeY = center.y;
+  const hingeZ = 2.4;
+  // Housing
+  const housingGeo = new THREE.CylinderGeometry(5, 5, 20, 16);
+  housingGeo.rotateZ(Math.PI/2);
+  const housing = new THREE.Mesh(housingGeo, steelMat.clone());
+  housing.position.set(hingeX, hingeY, hingeZ);
+  hingeGroup.add(housing);
+  // Ball
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(4, 16, 16), copperMat);
+  ball.position.set(hingeX, hingeY, hingeZ);
+  hingeGroup.add(ball);
+  // Thumb nut
+  const nutGeo = new THREE.CylinderGeometry(4, 4, 3, 6);
+  const nut = new THREE.Mesh(nutGeo, copperMat);
+  nut.position.set(hingeX, hingeY - 8, hingeZ);
+  hingeGroup.add(nut);
+  scene.add(hingeGroup);
+
+  // Cables (top and bottom)
+  cablesGroup = new THREE.Group();
+  const cableZ = 5.5;
+  const cableYTop = bbox.min.y + (bbox.max.y - bbox.min.y) * 0.15;
+  const cableYBot = bbox.min.y + (bbox.max.y - bbox.min.y) * 0.85;
+  [[cableYTop], [cableYBot]].forEach(([cy]) => {
+    const cLen = bbox.max.x - bbox.min.x;
+    const cableGeo = new THREE.CylinderGeometry(0.75, 0.75, cLen, 8);
+    cableGeo.rotateZ(Math.PI/2);
+    const cable = new THREE.Mesh(cableGeo, blackMat);
+    cable.position.set(center.x, cy, cableZ);
+    cablesGroup.add(cable);
+    // Turnbuckle
+    const tbGeo = new THREE.CylinderGeometry(2, 2, 15, 8);
+    tbGeo.rotateZ(Math.PI/2);
+    const tb = new THREE.Mesh(tbGeo, steelMat.clone());
+    tb.position.set(center.x, cy, cableZ);
+    cablesGroup.add(tb);
+    // Clevis pins at ends
+    [bbox.min.x + 5, bbox.max.x - 5].forEach(px => {
+      const pin = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 4, 8), steelMat.clone());
+      pin.position.set(px, cy, cableZ);
+      cablesGroup.add(pin);
+      const detent = new THREE.Mesh(new THREE.SphereGeometry(1, 8, 8), redMat);
+      detent.position.set(px, cy, cableZ + 2.5);
+      cablesGroup.add(detent);
+    });
+  });
+  scene.add(cablesGroup);
+
+  // Battery (near each MCU area)
+  batteryGroup = new THREE.Group();
+  const battGeo = new THREE.BoxGeometry(12, 30, 3);
+  const battMat = new THREE.MeshPhongMaterial({ color: 0x2244aa, flatShading: true });
+  // Place batteries at inner-top area of each half
+  const battZ = 1.5;
+  const lBatt = new THREE.Mesh(battGeo, battMat);
+  lBatt.position.set(hingeX - 30, center.y - 15, battZ);
+  batteryGroup.add(lBatt);
+  const rBatt = new THREE.Mesh(battGeo, battMat);
+  rBatt.position.set(hingeX + 30, center.y - 15, battZ);
+  batteryGroup.add(rBatt);
+  scene.add(batteryGroup);
+
+  // Camera position
+  const size = new THREE.Vector3();
+  bbox.getSize(size);
+  const maxDim = Math.max(size.x, size.y);
+  camera.position.set(center.x, center.y - maxDim * 0.6, maxDim * 0.8);
+  controls.target.set(center.x, center.y, 2.4);
+  controls.update();
+
+  // Fold slider
+  document.getElementById('fold-slider').value = 0;
+  document.getElementById('fold-val').textContent = '0';
+
+  // Start animation loop
+  if (!page2Initialized) {
+    page2Initialized = true;
+    animate();
+  }
+}
+
+function applyFold(angleDeg) {
+  if (!leftGroup || !rightGroup) return;
+  const rad = (angleDeg * Math.PI / 180) / 2;
+  const hz = 2.4;
+
+  // Reset transforms
+  leftGroup.position.set(0, 0, 0);
+  leftGroup.rotation.set(0, 0, 0);
+  rightGroup.position.set(0, 0, 0);
+  rightGroup.rotation.set(0, 0, 0);
+
+  if (angleDeg > 0) {
+    // Pivot around hinge line (x=hingeX, z=hz) along Y axis
+    // Left half rotates CW, right half rotates CCW (around Y axis in SVG space, which is along the split line)
+    // In three.js with SVG coords: the split is along X, fold rotates around Y
+    leftGroup.position.set(hingeX, 0, hz);
+    leftGroup.rotation.x = -rad;
+    leftGroup.position.set(
+      hingeX - hingeX * Math.cos(0) + 0,
+      0,
+      hz - hz * Math.cos(0) + 0
+    );
+    // Simpler: translate to origin, rotate, translate back
+    leftGroup.position.set(0, 0, 0);
+    leftGroup.rotation.set(0, 0, 0);
+    rightGroup.position.set(0, 0, 0);
+    rightGroup.rotation.set(0, 0, 0);
+
+    // Use pivot technique
+    const pivotL = new THREE.Vector3(hingeX, 0, hz);
+    leftGroup.position.sub(pivotL);
+    leftGroup.position.applyAxisAngle(new THREE.Vector3(0, 1, 0), rad);
+    leftGroup.position.add(pivotL);
+    leftGroup.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), rad);
+
+    const pivotR = new THREE.Vector3(hingeX, 0, hz);
+    rightGroup.position.sub(pivotR);
+    rightGroup.position.applyAxisAngle(new THREE.Vector3(0, 1, 0), -rad);
+    rightGroup.position.add(pivotR);
+    rightGroup.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), -rad);
+  }
+
+  // Hide cables when folded
+  if (cablesGroup) cablesGroup.visible = angleDeg === 0 && document.getElementById('show-cables').checked;
+}
+
+document.getElementById('fold-slider').addEventListener('input', e => {
+  const v = +e.target.value;
+  document.getElementById('fold-val').textContent = v;
+  applyFold(v);
+});
+document.getElementById('show-cables').addEventListener('change', e => { if (cablesGroup) cablesGroup.visible = e.target.checked && +document.getElementById('fold-slider').value === 0; });
+document.getElementById('show-hinge').addEventListener('change', e => { if (hingeGroup) hingeGroup.visible = e.target.checked; });
+document.getElementById('show-battery').addEventListener('change', e => { if (batteryGroup) batteryGroup.visible = e.target.checked; });
+
+function animate() {
+  requestAnimationFrame(animate);
+  if (controls) controls.update();
+  if (renderer && scene && camera) renderer.render(scene, camera);
+}
+
+window.addEventListener('resize', () => {
+  if (!renderer) return;
+  const vp = document.getElementById('viewport');
+  const w = vp.clientWidth, h = vp.clientHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+});
+
+
+// ══════════════════════════════════════════════════════════════════
+// PAGE 3: BOM
+// ══════════════════════════════════════════════════════════════════
+
+function renderBOM() {
+  const el = document.getElementById('bom-content');
+  let html = '';
+  let grand = 0;
+  BOM.forEach(phase => {
+    html += `<h2>${phase.name}</h2>`;
+    html += '<table><tr><th>Qty</th><th>Component</th><th>Unit Price</th><th>Total</th></tr>';
+    phase.items.forEach(item => {
+      const link = item.url ? `<a href="${item.url}" target="_blank" rel="noopener">${item.component}</a>` : item.component;
+      html += `<tr><td>${item.qty}</td><td>${link}</td><td>&euro;${item.price.toFixed(2)}</td><td>&euro;${item.total.toFixed(2)}</td></tr>`;
+    });
+    html += `</table><div class="phase-total">Subtotal: &euro;${phase.total.toFixed(2)}</div>`;
+    grand += phase.total;
+  });
+  html += `<div class="grand-total">Grand Total: &euro;${grand.toFixed(2)}</div>`;
+  el.innerHTML = html;
+}
+
+document.getElementById('btn-download').addEventListener('click', async () => {
+  if (!ergogenResults) { alert('No design generated yet. Go back to step 2.'); return; }
+  const zip = new JSZip();
+  const outlines = ergogenResults.outlines;
+  for (const [name, content] of Object.entries(outlines)) {
+    if (content && typeof content === 'object') {
+      if (content.svg) zip.file(`outlines/${name}.svg`, content.svg);
+      if (content.dxf) zip.file(`outlines/${name}.dxf`, content.dxf);
+    }
+  }
+  if (generatedConfig) {
+    zip.file('config.yaml', jsyaml.dump(generatedConfig, { sortKeys: false }));
+  }
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'keyboard-design.zip';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+
+// ══════════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════════
+updateToolbar();
+</script>
+</body>
+</html>
