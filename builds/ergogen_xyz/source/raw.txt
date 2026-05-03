@@ -1,0 +1,126 @@
+meta:
+  engine: 4.1.0
+points:
+  zones:
+    matrix:
+      anchor:
+        rotate: 13
+      columns:
+        pinky: null
+        ring:
+          key.splay: -5
+          key.origin:
+          - -12
+          - -19
+          key.stagger: 12
+        middle:
+          key.stagger: 5
+        index:
+          key.stagger: -7
+        inner:
+          key.stagger: -2
+      rows:
+        bottom: null
+        home: null
+        top: null
+    thumbfan:
+      anchor:
+        ref: matrix_inner_bottom
+        shift:
+        - -7
+        - -19
+      columns:
+        near: null
+        home:
+          key.spread: 21.25
+          key.splay: -28
+          key.origin:
+          - -11.75
+          - -9
+        far:
+          key.spread: 21.25
+          key.splay: -28
+          key.origin:
+          - -9.5
+          - -9
+      rows:
+        thumb: null
+  rotate: -20
+  mirror:
+    ref: matrix_pinky_home
+    distance: 223.7529778
+outlines:
+  _keycaps:
+  - what: rectangle
+    where: true
+    size:
+    - 15
+    - 15
+  board:
+  - what: rectangle
+    where: true
+    size:
+    - 18
+    - 18
+    bound: true
+    fillet: 2
+  switch_cutouts:
+  - what: rectangle
+    where: true
+    size:
+    - 14.2
+    - 12.8
+    bound: false
+  frame:
+  - what: rectangle
+    where: true
+    size:
+    - 20
+    - 20
+    bound: true
+    fillet: 3
+cases:
+  bottom_plate:
+  - what: outline
+    name: board
+    extrude: 1.2
+  switch_plate:
+  - what: outline
+    name: board
+    extrude: 1.5
+  - what: outline
+    name: switch_cutouts
+    extrude: 1.5
+    operation: subtract
+  wooden_frame:
+  - what: outline
+    name: frame
+    extrude: 5
+  - what: outline
+    name: board
+    extrude: 5
+    operation: subtract
+pcbs:
+  keyboard:
+    outlines:
+      main:
+        outline: board
+        layer: Edge.Cuts
+    footprints:
+      cherry_ulp:
+        what: cherry_ulp
+        where: true
+        params:
+          from: '{{column_net}}'
+          to: '{{colrow}}'
+          keycaps: true
+      diode:
+        what: diode
+        where: true
+        params:
+          from: '{{colrow}}'
+          to: '{{row_net}}'
+        adjust:
+          shift:
+          - 0
+          - 5

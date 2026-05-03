@@ -1,0 +1,65 @@
+outlines:
+  _keycaps:
+    - what: rectangle
+      where: true
+      size: [15, 15]
+  board:
+    - what: rectangle
+      where: true
+      size: [18, 18]
+      bound: true
+      fillet: 2
+  switch_cutouts:
+    - what: rectangle
+      where: true
+      size: [14.2, 12.8]
+      bound: false
+  frame:
+    - what: rectangle
+      where: true
+      size: [20, 20]
+      bound: true
+      fillet: 3
+cases:
+  bottom_plate:
+    - what: outline
+      name: board
+      extrude: 1.2
+  switch_plate:
+    - what: outline
+      name: board
+      extrude: 1.5
+    - what: outline
+      name: switch_cutouts
+      extrude: 1.5
+      operation: subtract
+  wooden_frame:
+    - what: outline
+      name: frame
+      extrude: 5
+    - what: outline
+      name: board
+      extrude: 5
+      operation: subtract
+pcbs:
+  keyboard:
+    outlines:
+      main:
+        outline: board
+        layer: Edge.Cuts
+    footprints:
+      cherry_ulp:
+        what: cherry_ulp
+        where: true
+        params:
+          from: "{{column_net}}"
+          to: "{{colrow}}"
+          keycaps: true
+      diode:
+        what: diode
+        where: true
+        params:
+          from: "{{colrow}}"
+          to: "{{row_net}}"
+        adjust:
+          shift: [0, 5]

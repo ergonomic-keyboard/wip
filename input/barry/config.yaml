@@ -1,0 +1,138 @@
+# Ergogen config - generated from ergopad hand scan
+# Cherry MX ULP switches
+
+units:
+  kx: 18
+  ky: 18
+  px: kx + 1
+  py: ky + 1
+
+points:
+  mirror:
+    ref: matrix_inner_home
+    distance: 22
+  zones:
+    matrix:
+      anchor:
+        shift: [100, -100]
+      columns:
+        pinky:
+          key:
+            column_net: C0
+            splay: -8.9
+            padding: 18.0
+        ring:
+          key:
+            column_net: C1
+            spread: 20.0
+            stagger: 16.0
+            splay: -0.6
+            padding: 18.0
+        middle:
+          key:
+            column_net: C2
+            spread: 18.0
+            stagger: 5.1
+            splay: -18.6
+            padding: 18.0
+        index:
+          key:
+            column_net: C3
+            spread: 20.6
+            stagger: -6.1
+            splay: 34.2
+            padding: 18.0
+        inner:
+          key:
+            column_net: C4
+            spread: 18.0
+            stagger: -6.3
+            splay: 6.1
+            padding: 18.0
+      rows:
+        bottom:
+          row_net: R2
+        home:
+          row_net: R1
+        top:
+          row_net: R0
+    thumb:
+      anchor:
+        ref: matrix_inner_bottom
+        shift: [-32.0, -26.3]
+      columns:
+        t_inner:
+          key:
+            column_net: C5
+            splay: -7.9
+            spread: 18.0
+        t_middle:
+          key:
+            column_net: C6
+            splay: 0
+            spread: 18.0
+        t_outer:
+          key:
+            column_net: C7
+            splay: 0
+            spread: 18.0
+      rows:
+        cluster:
+          row_net: R3
+
+outlines:
+  _keycaps:
+    - what: rectangle
+      where: true
+      size: [kx - 0.5, ky - 0.5]
+  board:
+    - what: rectangle
+      where: true
+      size: [px, py]
+      bound: true
+      fillet: 2
+  switch_cutouts:
+    - what: rectangle
+      where: true
+      size: [13.8, 13.8]
+      bound: false
+
+cases:
+  bottom_plate:
+    - what: outline
+      name: board
+      extrude: 1.2
+  switch_plate:
+    - what: outline
+      name: board
+      extrude: 1.5
+    - what: outline
+      name: switch_cutouts
+      extrude: 1.5
+      operation: subtract
+
+pcbs:
+  keyboard:
+    outlines:
+      main:
+        outline: board
+        layer: Edge.Cuts
+    footprints:
+      choc_hotswap:
+        what: choc
+        where: true
+        params:
+          from: "{{column_net}}"
+          to: "{{colrow}}"
+          keycaps: true
+          reverse: false
+          hotswap: true
+      diode:
+        what: diode
+        where: true
+        params:
+          from: "{{colrow}}"
+          to: "{{row_net}}"
+        adjust:
+          shift: [0, 5]
+
