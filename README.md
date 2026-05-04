@@ -1,6 +1,38 @@
 # Custom Keyboard Generator
 
-## Steps
+A browser-based tool for designing custom split ergonomic keyboards. Tap your finger positions, preview in 3D, and get a complete bill of materials with purchase links.
+
+## Quick Start (Browser Wizard)
+
+The easiest way to design a keyboard is the browser-based wizard. No installation required.
+
+```bash
+cd /home/a/git/git/keyboard/wip
+python3 -m http.server 8080
+```
+
+Open http://localhost:8080/wizard.html and follow the 3 steps:
+
+1. **Tap finger positions** — tap where each finger rests naturally on a surface, for all 6 columns (pinky through thumb)
+2. **3D preview** — see a realistic interactive 3D model of your keyboard with PBR materials, fold simulation, and key press animation
+3. **Bill of materials** — view the full parts list with prices and purchase links, download design files as a ZIP
+
+### 3D Preview Features
+
+- Realistic PBR materials (bamboo, cork, brushed steel, brass, FR-4 PCB with copper traces)
+- Per-key Cherry MX ULP switches with keycaps, stems, and SOD-123 diodes
+- Click any key to see the 1.8mm press animation
+- M2 countersunk screws and brass heat-set inserts visible
+- nice!nano v2 controllers with USB-C ports
+- LiPo batteries with wiring
+- Ball joint hinge with rod-end bearing
+- Turnbuckle cables with clevis pins
+- Fold angle slider (0-160 degrees)
+- Toggle visibility of cables, hinge, battery
+
+## CLI Pipeline
+
+For advanced users or automated workflows, use the command-line pipeline.
 
 ### 0. Design your layout
 
@@ -32,11 +64,13 @@ Output goes to `builds/<name>/` with:
 
 ## What's included
 
+- **Browser wizard** — 3-step web app: tap positions, 3D preview, BOM (`wizard.html`)
 - **Cherry MX ULP switch footprint** — custom ergogen footprint (`footprints/cherry_ulp.js`)
 - **No-solder BOM** — see `BOM.md` for full parts list and ordering guide
 - **Firmware** — see `FIRMWARE.md` for ZMK wireless setup
 - **Wooden frame** — frame outline generated automatically, laser-cut from 3mm hardwood
 - **Tenting mount** — wire + turnbuckle + ball bearing design in BOM
+- **3D rendering** — see `render.md` for all viewing options (browser, OpenSCAD, KiCad, STL)
 
 ## Connectivity
 
