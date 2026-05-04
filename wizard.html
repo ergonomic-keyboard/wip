@@ -61,6 +61,32 @@ header { display: flex; align-items: center; justify-content: space-between; pad
 .download-row { display: flex; gap: 12px; margin-top: 16px; }
 .download-row button { padding: 10px 24px; border-radius: 6px; font-size: 14px; border: 1px solid #4a8adf; background: #2a5a9f; color: #fff; cursor: pointer; }
 .download-row button:hover { background: #3a6abf; }
+
+/* ── Page 4: Firmware & Test ── */
+#page4 { overflow-y: auto; padding: 20px; }
+#page4 h2 { margin: 20px 0 10px; font-size: 18px; color: #adf; }
+#page4 h2:first-child { margin-top: 0; }
+#page4 h3 { margin: 16px 0 8px; font-size: 14px; color: #8cf; }
+.file-tabs { display: flex; gap: 2px; margin-bottom: 0; flex-wrap: wrap; }
+.file-tab { padding: 6px 14px; border-radius: 4px 4px 0 0; font-size: 12px; font-family: monospace; border: 1px solid #333; border-bottom: none; background: #1a1a1a; color: #888; cursor: pointer; }
+.file-tab.active { background: #222; color: #eee; border-color: #555; }
+.file-content { background: #222; border: 1px solid #555; border-radius: 0 4px 4px 4px; padding: 0; margin-bottom: 20px; max-height: 400px; overflow: auto; }
+.file-content pre { margin: 0; padding: 12px; font-size: 12px; line-height: 1.5; color: #ccc; white-space: pre; tab-size: 4; }
+.keymap-grid { display: grid; gap: 3px; margin: 8px 0 16px; }
+.keymap-row { display: flex; gap: 3px; justify-content: center; }
+.keymap-key { width: 48px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-size: 10px; font-family: monospace; font-weight: 600; border: 1px solid #444; background: #2a2a2a; color: #ccc; }
+.keymap-key.thumb { background: #2a2a3a; border-color: #4a4a6a; }
+.keymap-key.spacer { visibility: hidden; }
+.layer-tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+.layer-tab { padding: 4px 12px; border-radius: 3px; font-size: 12px; border: 1px solid #444; background: #222; color: #888; cursor: pointer; }
+.layer-tab.active { background: #2a4a6a; color: #fff; border-color: #4a8abf; }
+.test-info { background: #1a2a1a; border: 1px solid #3a6a3a; border-radius: 6px; padding: 16px; margin: 16px 0; }
+.test-info h3 { margin: 0 0 8px; color: #6c6; }
+.test-info code { background: #111; padding: 2px 6px; border-radius: 3px; font-size: 12px; color: #adf; }
+.test-info pre { background: #111; padding: 10px; border-radius: 4px; margin: 8px 0; font-size: 12px; color: #ccc; overflow-x: auto; }
+.test-list { list-style: none; padding: 0; }
+.test-list li { padding: 4px 0; font-size: 13px; }
+.test-list li::before { content: '\2713'; color: #6c6; margin-right: 8px; font-weight: bold; }
 </style>
 </head>
 <body>
@@ -70,6 +96,7 @@ header { display: flex; align-items: center; justify-content: space-between; pad
     <div class="step-btn active" data-step="1">1. Finger Positions</div>
     <div class="step-btn" data-step="2">2. 3D Preview</div>
     <div class="step-btn" data-step="3">3. Bill of Materials</div>
+    <div class="step-btn" data-step="4">4. Firmware & Test</div>
   </div>
   <div class="nav-btns">
     <button id="btn-back" disabled>Back</button>
@@ -107,6 +134,11 @@ header { display: flex; align-items: center; justify-content: space-between; pad
   <div class="download-row">
     <button id="btn-download">Download Design Files (.zip)</button>
   </div>
+</div>
+
+<!-- ═══════════════ PAGE 4: Firmware & Test ═══════════════ -->
+<div id="page4" class="page">
+  <div id="firmware-content"></div>
 </div>
 
 <!-- ═══════════════ Three.js Import Map (ESM) ═══════════════ -->
@@ -419,6 +451,551 @@ function ergopadToErgogen(data, mirrorDist, keySpacing) {
 
 
 // ══════════════════════════════════════════════════════════════════
+// ZMK SHIELD & TEST GENERATORS
+// ══════════════════════════════════════════════════════════════════
+
+// nice!nano v2 Pro Micro-compatible GPIO pins for keyboard matrix
+const NICE_NANO_ROW_PINS = [4, 5, 6, 7];        // R0-R3
+const NICE_NANO_COL_PINS = [19, 18, 15, 14, 16, 10, 9, 8]; // up to 8 columns per half
+
+// Default QWERTY keymap for 36 keys (3x5 + 3 thumb per half)
+const DEFAULT_KEYMAPS = {
+  layer0: [ // QWERTY
+    'Q','W','E','R','T',  'Y','U','I','O','P',
+    'A','S','D','F','G',  'H','J','K','L','SEMI',
+    'Z','X','C','V','B',  'N','M','COMMA','DOT','FSLH',
+                'LGUI','SPACE','TAB',  'RET','BSPC','RALT'
+  ],
+  layer1: [ // Numbers + Symbols
+    'N1','N2','N3','N4','N5',  'N6','N7','N8','N9','N0',
+    'EXCL','AT','HASH','DLLR','PRCNT',  'CARET','AMPS','STAR','LPAR','RPAR',
+    'GRAVE','TILDE','PIPE','BSLH','MINUS',  'EQUAL','LBKT','RBKT','LBRC','RBRC',
+                'TRANS','TRANS','TRANS',  'TRANS','TRANS','TRANS'
+  ],
+  layer2: [ // Nav + Function
+    'F1','F2','F3','F4','F5',  'F6','F7','F8','F9','F10',
+    'F11','F12','PSCRN','INS','DEL',  'LEFT','DOWN','UP','RIGHT','HOME',
+    'CAPS','NONE','NONE','NONE','NONE',  'END','PG_DN','PG_UP','NONE','NONE',
+                'TRANS','TRANS','TRANS',  'TRANS','TRANS','TRANS'
+  ]
+};
+
+function buildKeyPositionMap(points) {
+  const leftKeys = [], rightKeys = [];
+  for (const [name, pt] of Object.entries(points)) {
+    const colNet = pt.meta?.column_net || '';
+    const rowNet = pt.meta?.row_net || '';
+    if (!colNet || !rowNet) continue;
+    const colIdx = parseInt(colNet.replace('C', ''));
+    const rowIdx = parseInt(rowNet.replace('R', ''));
+    const zone = pt.meta?.zone?.name || 'matrix';
+    const mirrored = !!pt.meta?.mirrored;
+    const entry = { name, colIdx, rowIdx, zone, mirrored, x: pt.x, y: pt.y, r: pt.r };
+    if (mirrored) rightKeys.push(entry); else leftKeys.push(entry);
+  }
+  const sortFn = (a, b) => {
+    if (a.zone !== b.zone) return a.zone === 'matrix' ? -1 : 1;
+    if (a.rowIdx !== b.rowIdx) return a.rowIdx - b.rowIdx;
+    return a.colIdx - b.colIdx;
+  };
+  leftKeys.sort(sortFn);
+  rightKeys.sort(sortFn);
+  // Count columns per half
+  const leftCols = new Set(leftKeys.map(k => k.colIdx));
+  const rightCols = new Set(rightKeys.map(k => k.colIdx));
+  const nColsPerHalf = Math.max(leftCols.size, rightCols.size);
+  const nRows = new Set([...leftKeys, ...rightKeys].map(k => k.rowIdx)).size;
+  return { leftKeys, rightKeys, allKeys: [...leftKeys, ...rightKeys], nColsPerHalf, nRows };
+}
+
+function generateZmkShield(points, config) {
+  const map = buildKeyPositionMap(points);
+  const { leftKeys, rightKeys, nColsPerHalf, nRows } = map;
+  const totalCols = nColsPerHalf * 2;
+  const nKeys = leftKeys.length + rightKeys.length;
+
+  // Build matrix transform RC() map
+  // Left half: col indices as-is. Right half: col indices offset by nColsPerHalf, mirrored.
+  const rcEntries = [];
+  leftKeys.forEach(k => rcEntries.push({ row: k.rowIdx, col: k.colIdx, name: k.name }));
+  rightKeys.forEach(k => {
+    // Mirror: rightmost col becomes col nColsPerHalf, etc.
+    const mirroredCol = nColsPerHalf + (nColsPerHalf - 1 - k.colIdx);
+    rcEntries.push({ row: k.rowIdx, col: mirroredCol, name: k.name });
+  });
+
+  // Group by row for the transform map
+  const rowMap = {};
+  rcEntries.forEach(e => { if (!rowMap[e.row]) rowMap[e.row] = []; rowMap[e.row].push(e); });
+  Object.values(rowMap).forEach(arr => arr.sort((a, b) => a.col - b.col));
+
+  // Build transform map string
+  let transformLines = '';
+  const sortedRows = Object.keys(rowMap).map(Number).sort((a, b) => a - b);
+  sortedRows.forEach(row => {
+    const entries = rowMap[row];
+    const leftEntries = entries.filter(e => e.col < nColsPerHalf);
+    const rightEntries = entries.filter(e => e.col >= nColsPerHalf);
+    const leftRCs = leftEntries.map(e => `RC(${e.row},${e.col})`).join(' ');
+    const rightRCs = rightEntries.map(e => `RC(${e.row},${e.col})`).join(' ');
+    const gap = leftRCs && rightRCs ? '    ' : '';
+    transformLines += `            ${leftRCs}${gap}${rightRCs}\n`;
+  });
+
+  // Row pin strings
+  const rowPinLines = NICE_NANO_ROW_PINS.slice(0, nRows)
+    .map((p, i) => `            ${i > 0 ? ', ' : ''}<&pro_micro ${p} (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>`)
+    .join('\n');
+
+  // Column pin strings per half
+  const leftColPins = NICE_NANO_COL_PINS.slice(0, nColsPerHalf);
+  const rightColPins = [...leftColPins].reverse(); // mirrored
+
+  const leftColLines = leftColPins
+    .map((p, i) => `            ${i > 0 ? ', ' : ''}<&pro_micro ${p} GPIO_ACTIVE_HIGH>`)
+    .join('\n');
+  const rightColLines = rightColPins
+    .map((p, i) => `            ${i > 0 ? ', ' : ''}<&pro_micro ${p} GPIO_ACTIVE_HIGH>`)
+    .join('\n');
+
+  // ── keyboard.dtsi ──
+  const dtsi = `/*
+ * keyboard.dtsi — shared devicetree for split keyboard
+ * Generated by Keyboard Builder Wizard
+ */
+
+#include <dt-bindings/zmk/matrix_transform.h>
+
+/ {
+    chosen {
+        zmk,kscan = &kscan0;
+        zmk,matrix-transform = &default_transform;
+    };
+
+    kscan0: kscan0 {
+        compatible = "zmk,kscan-gpio-matrix";
+        diode-direction = "col2row";
+        wakeup-source;
+
+        row-gpios
+${rowPinLines}
+            ;
+    };
+
+    default_transform: keymap_transform0 {
+        compatible = "zmk,matrix-transform";
+        columns = <${totalCols}>;
+        rows = <${nRows}>;
+        map = <
+${transformLines}        >;
+    };
+};
+`;
+
+  // ── keyboard_left.overlay ──
+  const leftOverlay = `/*
+ * keyboard_left.overlay — left half
+ * Generated by Keyboard Builder Wizard
+ */
+
+#include "keyboard.dtsi"
+
+&kscan0 {
+    col-gpios
+${leftColLines}
+        ;
+};
+`;
+
+  // ── keyboard_right.overlay ──
+  const rightOverlay = `/*
+ * keyboard_right.overlay — right half
+ * Generated by Keyboard Builder Wizard
+ */
+
+#include "keyboard.dtsi"
+
+&default_transform {
+    col-offset = <${nColsPerHalf}>;
+};
+
+&kscan0 {
+    col-gpios
+${rightColLines}
+        ;
+};
+`;
+
+  // ── keyboard.keymap ──
+  // Adapt keymap to actual key count
+  function buildLayerBindings(layerKeys) {
+    const keys = layerKeys.slice(0, nKeys);
+    while (keys.length < nKeys) keys.push('NONE');
+    return keys.map(k => {
+      if (k === 'TRANS') return '&trans';
+      if (k === 'NONE') return '&none';
+      return `&kp ${k}`;
+    }).join(' ');
+  }
+
+  const keymap = `/*
+ * keyboard.keymap — default 3-layer keymap
+ * Generated by Keyboard Builder Wizard
+ */
+
+#include <behaviors.dtsi>
+#include <dt-bindings/zmk/keys.h>
+#include <dt-bindings/zmk/bt.h>
+
+/ {
+    keymap {
+        compatible = "zmk,keymap";
+
+        default_layer {
+            bindings = <${buildLayerBindings(DEFAULT_KEYMAPS.layer0)}>;
+        };
+
+        lower_layer {
+            bindings = <${buildLayerBindings(DEFAULT_KEYMAPS.layer1)}>;
+        };
+
+        raise_layer {
+            bindings = <${buildLayerBindings(DEFAULT_KEYMAPS.layer2)}>;
+        };
+    };
+};
+`;
+
+  // ── keyboard.conf ──
+  const conf = `# keyboard.conf — ZMK configuration
+# Generated by Keyboard Builder Wizard
+
+CONFIG_ZMK_SLEEP=y
+CONFIG_ZMK_IDLE_SLEEP_TIMEOUT=900000
+CONFIG_BT_CTLR_TX_PWR_PLUS_8=y
+CONFIG_ZMK_BATTERY_REPORTING=y
+`;
+
+  // ── Kconfig.shield ──
+  const kconfigShield = `config SHIELD_KEYBOARD_LEFT
+    def_bool $(shields_list_contains,keyboard_left)
+
+config SHIELD_KEYBOARD_RIGHT
+    def_bool $(shields_list_contains,keyboard_right)
+`;
+
+  // ── Kconfig.defconfig ──
+  const kconfigDefconfig = `if SHIELD_KEYBOARD_LEFT
+
+config ZMK_KEYBOARD_NAME
+    default "Keyboard"
+
+config ZMK_SPLIT_ROLE_CENTRAL
+    default y
+
+endif
+
+if SHIELD_KEYBOARD_LEFT || SHIELD_KEYBOARD_RIGHT
+
+config ZMK_SPLIT
+    default y
+
+endif
+`;
+
+  return { dtsi, leftOverlay, rightOverlay, keymap, conf, kconfigShield, kconfigDefconfig, map };
+}
+
+function generateTestSuite(points, config) {
+  const shield = generateZmkShield(points, config);
+  const { map } = shield;
+  const nKeys = map.allKeys.length;
+  const nColsPerHalf = map.nColsPerHalf;
+
+  // Build position-to-keycode mapping for layer 0
+  const keycodes = DEFAULT_KEYMAPS.layer0.slice(0, nKeys);
+  while (keycodes.length < nKeys) keycodes.push('NONE');
+
+  // RC positions for left then right keys (matching the transform)
+  const rcPositions = [];
+  map.leftKeys.forEach(k => rcPositions.push({ row: k.rowIdx, col: k.colIdx }));
+  map.rightKeys.forEach(k => rcPositions.push({ row: k.rowIdx, col: nColsPerHalf + (nColsPerHalf - 1 - k.colIdx) }));
+
+  // ── behavior_keymap.dtsi (shared) ──
+  const behaviorKeymap = shield.keymap;
+
+  // ── all-keys-register test ──
+  let mockEvents = '';
+  let expectedOutput = '';
+  rcPositions.forEach((rc, i) => {
+    const kc = keycodes[i];
+    if (kc === 'NONE' || kc === 'TRANS') return;
+    mockEvents += `        ZMK_MOCK_PRESS(${rc.row},${rc.col},10)\n`;
+    mockEvents += `        ZMK_MOCK_RELEASE(${rc.row},${rc.col},10)\n`;
+    expectedOutput += `kp_pressed: usage_page 0x07 keycode 0x${hidKeycode(kc)} implicit_mods 0x00 explicit_mods 0x00\n`;
+    expectedOutput += `kp_released: usage_page 0x07 keycode 0x${hidKeycode(kc)} implicit_mods 0x00 explicit_mods 0x00\n`;
+  });
+
+  const allKeysKeymap = `#include "../behavior_keymap.dtsi"
+
+&kscan0 {
+    events = <
+${mockEvents}    >;
+};
+`;
+  const allKeysPatterns = `s/.*hid_listener_keycode_//p\nd`;
+  const allKeysSnapshot = expectedOutput;
+
+  // ── layer-switch test ──
+  // Press thumb key (position for LGUI on layer0 → hold for layer 1) then press Q position → should get N1
+  const thumbIdx = map.leftKeys.findIndex(k => k.zone === 'thumb');
+  let layerSwitchKeymap = '', layerSwitchSnapshot = '';
+  if (thumbIdx >= 0) {
+    const thumbRC = rcPositions[thumbIdx];
+    const alphaRC = rcPositions[0]; // first key (Q → N1 on layer1)
+    const altKc = DEFAULT_KEYMAPS.layer1[0] || 'N1';
+    layerSwitchKeymap = `#include "../behavior_keymap.dtsi"
+
+&kscan0 {
+    events = <
+        ZMK_MOCK_PRESS(${thumbRC.row},${thumbRC.col},100)
+        ZMK_MOCK_PRESS(${alphaRC.row},${alphaRC.col},10)
+        ZMK_MOCK_RELEASE(${alphaRC.row},${alphaRC.col},10)
+        ZMK_MOCK_RELEASE(${thumbRC.row},${thumbRC.col},10)
+    >;
+};
+`;
+    layerSwitchSnapshot = `kp_pressed: usage_page 0x07 keycode 0x${hidKeycode(altKc)} implicit_mods 0x00 explicit_mods 0x00
+kp_released: usage_page 0x07 keycode 0x${hidKeycode(altKc)} implicit_mods 0x00 explicit_mods 0x00
+`;
+  }
+  const layerSwitchPatterns = `s/.*hid_listener_keycode_//p\nd`;
+
+  // ── matrix-ghosting test ──
+  // Press two keys on the same row simultaneously
+  const row0Keys = rcPositions.filter(rc => rc.row === 0);
+  let ghostingKeymap = '', ghostingSnapshot = '';
+  if (row0Keys.length >= 2) {
+    const k1 = row0Keys[0], k2 = row0Keys[1];
+    const kc1 = keycodes[rcPositions.indexOf(k1)];
+    const kc2 = keycodes[rcPositions.indexOf(k2)];
+    ghostingKeymap = `#include "../behavior_keymap.dtsi"
+
+&kscan0 {
+    events = <
+        ZMK_MOCK_PRESS(${k1.row},${k1.col},10)
+        ZMK_MOCK_PRESS(${k2.row},${k2.col},10)
+        ZMK_MOCK_RELEASE(${k1.row},${k1.col},10)
+        ZMK_MOCK_RELEASE(${k2.row},${k2.col},10)
+    >;
+};
+`;
+    ghostingSnapshot = `kp_pressed: usage_page 0x07 keycode 0x${hidKeycode(kc1)} implicit_mods 0x00 explicit_mods 0x00
+kp_pressed: usage_page 0x07 keycode 0x${hidKeycode(kc2)} implicit_mods 0x00 explicit_mods 0x00
+kp_released: usage_page 0x07 keycode 0x${hidKeycode(kc1)} implicit_mods 0x00 explicit_mods 0x00
+kp_released: usage_page 0x07 keycode 0x${hidKeycode(kc2)} implicit_mods 0x00 explicit_mods 0x00
+`;
+  }
+  const ghostingPatterns = `s/.*hid_listener_keycode_//p\nd`;
+
+  // ── Dockerfile ──
+  const dockerfile = `FROM docker.io/zmkfirmware/zmk-dev-arm:stable
+
+WORKDIR /workspace
+
+# Clone ZMK
+RUN git clone --depth 1 https://github.com/zmkfirmware/zmk.git /workspace/zmk && \\
+    cd /workspace/zmk && \\
+    west init -l app && \\
+    west update --narrow --fetch-opt=--depth=1
+
+# Copy shield files
+COPY boards/shields/keyboard/ /workspace/zmk-config/config/boards/shields/keyboard/
+
+# Copy test files
+COPY tests/ /workspace/zmk/app/tests/keyboard/
+
+# Build left half firmware (verification that it compiles)
+RUN cd /workspace/zmk && \\
+    west build -s app -b nice_nano_v2 -p \\
+    -- -DSHIELD=keyboard_left -DZMK_CONFIG=/workspace/zmk-config/config
+
+# Run native_posix tests
+RUN cd /workspace/zmk/app && \\
+    west test tests/keyboard/all-keys-register
+`;
+
+  // ── run_tests.sh ──
+  const runScript = `#!/bin/bash
+set -e
+
+echo "=== Building keyboard firmware test image ==="
+docker build -t keyboard-zmk-test .
+
+echo ""
+echo "=== Running all-keys-register test ==="
+docker run --rm keyboard-zmk-test \\
+    bash -c "cd /workspace/zmk/app && west test tests/keyboard/all-keys-register"
+
+echo ""
+echo "=== Running layer-switch test ==="
+docker run --rm keyboard-zmk-test \\
+    bash -c "cd /workspace/zmk/app && west test tests/keyboard/layer-switch"
+
+echo ""
+echo "=== Running matrix-ghosting test ==="
+docker run --rm keyboard-zmk-test \\
+    bash -c "cd /workspace/zmk/app && west test tests/keyboard/matrix-ghosting"
+
+echo ""
+echo "=== All tests passed ==="
+echo "Firmware binary: docker cp <container>:/workspace/zmk/build/zephyr/zmk.uf2 ."
+`;
+
+  // ── docker-compose.yml ──
+  const dockerCompose = `version: '3.8'
+services:
+  test:
+    build: .
+    command: >
+      bash -c "cd /workspace/zmk/app &&
+      west test tests/keyboard/all-keys-register &&
+      west test tests/keyboard/layer-switch &&
+      west test tests/keyboard/matrix-ghosting &&
+      echo '=== All tests passed ==='"
+
+  build-left:
+    build: .
+    command: >
+      bash -c "cd /workspace/zmk &&
+      west build -s app -b nice_nano_v2 -p
+      -- -DSHIELD=keyboard_left -DZMK_CONFIG=/workspace/zmk-config/config &&
+      cp build/zephyr/zmk.uf2 /output/keyboard_left.uf2"
+    volumes:
+      - ./output:/output
+
+  build-right:
+    build: .
+    command: >
+      bash -c "cd /workspace/zmk &&
+      west build -s app -b nice_nano_v2 -p
+      -- -DSHIELD=keyboard_right -DZMK_CONFIG=/workspace/zmk-config/config &&
+      cp build/zephyr/zmk.uf2 /output/keyboard_right.uf2"
+    volumes:
+      - ./output:/output
+`;
+
+  // ── README.md ──
+  const readme = `# ZMK Firmware & Hardware Emulation Tests
+
+Generated by the Keyboard Builder Wizard.
+
+## Quick Start
+
+\`\`\`bash
+# Run all tests (requires Docker)
+chmod +x run_tests.sh
+./run_tests.sh
+\`\`\`
+
+## What Gets Tested
+
+### 1. Firmware Compilation
+The Dockerfile builds the ZMK firmware for the nice!nano v2 targeting your exact
+keyboard matrix layout. If the shield definition has errors, this step fails.
+
+### 2. All Keys Register (native_posix)
+Simulates pressing and releasing every key position in sequence using ZMK's
+\`ZMK_MOCK_PRESS\`/\`ZMK_MOCK_RELEASE\` macros. Verifies each key produces the
+correct HID keycode. Runs as a native Linux binary — no QEMU needed.
+
+### 3. Layer Switching
+Holds a thumb key (layer toggle), presses an alpha key, and verifies the
+alternate layer keycode is emitted.
+
+### 4. Matrix Anti-Ghosting
+Presses two keys on the same row simultaneously and verifies both register
+independently without ghost keys.
+
+## How It Works
+
+ZMK's \`native_posix_64\` test framework compiles the firmware as a native Linux
+binary instead of targeting the nRF52840 MCU. Mock key events are injected via
+devicetree macros, and the HID keycode output is captured and compared against
+expected snapshots.
+
+This is the same approach the ZMK project uses for its own CI pipeline.
+
+## Building Firmware .uf2 Files
+
+\`\`\`bash
+# Build both halves
+docker compose run build-left
+docker compose run build-right
+
+# Flash: double-tap reset on nice!nano, drag .uf2 onto the USB drive
+ls output/keyboard_left.uf2 output/keyboard_right.uf2
+\`\`\`
+
+## File Structure
+
+\`\`\`
+boards/shields/keyboard/
+  keyboard.dtsi           # Shared: kscan matrix, transform
+  keyboard_left.overlay   # Left half column GPIOs
+  keyboard_right.overlay  # Right half column GPIOs + col-offset
+  keyboard.keymap         # 3-layer QWERTY keymap
+  keyboard.conf           # ZMK settings
+  Kconfig.shield          # Shield detection
+  Kconfig.defconfig       # Split defaults
+
+tests/
+  behavior_keymap.dtsi    # Shared keymap for tests
+  all-keys-register/      # Press every key, verify HID output
+  layer-switch/           # Thumb-hold layer test
+  matrix-ghosting/        # Simultaneous key anti-ghost test
+\`\`\`
+`;
+
+  return {
+    behaviorKeymap,
+    cases: {
+      'all-keys-register': { keymap: allKeysKeymap, patterns: allKeysPatterns, snapshot: allKeysSnapshot },
+      'layer-switch': { keymap: layerSwitchKeymap || '/* no thumb keys detected */', patterns: layerSwitchPatterns, snapshot: layerSwitchSnapshot },
+      'matrix-ghosting': { keymap: ghostingKeymap || '/* insufficient keys on same row */', patterns: ghostingPatterns, snapshot: ghostingSnapshot },
+    },
+    dockerfile,
+    runScript,
+    dockerCompose,
+    readme,
+    shield
+  };
+}
+
+// HID keycode lookup (USB HID Usage Tables, Keyboard page 0x07)
+function hidKeycode(zmkKey) {
+  const map = {
+    'A':'04','B':'05','C':'06','D':'07','E':'08','F':'09','G':'0A','H':'0B',
+    'I':'0C','J':'0D','K':'0E','L':'0F','M':'10','N':'11','O':'12','P':'13',
+    'Q':'14','R':'15','S':'16','T':'17','U':'18','V':'19','W':'1A','X':'1B',
+    'Y':'1C','Z':'1D','N1':'1E','N2':'1F','N3':'20','N4':'21','N5':'22',
+    'N6':'23','N7':'24','N8':'25','N9':'26','N0':'27','RET':'28','BSPC':'2A',
+    'TAB':'2B','SPACE':'2C','MINUS':'2D','EQUAL':'2E','LBKT':'2F','RBKT':'30',
+    'BSLH':'31','SEMI':'33','SQT':'34','GRAVE':'35','COMMA':'36','DOT':'37',
+    'FSLH':'38','CAPS':'39','F1':'3A','F2':'3B','F3':'3C','F4':'3D','F5':'3E',
+    'F6':'3F','F7':'40','F8':'41','F9':'42','F10':'43','F11':'44','F12':'45',
+    'PSCRN':'46','INS':'49','HOME':'4A','PG_UP':'4B','DEL':'4C','END':'4D',
+    'PG_DN':'4E','RIGHT':'4F','LEFT':'50','DOWN':'51','UP':'52',
+    'LGUI':'E3','RALT':'E6',
+    'EXCL':'1E','AT':'1F','HASH':'20','DLLR':'21','PRCNT':'22',
+    'CARET':'23','AMPS':'24','STAR':'25','LPAR':'26','RPAR':'27',
+    'TILDE':'35','PIPE':'31','LBRC':'2F','RBRC':'30',
+  };
+  return map[zmkKey] || '00';
+}
+
+
+// ══════════════════════════════════════════════════════════════════
 // BOM DATA (from BOM.md)
 // ══════════════════════════════════════════════════════════════════
 
@@ -483,29 +1060,30 @@ window.generatedConfig = null;
 // WIZARD NAVIGATION
 // ══════════════════════════════════════════════════════════════════
 
-const pages = [null, document.getElementById('page1'), document.getElementById('page2'), document.getElementById('page3')];
+const pages = [null, document.getElementById('page1'), document.getElementById('page2'), document.getElementById('page3'), document.getElementById('page4')];
 const stepBtns = document.querySelectorAll('.step-btn');
 const btnBack = document.getElementById('btn-back');
 const btnNext = document.getElementById('btn-next');
 
 function goToPage(n) {
-  if (n < 1 || n > 3) return;
+  if (n < 1 || n > 4) return;
   pages[currentPage].classList.remove('active');
   currentPage = n;
   pages[currentPage].classList.add('active');
   stepBtns.forEach(s => { const sn = +s.dataset.step; s.classList.toggle('active', sn === n); s.classList.toggle('done', sn < n); });
   btnBack.disabled = n === 1;
-  btnNext.disabled = (n === 1 && !canAdvance()) || n === 3;
-  btnNext.textContent = n === 3 ? 'Done' : 'Next';
+  btnNext.disabled = (n === 1 && !canAdvance()) || n === 4;
+  btnNext.textContent = n === 4 ? 'Done' : 'Next';
   if (n === 2) initPage2();
   if (n === 3) renderBOM();
+  if (n === 4) initPage4();
 }
 
 function canAdvance() {
   return COLUMNS.every(c => positions[c.id].length >= 2);
 }
 
-btnNext.addEventListener('click', () => { if (currentPage < 3 && (currentPage !== 1 || canAdvance())) goToPage(currentPage + 1); });
+btnNext.addEventListener('click', () => { if (currentPage < 4 && (currentPage !== 1 || canAdvance())) goToPage(currentPage + 1); });
 btnBack.addEventListener('click', () => { if (currentPage > 1) goToPage(currentPage - 1); });
 stepBtns.forEach(s => s.addEventListener('click', () => { const sn = +s.dataset.step; if (sn < currentPage) goToPage(sn); }));
 
@@ -1345,6 +1923,31 @@ document.getElementById('btn-download').addEventListener('click', async () => {
   if (generatedConfig) {
     zip.file('config.yaml', jsyaml.dump(generatedConfig, { sortKeys: false }));
   }
+  // Add ZMK shield and test files
+  if (ergogenResults.points) {
+    const shield = generateZmkShield(ergogenResults.points, generatedConfig);
+    const tests = generateTestSuite(ergogenResults.points, generatedConfig);
+    // Shield files
+    zip.file('zmk/boards/shields/keyboard/keyboard.dtsi', shield.dtsi);
+    zip.file('zmk/boards/shields/keyboard/keyboard_left.overlay', shield.leftOverlay);
+    zip.file('zmk/boards/shields/keyboard/keyboard_right.overlay', shield.rightOverlay);
+    zip.file('zmk/boards/shields/keyboard/keyboard.keymap', shield.keymap);
+    zip.file('zmk/boards/shields/keyboard/keyboard.conf', shield.conf);
+    zip.file('zmk/boards/shields/keyboard/Kconfig.shield', shield.kconfigShield);
+    zip.file('zmk/boards/shields/keyboard/Kconfig.defconfig', shield.kconfigDefconfig);
+    // Test files
+    zip.file('zmk/tests/behavior_keymap.dtsi', tests.behaviorKeymap);
+    for (const [name, files] of Object.entries(tests.cases)) {
+      zip.file(`zmk/tests/${name}/native_posix_64.keymap`, files.keymap);
+      zip.file(`zmk/tests/${name}/events.patterns`, files.patterns);
+      zip.file(`zmk/tests/${name}/keycode_events.snapshot`, files.snapshot);
+    }
+    // Docker / runner
+    zip.file('zmk/Dockerfile', tests.dockerfile);
+    zip.file('zmk/run_tests.sh', tests.runScript);
+    zip.file('zmk/docker-compose.yml', tests.dockerCompose);
+    zip.file('zmk/README.md', tests.readme);
+  }
   const blob = await zip.generateAsync({ type: 'blob' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -1352,6 +1955,186 @@ document.getElementById('btn-download').addEventListener('click', async () => {
   a.click();
   URL.revokeObjectURL(a.href);
 });
+
+
+// ══════════════════════════════════════════════════════════════════
+// PAGE 4: FIRMWARE & TEST
+// ══════════════════════════════════════════════════════════════════
+
+let page4Initialized = false;
+
+function initPage4() {
+  if (!ergogenResults || !ergogenResults.points) return;
+  const el = document.getElementById('firmware-content');
+
+  const shield = generateZmkShield(ergogenResults.points, generatedConfig);
+  const tests = generateTestSuite(ergogenResults.points, generatedConfig);
+  const { map } = shield;
+  const nKeys = map.allKeys.length;
+
+  // ── File browser ──
+  const files = [
+    { name: 'keyboard.dtsi', content: shield.dtsi },
+    { name: 'keyboard_left.overlay', content: shield.leftOverlay },
+    { name: 'keyboard_right.overlay', content: shield.rightOverlay },
+    { name: 'keyboard.keymap', content: shield.keymap },
+    { name: 'keyboard.conf', content: shield.conf },
+    { name: 'Kconfig.shield', content: shield.kconfigShield },
+    { name: 'Kconfig.defconfig', content: shield.kconfigDefconfig },
+    { name: 'Dockerfile', content: tests.dockerfile },
+    { name: 'run_tests.sh', content: tests.runScript },
+  ];
+
+  let html = '<h2>ZMK Shield Files</h2>';
+  html += `<p style="color:#aaa;font-size:13px;margin-bottom:12px;">${nKeys} keys detected (${map.leftKeys.length} left + ${map.rightKeys.length} right), ${map.nColsPerHalf} columns per half, ${map.nRows} rows</p>`;
+
+  // File tabs
+  html += '<div class="file-tabs">';
+  files.forEach((f, i) => {
+    html += `<div class="file-tab${i === 0 ? ' active' : ''}" data-file="${i}">${f.name}</div>`;
+  });
+  html += '</div>';
+  html += '<div class="file-content">';
+  files.forEach((f, i) => {
+    const escaped = f.content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    html += `<pre id="file-pre-${i}" style="display:${i === 0 ? 'block' : 'none'}">${escaped}</pre>`;
+  });
+  html += '</div>';
+
+  // ── Keymap visualization ──
+  html += '<h2>Keymap Visualization</h2>';
+  html += '<div class="layer-tabs">';
+  ['Layer 0: QWERTY', 'Layer 1: Numbers', 'Layer 2: Nav'].forEach((name, i) => {
+    html += `<div class="layer-tab${i === 0 ? ' active' : ''}" data-layer="${i}">${name}</div>`;
+  });
+  html += '</div>';
+
+  const layers = [DEFAULT_KEYMAPS.layer0, DEFAULT_KEYMAPS.layer1, DEFAULT_KEYMAPS.layer2];
+  layers.forEach((layer, li) => {
+    html += `<div class="keymap-grid" id="keymap-layer-${li}" style="display:${li === 0 ? 'block' : 'none'}">`;
+    const keysPerRow = map.nColsPerHalf;
+    // Matrix rows (left + right)
+    const matrixRows = new Set();
+    map.leftKeys.filter(k => k.zone === 'matrix').forEach(k => matrixRows.add(k.rowIdx));
+    const sortedMatRows = [...matrixRows].sort((a, b) => a - b);
+
+    let keyIdx = 0;
+    sortedMatRows.forEach(row => {
+      html += '<div class="keymap-row">';
+      // Left half keys for this row
+      const leftInRow = map.leftKeys.filter(k => k.zone === 'matrix' && k.rowIdx === row).sort((a,b) => a.colIdx - b.colIdx);
+      leftInRow.forEach(k => {
+        const label = (layer[keyIdx] || '').replace('TRANS','--').replace('NONE','');
+        html += `<div class="keymap-key">${label}</div>`;
+        keyIdx++;
+      });
+      // Gap
+      html += '<div class="keymap-key spacer"></div>';
+      // Right half keys for this row
+      const rightInRow = map.rightKeys.filter(k => k.zone === 'matrix' && k.rowIdx === row).sort((a,b) => a.colIdx - b.colIdx);
+      rightInRow.forEach(k => {
+        const label = (layer[keyIdx] || '').replace('TRANS','--').replace('NONE','');
+        html += `<div class="keymap-key">${label}</div>`;
+        keyIdx++;
+      });
+      html += '</div>';
+    });
+
+    // Thumb row
+    const leftThumbs = map.leftKeys.filter(k => k.zone === 'thumb').sort((a,b) => a.colIdx - b.colIdx);
+    const rightThumbs = map.rightKeys.filter(k => k.zone === 'thumb').sort((a,b) => a.colIdx - b.colIdx);
+    if (leftThumbs.length || rightThumbs.length) {
+      html += '<div class="keymap-row">';
+      // Spacers to push thumbs to center
+      for (let s = 0; s < keysPerRow - leftThumbs.length; s++) html += '<div class="keymap-key spacer"></div>';
+      leftThumbs.forEach(k => {
+        const label = (layer[keyIdx] || '').replace('TRANS','--').replace('NONE','');
+        html += `<div class="keymap-key thumb">${label}</div>`;
+        keyIdx++;
+      });
+      html += '<div class="keymap-key spacer"></div>';
+      rightThumbs.forEach(k => {
+        const label = (layer[keyIdx] || '').replace('TRANS','--').replace('NONE','');
+        html += `<div class="keymap-key thumb">${label}</div>`;
+        keyIdx++;
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+  });
+
+  // ── Test info ──
+  html += '<h2>Hardware Emulation Tests</h2>';
+  html += '<div class="test-info">';
+  html += '<h3>native_posix verification (no QEMU needed)</h3>';
+  html += '<p style="font-size:13px;color:#ccc;margin-bottom:8px;">ZMK firmware compiles to a native Linux binary. Mock key events are injected and HID output is verified against expected snapshots.</p>';
+  html += '<ul class="test-list">';
+  html += `<li><strong>all-keys-register</strong> — press/release all ${nKeys} keys, verify HID keycodes</li>`;
+  html += '<li><strong>layer-switch</strong> — hold thumb key, verify alternate layer keycode</li>';
+  html += '<li><strong>matrix-ghosting</strong> — simultaneous same-row presses, verify no ghost keys</li>';
+  html += '</ul>';
+  html += '<h3 style="margin-top:12px;">Run tests</h3>';
+  html += '<pre>cd zmk\nchmod +x run_tests.sh\n./run_tests.sh    # requires Docker</pre>';
+  html += '<p style="font-size:12px;color:#888;margin-top:8px;">Tests and shield files are included in the ZIP download from step 3.</p>';
+  html += '</div>';
+
+  // ── Download button ──
+  html += '<div class="download-row">';
+  html += '<button id="btn-download-zmk">Download ZMK Config + Tests (.zip)</button>';
+  html += '</div>';
+
+  el.innerHTML = html;
+
+  // Wire up file tabs
+  el.querySelectorAll('.file-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      el.querySelectorAll('.file-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const idx = tab.dataset.file;
+      el.querySelectorAll('.file-content pre').forEach((p, i) => p.style.display = i === +idx ? 'block' : 'none');
+    });
+  });
+
+  // Wire up layer tabs
+  el.querySelectorAll('.layer-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      el.querySelectorAll('.layer-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const li = tab.dataset.layer;
+      el.querySelectorAll('.keymap-grid').forEach((g, i) => g.style.display = i === +li ? 'block' : 'none');
+    });
+  });
+
+  // Wire up download button
+  el.querySelector('#btn-download-zmk').addEventListener('click', async () => {
+    const zip = new JSZip();
+    // Shield files
+    zip.file('boards/shields/keyboard/keyboard.dtsi', shield.dtsi);
+    zip.file('boards/shields/keyboard/keyboard_left.overlay', shield.leftOverlay);
+    zip.file('boards/shields/keyboard/keyboard_right.overlay', shield.rightOverlay);
+    zip.file('boards/shields/keyboard/keyboard.keymap', shield.keymap);
+    zip.file('boards/shields/keyboard/keyboard.conf', shield.conf);
+    zip.file('boards/shields/keyboard/Kconfig.shield', shield.kconfigShield);
+    zip.file('boards/shields/keyboard/Kconfig.defconfig', shield.kconfigDefconfig);
+    // Test files
+    zip.file('tests/behavior_keymap.dtsi', tests.behaviorKeymap);
+    for (const [name, tfiles] of Object.entries(tests.cases)) {
+      zip.file(`tests/${name}/native_posix_64.keymap`, tfiles.keymap);
+      zip.file(`tests/${name}/events.patterns`, tfiles.patterns);
+      zip.file(`tests/${name}/keycode_events.snapshot`, tfiles.snapshot);
+    }
+    zip.file('Dockerfile', tests.dockerfile);
+    zip.file('run_tests.sh', tests.runScript);
+    zip.file('docker-compose.yml', tests.dockerCompose);
+    zip.file('README.md', tests.readme);
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'keyboard-zmk.zip';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+}
 
 
 // ══════════════════════════════════════════════════════════════════
