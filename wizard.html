@@ -426,71 +426,279 @@ function rd(v) { return Math.round(v * 10) / 10; }
 function ergopadToErgogen(data, mirrorDist, keySpacing, ppmOverride) {
   mirrorDist = mirrorDist || 22;
   keySpacing = keySpacing || 18;
-  // Flip Y
-  const flipped = {};
-  for (const col of Object.keys(data)) {
-    flipped[col] = data[col].map(p => ({ x: p.x, y: -p.y }));
-  }
-  // Scale: use calibrated ppm if provided, otherwise auto-estimate
-  let ppm = (ppmOverride && ppmOverride > 0) ? ppmOverride : estimateScale(flipped, keySpacing);
-  if (ppm <= 0) ppm = 1.0;
-  const scaled = {};
-  for (const col of Object.keys(flipped)) {
-    scaled[col] = flipped[col].map(p => ({ x: p.x/ppm, y: p.y/ppm }));
-  }
-  // Analyze matrix columns
-  const analyses = {};
-  for (const col of MATRIX_COLUMNS) {
-    if (scaled[col] && scaled[col].length) analyses[col] = analyzeColumn(scaled[col]);
-  }
-  // Analyze thumb
-  const thumbPts = scaled.thumb || [];
-  const thumbInfo = thumbPts.length ? analyzeColumn(thumbPts, true) : null;
 
-  // Build ergogen columns
-  const columns = {};
-  let prevCenter = null, cumulativeAngle = 0;
-  MATRIX_COLUMNS.forEach((ergopadCol, i) => {
-    const info = analyses[ergopadCol];
-    if (!info) return;
-    const ergogenName = ERGOGEN_NAMES[i];
-    const colDef = { key: { column_net: `C${i}` } };
-    if (i === 0) {
-      const splay = info.angle;
-      if (Math.abs(splay) > 0.5) colDef.key.splay = rd(splay);
-      colDef.key.padding = rd(info.padding);
-      prevCenter = info.center;
-      cumulativeAngle = splay;
-    } else {
-      const [cx, cy] = info.center;
-      const [px, py] = prevCenter;
-      const dx = cx - px, dy = cy - py;
-      const rad = -cumulativeAngle * Math.PI / 180;
-      const spread = dx*Math.cos(rad) - dy*Math.sin(rad);
-      const stagger = dx*Math.sin(rad) + dy*Math.cos(rad);
-      const splay = info.angle - cumulativeAngle;
-      colDef.key.spread = rd(spread);
-      colDef.key.stagger = rd(stagger);
-      if (Math.abs(splay) > 0.5) colDef.key.splay = rd(splay);
-      colDef.key.padding = rd(info.padding);
-      prevCenter = info.center;
-      cumulativeAngle += splay;
+  // ── Step 1: Compute stage 1 key positions in canvas pixel space ──
+  // This replicates the drawCanvas tap-spread CoG algorithm exactly.
+  function computeStage1Keys(positions) {
+    const result = {};
+    const ALL_COLS = [...MATRIX_COLUMNS, 'thumb'];
+    ALL_COLS.forEach(colId => {
+      const pts = positions[colId];
+      if (!pts || pts.length < 2) return;
+      const isThumb = colId === 'thumb';
+      const fit = fitLine(pts, isThumb);
+      const m = fit.m, b = fit.b;
+      const dirLen = Math.sqrt(1 + m * m);
+      const projections = pts.map(p => projectPointToLine(m, -1, b, p.x, p.y));
+      const projScalars = projections.map(p => p.x / dirLen + p.y * m / dirLen);
+      const minProj = Math.min(...projScalars);
+      const maxProj = Math.max(...projScalars);
+      const midProj = (minProj + maxProj) / 2;
+      const halfSpan = (maxProj - minProj) / 2;
+      const upperScalars = projScalars.filter(s => s >= midProj);
+      const lowerScalars = projScalars.filter(s => s < midProj);
+      const avgUpper = upperScalars.length ? upperScalars.reduce((a, b) => a + b, 0) / upperScalars.length : midProj + halfSpan;
+      const avgLower = lowerScalars.length ? lowerScalars.reduce((a, b) => a + b, 0) / lowerScalars.length : midProj - halfSpan;
+      const keyScalars = [avgLower, midProj, avgUpper];
+      const canvasRotation = Math.PI / 2 + Math.atan(m);
+      const keys = keyScalars.map((s, i) => {
+        const ds = s - midProj;
+        const px = fit.cx + ds / dirLen;
+        const py = fit.cy + ds * m / dirLen;
+        return { x: px, y: py, canvasRotRad: canvasRotation };
+      });
+      result[colId] = keys; // [bottom, home, top]
+    });
+    return result;
+  }
+
+  // ── Step 2: Convert stage 1 positions to ergogen mm space (Y-up) ──
+  let ppm = (ppmOverride && ppmOverride > 0) ? ppmOverride : null;
+  if (!ppm) {
+    const flipped = {};
+    for (const col of Object.keys(data)) {
+      flipped[col] = data[col].map(p => ({ x: p.x, y: -p.y }));
     }
+    ppm = estimateScale(flipped, keySpacing);
+    if (ppm <= 0) ppm = 1.0;
+  }
+
+  const stage1 = computeStage1Keys(data);
+
+  // Convert canvas positions to ergogen mm coords: ergo_x = canvas_x / ppm, ergo_y = -canvas_y / ppm
+  // Canvas rotation to ergogen rotation (degrees):
+  //   canvas: rotation = PI/2 + atan(m_canvas), where m_canvas is slope in canvas (Y-down) space
+  //   ergogen: Y-up, so the column angle = atan(m_flipped) where m_flipped = -m_canvas
+  //   In ergogen, rotation is CCW degrees from +Y axis.
+  //   The canvas rotation rad = PI/2 + atan(m). In ergogen (Y-flipped), the equivalent
+  //   rotation in degrees = -(canvasRotRad * 180 / PI) ... but we need to think about this carefully.
+  //
+  // Actually, let's compute the ergogen column angle directly:
+  //   In canvas space the direction along the column is (1/dirLen, m/dirLen).
+  //   In ergogen space (Y-flipped) this becomes (1/dirLen, -m/dirLen).
+  //   The ergogen rotation for the column axis: angle from +Y axis, measured CCW.
+  //   atan2(dx, dy) where (dx,dy) is the direction = atan2(1/dirLen, -m/dirLen) = atan2(1, -m) = PI - atan(m) ... in radians
+  //   But ergogen measures rotation as accumulated splay. The key insight: ergogen rotation r means
+  //   that the local Y axis (padding direction) points in direction (sin(r_rad), cos(r_rad)).
+  //
+  // For the 3-key column, padding advances along local +Y. In ergogen coords:
+  //   The column direction (bottom→top) in ergogen space needs to match.
+  //   bottom key = home - padding * (sin(r), cos(r))
+  //   top key = home + padding * (sin(r), cos(r))
+  //
+  // From stage 1 home and top keys (in ergogen mm coords), we can recover r and padding.
+
+  const ergoKeys = {}; // colId → {home: {x,y}, bottom: {x,y}, top: {x,y}, angleDeg: number, padding: number}
+  const ALL_COLS = [...MATRIX_COLUMNS, 'thumb'];
+  ALL_COLS.forEach(colId => {
+    const s1 = stage1[colId];
+    if (!s1) return;
+    // Convert all 3 stage 1 keys to ergogen mm space
+    const ergoMm = s1.map(k => ({ x: k.x / ppm, y: -k.y / ppm }));
+    // Sort by ergogen Y ascending: [0]=lowest Y (bottom), [2]=highest Y (top)
+    const sorted = [...ergoMm].sort((a, b) => a.y - b.y);
+    const bottom = sorted[0];
+    const home = sorted[1]; // middle Y = home
+    const top = sorted[2];
+
+    // Direction from bottom to top in ergogen mm space — should point roughly +Y (upward)
+    const dx = top.x - bottom.x;
+    const dy = top.y - bottom.y;
+    const span = Math.sqrt(dx * dx + dy * dy);
+    // Ergogen rotation r: padding shift is [0, padding] rotated by r, giving direction (-sin(r), cos(r)).
+    // To match actual direction (dx, dy): -sin(r) = dx/span, cos(r) = dy/span → r = atan2(-dx, dy)
+    const angleRad = Math.atan2(-dx, dy);
+    const angleDeg = angleRad * 180 / Math.PI;
+    const padding = span / 2; // 3 keys, 2 gaps of padding each
+
+    ergoKeys[colId] = { home, bottom, top, angleDeg, padding };
+  });
+
+  // ── Step 3: Reverse-engineer ergogen's placement algorithm ──
+  // Ergogen's algorithm for columns (from points.js):
+  //   zone_anchor starts at anchor.shift (e.g., [100, -100]), r=0
+  //   rotations = [{angle: 0, origin: zone_anchor.p}]  (from anchor r=0)
+  //   For column 0: zone_anchor.y += stagger; col_anchor = zone_anchor.clone()
+  //     If splay: push_rotation(rotations, splay, col_anchor.p)  (origin=[0,0] default)
+  //     running_anchor = col_anchor.clone(); apply all rotations; → this is the first key position
+  //     Rows advance by padding along rotated +Y
+  //   For column i>0: zone_anchor.x += spread; zone_anchor.y += stagger;
+  //     col_anchor = zone_anchor.clone()
+  //     If splay: push_rotation(rotations, splay, col_anchor.p)
+  //     running_anchor = col_anchor; apply all rotations; → first key position
+  //
+  // The anchor position [100, -100] is arbitrary. We need to find anchor + spread/stagger
+  // values such that after applying rotations, we get our desired positions.
+  //
+  // Strategy: simulate ergogen forward, starting from an anchor that places the first
+  // column's home key at the correct position. Then for each subsequent column, find
+  // the zone_anchor position (world coords before rotations) that produces the correct
+  // running_anchor position after rotations.
+
+  // Helper: rotate point around origin by angle (degrees)
+  function rotPt(px, py, angle, ox, oy) {
+    const rad = angle * Math.PI / 180;
+    const dx = px - ox, dy = py - oy;
+    return {
+      x: ox + dx * Math.cos(rad) - dy * Math.sin(rad),
+      y: oy + dx * Math.sin(rad) + dy * Math.cos(rad),
+    };
+  }
+
+  // Helper: un-rotate — given the result after rotation, find the original point
+  function unRotPt(rx, ry, angle, ox, oy) {
+    return rotPt(rx, ry, -angle, ox, oy);
+  }
+
+  // Simulate the rotation stack to find what zone_anchor position produces
+  // the desired running_anchor position after all accumulated rotations.
+  // rotations = [{angle, origin}, ...]
+  // running_anchor = zone_anchor rotated by all rotations
+  // We need: zone_anchor = un-rotate(desired, rotations in reverse)
+  function unRotateAll(desiredX, desiredY, rotations) {
+    let px = desiredX, py = desiredY;
+    for (let i = rotations.length - 1; i >= 0; i--) {
+      const r = rotations[i];
+      const un = unRotPt(px, py, r.angle, r.origin[0], r.origin[1]);
+      px = un.x;
+      py = un.y;
+    }
+    return { x: px, y: py };
+  }
+
+  // Forward: apply all rotations to a point
+  function applyRotations(px, py, rotations) {
+    let x = px, y = py;
+    for (const r of rotations) {
+      const p = rotPt(x, y, r.angle, r.origin[0], r.origin[1]);
+      x = p.x;
+      y = p.y;
+    }
+    return { x, y };
+  }
+
+  // Ergogen's push_rotation: applies all existing rotations to the origin before pushing
+  function pushRotation(rotations, angle, origin) {
+    let candidate = [...origin];
+    for (const r of rotations) {
+      const p = rotPt(candidate[0], candidate[1], r.angle, r.origin[0], r.origin[1]);
+      candidate = [p.x, p.y];
+    }
+    rotations.push({ angle, origin: candidate });
+  }
+
+  // Now simulate ergogen and compute spread/stagger/splay.
+  // IMPORTANT: ergogen places the FIRST ROW (bottom) at running_anchor,
+  // then advances by padding to place home, then top. So we need to target
+  // the BOTTOM key position for each column, not the home key.
+  //
+  // We work in absolute ergogen mm coordinates. The anchor is set to the first
+  // column's bottom position, and zone_anchor tracks the world-space position
+  // (before rotations) that ergogen maintains.
+  const columns = {};
+  const firstColId = MATRIX_COLUMNS.find(c => ergoKeys[c]);
+  if (!firstColId) return { meta: { engine: '4.1.0' }, points: { zones: {} } }; // no data
+  const anchorPos = ergoKeys[firstColId].bottom;
+  const anchorShift = [rd(anchorPos.x), rd(anchorPos.y)];
+
+  // Replicate ergogen's rotation stack, starting with the real anchor
+  const rotations = [];
+  let zoneAnchorX = anchorPos.x, zoneAnchorY = anchorPos.y;
+  // Initial rotation from anchor (r=0): pushed with origin at anchor position
+  rotations.push({ angle: 0, origin: [anchorPos.x, anchorPos.y] });
+
+  let firstCol = true;
+  const colParams = [];
+
+  MATRIX_COLUMNS.forEach((ergopadCol, i) => {
+    const ek = ergoKeys[ergopadCol];
+    if (!ek) return;
+    const ergogenName = ERGOGEN_NAMES[i];
+
+    const desiredBottom = ek.bottom;
+    const cumSplay = colParams.reduce((sum, p) => sum + p.splay, 0);
+    const splay = ek.angleDeg - cumSplay;
+
+    if (firstCol) {
+      // First column: zone_anchor = anchor. Running_anchor = anchor after rotations.
+      // With initial rotation {angle:0}, running_anchor = anchor = desiredBottom. ✓
+      if (Math.abs(splay) > 0.01) {
+        pushRotation(rotations, splay, [zoneAnchorX, zoneAnchorY]);
+      }
+      colParams.push({ spread: 0, stagger: 0, splay, padding: ek.padding });
+      firstCol = false;
+    } else {
+      // Find zone_anchor (world coords) that after all rotations gives desiredBottom.
+      if (Math.abs(splay) < 0.01) {
+        const za = unRotateAll(desiredBottom.x, desiredBottom.y, rotations);
+        const spread = za.x - zoneAnchorX;
+        const stagger = za.y - zoneAnchorY;
+        zoneAnchorX = za.x;
+        zoneAnchorY = za.y;
+        colParams.push({ spread, stagger, splay: 0, padding: ek.padding });
+      } else {
+        // With splay: iterate (splay origin depends on zone_anchor, which we're solving for)
+        let za = unRotateAll(desiredBottom.x, desiredBottom.y, rotations);
+
+        for (let iter = 0; iter < 20; iter++) {
+          // Simulate pushRotation: apply existing rotations to za to get splay origin
+          let candidate = [za.x, za.y];
+          for (const r of rotations) {
+            const p = rotPt(candidate[0], candidate[1], r.angle, r.origin[0], r.origin[1]);
+            candidate = [p.x, p.y];
+          }
+          const testRotations = rotations.map(r => ({ angle: r.angle, origin: [...r.origin] }));
+          testRotations.push({ angle: splay, origin: candidate });
+          const ra = applyRotations(za.x, za.y, testRotations);
+          const errX = desiredBottom.x - ra.x;
+          const errY = desiredBottom.y - ra.y;
+          if (Math.abs(errX) < 0.0001 && Math.abs(errY) < 0.0001) break;
+          za = unRotateAll(desiredBottom.x, desiredBottom.y, testRotations);
+        }
+
+        const spread = za.x - zoneAnchorX;
+        const stagger = za.y - zoneAnchorY;
+        zoneAnchorX = za.x;
+        zoneAnchorY = za.y;
+        pushRotation(rotations, splay, [zoneAnchorX, zoneAnchorY]);
+        colParams.push({ spread, stagger, splay, padding: ek.padding });
+      }
+    }
+
+    const colDef = { key: { column_net: `C${i}` } };
+    const p = colParams[colParams.length - 1];
+    if (i > 0) {
+      colDef.key.spread = rd(p.spread);
+      colDef.key.stagger = rd(p.stagger);
+    }
+    if (Math.abs(p.splay) > 0.01) colDef.key.splay = rd(p.splay);
+    colDef.key.padding = rd(p.padding);
     columns[ergogenName] = colDef;
   });
 
-  // Build thumb zone
+  // ── Step 5: Build thumb zone ──
   let thumbZone = null;
-  if (thumbInfo && analyses.index_far) {
-    const inner = analyses.index_far;
-    const [icx, icy] = inner.center;
-    const iRad = inner.angle * Math.PI / 180;
-    const ibx = icx - inner.padding * Math.sin(iRad);
-    const iby = icy - inner.padding * Math.cos(iRad);
-    const [tcx, tcy] = thumbInfo.center;
-    const shiftX = rd(tcx - ibx), shiftY = rd(tcy - iby);
-    const thumbSplay = thumbInfo.angle;
-    const nThumb = thumbInfo.nKeys;
+  const thumbEk = ergoKeys.thumb;
+  const innerCol = ergoKeys.index_far;
+  if (thumbEk && innerCol) {
+    // Thumb anchor references matrix_inner_bottom. We need to find where that is.
+    // matrix_inner_bottom = inner column's bottom key position in ergogen space.
+    const innerBottom = innerCol.bottom;
+    const thumbHome = thumbEk.home;
+    const shiftX = rd(thumbHome.x - innerBottom.x);
+    const shiftY = rd(thumbHome.y - innerBottom.y);
+    const thumbSplay = thumbEk.angleDeg;
+    const nThumb = stage1.thumb ? stage1.thumb.length : 3;
     const thumbCols = {};
     if (nThumb <= 1) {
       thumbCols.t_inner = { key: { column_net: `C${MATRIX_COLUMNS.length}`, splay: rd(thumbSplay), spread: keySpacing } };
@@ -498,14 +706,14 @@ function ergopadToErgogen(data, mirrorDist, keySpacing, ppmOverride) {
       const names = ['t_inner', 't_middle', 't_outer'];
       for (let j = 0; j < Math.min(nThumb, 3); j++) {
         const col = { key: { column_net: `C${MATRIX_COLUMNS.length + j}`, spread: keySpacing } };
-        if (j === 0 && Math.abs(thumbSplay) > 0.5) col.key.splay = rd(thumbSplay);
+        if (j === 0 && Math.abs(thumbSplay) > 0.01) col.key.splay = rd(thumbSplay);
         thumbCols[names[j]] = col;
       }
     }
     thumbZone = { anchor: { ref: 'matrix_inner_bottom', shift: [shiftX, shiftY] }, columns: thumbCols, rows: { cluster: { row_net: 'R3' } } };
   }
 
-  // Assemble config
+  // ── Step 6: Assemble config ──
   const config = {
     meta: { engine: '4.1.0' },
     units: { kx: keySpacing, ky: keySpacing, px: 'kx + 1', py: 'ky + 1' },
@@ -513,7 +721,7 @@ function ergopadToErgogen(data, mirrorDist, keySpacing, ppmOverride) {
       mirror: { ref: 'matrix_inner_home', distance: mirrorDist },
       zones: {
         matrix: {
-          anchor: { shift: [100, -100] },
+          anchor: { shift: anchorShift },
           columns: columns,
           rows: { bottom: { row_net: 'R2' }, home: { row_net: 'R1' }, top: { row_net: 'R0' } }
         }
@@ -1256,15 +1464,22 @@ function loadPositions() {
       try {
         const data = JSON.parse(reader.result);
         if (!data.positions) throw new Error('No positions found in file');
+        // Scale positions if canvas dimensions differ
+        const scaleX = (data.canvasWidth && data.canvasWidth > 0) ? canvas.width / data.canvasWidth : 1;
+        const scaleY = (data.canvasHeight && data.canvasHeight > 0) ? canvas.height / data.canvasHeight : 1;
         // Restore positions for all known columns
         COLUMNS.forEach(col => {
           if (Array.isArray(data.positions[col.id])) {
-            positions[col.id] = data.positions[col.id];
+            positions[col.id] = data.positions[col.id].map(p => ({
+              x: p.x * scaleX,
+              y: p.y * scaleY,
+            }));
           }
         });
-        // Restore calibrated PPM if present
+        // Restore calibrated PPM if present, scaled to current canvas
         if (typeof data.calibratedPPM === 'number' && data.calibratedPPM > 0) {
-          calibratedPPM = data.calibratedPPM;
+          // PPM needs to scale with canvas (it's pixels per mm)
+          calibratedPPM = data.calibratedPPM * ((scaleX + scaleY) / 2);
           localStorage.setItem('keyboard_wizard_ppm', String(calibratedPPM));
         }
         drawCanvas();
@@ -1415,88 +1630,105 @@ function computeErgogenPreview() {
   const ppm = currentScalePPM();
   if (ppm <= 0) return;
 
-  // Replicate ergopadToErgogen logic but track output positions in canvas space
-  const data = positions;
-  const keySpacing = 18;
+  // Run the actual ergopadToErgogen conversion, then simulate ergogen placement.
+  // This ensures the preview matches what ergogen will actually produce.
+  const config = ergopadToErgogen(positions, 22, 18, ppm);
+  const matrixZone = config.points && config.points.zones && config.points.zones.matrix;
+  if (!matrixZone) return;
 
-  // Flip Y (same as ergopadToErgogen)
-  const flipped = {};
-  for (const col of Object.keys(data)) {
-    flipped[col] = data[col].map(p => ({ x: p.x, y: -p.y }));
-  }
-
-  // Scale to mm
-  const scaled = {};
-  for (const col of Object.keys(flipped)) {
-    scaled[col] = flipped[col].map(p => ({ x: p.x / ppm, y: p.y / ppm }));
-  }
-
-  // Analyze each column (same as ergopadToErgogen)
-  const analyses = {};
-  for (const col of MATRIX_COLUMNS) {
-    if (scaled[col] && scaled[col].length) analyses[col] = analyzeColumn(scaled[col]);
-  }
-
-  // For each column, compute where ergogen places each row key.
-  // Ergogen uses: column center as anchor, padding as row spacing along column axis.
-  // Row keys are placed at: center + (rowOffset) * padding along the column angle axis.
-  // Rows: bottom (offset -1), home (offset 0), top (offset +1) for 3-row columns.
+  const anchor = matrixZone.anchor.shift;
+  const columns = matrixZone.columns;
+  const colNames = Object.keys(columns);
   const rowNames = ['bottom', 'home', 'top'];
 
-  MATRIX_COLUMNS.forEach((colId, ci) => {
-    const info = analyses[colId];
-    if (!info) return;
-    const nRows = Math.min(info.nKeys, 3);
-    const rad = info.angle * Math.PI / 180;
-    const axX = Math.sin(rad), axY = Math.cos(rad);
+  // Simulate ergogen's exact placement algorithm (same as validate-stages.js)
+  function simRotPt(px, py, angleDeg, ox, oy) {
+    const rad = angleDeg * Math.PI / 180;
+    const dx = px - ox, dy = py - oy;
+    return { x: ox + dx * Math.cos(rad) - dy * Math.sin(rad), y: oy + dx * Math.sin(rad) + dy * Math.cos(rad) };
+  }
+  function simPushRotation(rots, angle, origin) {
+    let candidate = [...origin];
+    for (const r of rots) {
+      const p = simRotPt(candidate[0], candidate[1], r.angle, r.origin[0], r.origin[1]);
+      candidate = [p.x, p.y];
+    }
+    rots.push({ angle, origin: candidate });
+  }
 
-    // Ergogen places rows at: center + (rowIndex - middleIndex) * padding along axis
-    // For 3 rows: bottom at -1, home at 0, top at +1
-    for (let r = 0; r < nRows; r++) {
-      const offset = r - (nRows - 1) / 2;
-      const ex = info.center[0] + axX * offset * info.padding; // mm
-      const ey = info.center[1] + axY * offset * info.padding; // mm
+  const zoneAnchor = { x: anchor[0], y: anchor[1] };
+  const rotations = [{ angle: 0, origin: [zoneAnchor.x, zoneAnchor.y] }];
+  let firstCol = true;
 
-      // Convert back to canvas space: undo scale, undo Y-flip
-      const canvasX = ex * ppm;
-      const canvasY = -ey * ppm;
+  colNames.forEach((colName, ci) => {
+    const colDef = columns[colName];
+    const key = colDef.key || {};
+    const spread = key.spread || 0;
+    const stagger = key.stagger || 0;
+    const splay = key.splay || 0;
+    const padding = key.padding || 18;
 
+    if (!firstCol) { zoneAnchor.x += spread; }
+    zoneAnchor.y += stagger;
+
+    if (Math.abs(splay) > 0.001) {
+      simPushRotation(rotations, splay, [zoneAnchor.x, zoneAnchor.y]);
+    }
+
+    let runX = zoneAnchor.x, runY = zoneAnchor.y, runR = 0;
+    for (const r of rotations) {
+      const p = simRotPt(runX, runY, r.angle, r.origin[0], r.origin[1]);
+      runX = p.x; runY = p.y; runR += r.angle;
+    }
+
+    const colId = MATRIX_COLUMNS[ci] || colName;
+    for (let ri = 0; ri < 3; ri++) {
+      // Convert ergogen mm → canvas: canvasX = x * ppm, canvasY = -y * ppm
       ergogenPreviewKeys.push({
         col: colId,
         label: COLUMNS.find(c => c.id === colId)?.label || colId,
         color: COLUMNS.find(c => c.id === colId)?.color || '#888',
-        row: r,
-        rowName: rowNames[r] || `row${r}`,
-        x: canvasX,
-        y: canvasY,
-        angleDeg: info.angle,
+        row: ri, rowName: rowNames[ri] || `row${ri}`,
+        x: runX * ppm, y: -runY * ppm,
+        angleDeg: runR,
       });
+      // Advance by padding along rotated +Y
+      const padRad = runR * Math.PI / 180;
+      runX += -padding * Math.sin(padRad);
+      runY += padding * Math.cos(padRad);
     }
+    firstCol = false;
   });
 
-  // Thumb zone
-  const thumbPts = scaled.thumb || [];
-  if (thumbPts.length) {
-    const thumbInfo = analyzeColumn(thumbPts, true);
-    const nRows = Math.min(thumbInfo.nKeys, 3);
-    const rad = thumbInfo.angle * Math.PI / 180;
-    const axX = Math.sin(rad), axY = Math.cos(rad);
-    for (let r = 0; r < nRows; r++) {
-      const offset = r - (nRows - 1) / 2;
-      const ex = thumbInfo.center[0] + axX * offset * thumbInfo.padding;
-      const ey = thumbInfo.center[1] + axY * offset * thumbInfo.padding;
+  // Thumb: not yet simulated through ergogen's ref anchor system
+  // Show approximate positions from stage 1 analysis for preview
+  const thumbPts = positions.thumb;
+  if (thumbPts && thumbPts.length >= 2) {
+    const fit = fitLine(thumbPts, true);
+    const m = fit.m, b = fit.b;
+    const dirLen = Math.sqrt(1 + m * m);
+    const projections = thumbPts.map(p => projectPointToLine(m, -1, b, p.x, p.y));
+    const projScalars = projections.map(p => p.x / dirLen + p.y * m / dirLen);
+    const minProj = Math.min(...projScalars), maxProj = Math.max(...projScalars);
+    const midProj = (minProj + maxProj) / 2;
+    const halfSpan = (maxProj - minProj) / 2;
+    const upperScalars = projScalars.filter(s => s >= midProj);
+    const lowerScalars = projScalars.filter(s => s < midProj);
+    const avgUpper = upperScalars.length ? upperScalars.reduce((a, b) => a + b, 0) / upperScalars.length : midProj + halfSpan;
+    const avgLower = lowerScalars.length ? lowerScalars.reduce((a, b) => a + b, 0) / lowerScalars.length : midProj - halfSpan;
+    const keyScalars = [avgLower, midProj, avgUpper];
+    for (let k = 0; k < 3; k++) {
+      const ds = keyScalars[k] - midProj;
+      const px = fit.cx + ds / dirLen;
+      const py = fit.cy + ds * m / dirLen;
       ergogenPreviewKeys.push({
         col: 'thumb', label: 'Thumb', color: '#aaa',
-        row: r, rowName: `thumb${r}`,
-        x: ex * ppm, y: -ey * ppm,
-        angleDeg: thumbInfo.angle,
+        row: k, rowName: `thumb${k}`,
+        x: px, y: py,
+        angleDeg: Math.atan(m) * 180 / Math.PI,
       });
     }
   }
-
-  // Tap-to-ergogen comparison removed: raw taps are calibration data for
-  // the regression line, not 1:1 key positions. The ergogen preview overlay
-  // provides visual comparison instead.
 }
 
 function drawCanvas() {
