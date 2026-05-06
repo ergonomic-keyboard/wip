@@ -1086,7 +1086,7 @@ function goToPage(n) {
 }
 
 function canAdvance() {
-  return COLUMNS.every(c => positions[c.id].length >= 2);
+  return COLUMNS.every(c => positions[c.id].length >= 2) && validationErrors.length === 0;
 }
 
 btnNext.addEventListener('click', () => { if (currentPage < 4 && (currentPage !== 1 || canAdvance())) goToPage(currentPage + 1); });
@@ -1150,6 +1150,265 @@ canvas.addEventListener('pointerdown', e => {
   updateToolbar();
 });
 
+// ── Validation state ──
+let validationErrors = [];
+let validationWarnings = [];
+let ergogenPreviewKeys = []; // computed preview of where ergogen would place keys
+
+// Compute the scale factor (pixels per mm) from current tap data
+function currentScalePPM() {
+  const flipped = {};
+  for (const col of Object.keys(positions)) {
+    flipped[col] = positions[col].map(p => ({ x: p.x, y: -p.y }));
+  }
+  const ppm = estimateScale(flipped, 18);
+  return ppm > 0 ? ppm : 1.0;
+}
+
+// Validate key positions: overlap detection and spacing checks
+function validatePositions() {
+  validationErrors = [];
+  validationWarnings = [];
+
+  // Collect all tapped key positions with their column info
+  const allKeys = [];
+  COLUMNS.forEach(col => {
+    const pts = positions[col.id];
+    if (!pts.length) return;
+    const sorted = pts.slice().sort((a, b) => a.y - b.y);
+    sorted.forEach((p, rowIdx) => {
+      allKeys.push({ x: p.x, y: p.y, col: col.id, label: col.label, rowIdx, color: col.color });
+    });
+  });
+
+  if (allKeys.length < 2) return;
+
+  const ppm = currentScalePPM();
+  const keySizePx = 15 * ppm;         // 15mm keycap side in pixels
+  const switchDiagPx = Math.sqrt(14.2*14.2 + 12.8*12.8) * ppm; // switch housing diagonal in pixels
+  const minCenterDistPx = keySizePx * 0.7; // minimum center-to-center (keys can't overlap)
+
+  // Check all pairs for overlap
+  for (let i = 0; i < allKeys.length; i++) {
+    for (let j = i + 1; j < allKeys.length; j++) {
+      const a = allKeys[i], b = allKeys[j];
+      const dx = a.x - b.x, dy = a.y - b.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < minCenterDistPx * 0.5) {
+        validationErrors.push({
+          type: 'overlap',
+          keys: [a, b],
+          dist,
+          msg: `${a.label} row ${a.rowIdx + 1} overlaps with ${b.label} row ${b.rowIdx + 1} (${(dist / ppm).toFixed(1)}mm apart, need >${(minCenterDistPx * 0.5 / ppm).toFixed(1)}mm)`
+        });
+      } else if (dist < minCenterDistPx) {
+        validationWarnings.push({
+          type: 'too_close',
+          keys: [a, b],
+          dist,
+          msg: `${a.label} row ${a.rowIdx + 1} very close to ${b.label} row ${b.rowIdx + 1} (${(dist / ppm).toFixed(1)}mm)`
+        });
+      }
+    }
+  }
+
+  // Check within-column spacing consistency
+  COLUMNS.forEach(col => {
+    const pts = positions[col.id];
+    if (pts.length < 2) return;
+    const sorted = pts.slice().sort((a, b) => a.y - b.y);
+    for (let k = 0; k < sorted.length - 1; k++) {
+      const dx = sorted[k + 1].x - sorted[k].x;
+      const dy = sorted[k + 1].y - sorted[k].y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const distMm = dist / ppm;
+      if (distMm < 14) {
+        validationErrors.push({
+          type: 'column_spacing',
+          keys: [{ ...sorted[k], col: col.id, label: col.label, rowIdx: k, color: col.color },
+                 { ...sorted[k + 1], col: col.id, label: col.label, rowIdx: k + 1, color: col.color }],
+          dist,
+          msg: `${col.label} rows ${k + 1}-${k + 2}: only ${distMm.toFixed(1)}mm apart (min 14mm for switch clearance)`
+        });
+      }
+    }
+  });
+}
+
+// After ergogen runs, compare tapped positions with ergogen output
+function validateAgainstErgogen() {
+  if (!ergogenResults || !ergogenResults.points) return;
+
+  const pts = ergogenResults.points;
+  const ppm = currentScalePPM();
+  const threshold = 15 * ppm * 0.5; // 50% of keycap side
+
+  // Build a map of ergogen positions in canvas space
+  // We need to reverse the ergopadToErgogen transform
+  const ptEntries = Object.entries(pts).filter(([name]) => !name.startsWith('mirror_'));
+  if (!ptEntries.length) return;
+
+  // Collect all tapped positions (left hand only, pre-mirror)
+  const tappedByCol = {};
+  MATRIX_COLUMNS.forEach((colId, ci) => {
+    const colPts = positions[colId];
+    if (!colPts || !colPts.length) return;
+    const sorted = colPts.slice().sort((a, b) => a.y - b.y);
+    tappedByCol[ERGOGEN_NAMES[ci]] = sorted;
+  });
+  if (positions.thumb && positions.thumb.length) {
+    tappedByCol['thumb'] = positions.thumb.slice().sort((a, b) => a.y - b.y);
+  }
+
+  // Get ergogen left-half positions grouped by column
+  const ergogenByCol = {};
+  ptEntries.forEach(([name, pt]) => {
+    if (pt.meta?.mirrored) return;
+    const zoneName = pt.meta?.zone?.name || 'matrix';
+    const colName = name.replace('matrix_', '').replace('thumb_', '').replace(/_(?:top|home|bottom|cluster)$/, '').replace(/^thumbfan_/, '').replace(/_thumb$/, '');
+
+    // Map ergogen column names back
+    let mappedCol = null;
+    for (const eName of ERGOGEN_NAMES) {
+      if (colName === eName || name.includes(`_${eName}_`)) { mappedCol = eName; break; }
+    }
+    if (!mappedCol && zoneName === 'thumb') mappedCol = 'thumb';
+    if (!mappedCol) return;
+
+    if (!ergogenByCol[mappedCol]) ergogenByCol[mappedCol] = [];
+    ergogenByCol[mappedCol].push({ name, x: pt.x, y: pt.y, r: pt.r });
+  });
+
+  // Sort each ergogen column by Y (ascending = bottom to top in ergogen coords)
+  Object.values(ergogenByCol).forEach(arr => arr.sort((a, b) => a.y - b.y));
+}
+
+// Compute where ergogen would place keys given current tap data, in canvas pixel space.
+// This reconstructs the column layout from ergopadToErgogen parameters to preview
+// the actual key positions ergogen will produce.
+function computeErgogenPreview() {
+  ergogenPreviewKeys = [];
+  const hasEnough = COLUMNS.every(c => positions[c.id].length >= 2);
+  if (!hasEnough) return;
+
+  const ppm = currentScalePPM();
+  if (ppm <= 0) return;
+
+  // Replicate ergopadToErgogen logic but track output positions in canvas space
+  const data = positions;
+  const keySpacing = 18;
+
+  // Flip Y (same as ergopadToErgogen)
+  const flipped = {};
+  for (const col of Object.keys(data)) {
+    flipped[col] = data[col].map(p => ({ x: p.x, y: -p.y }));
+  }
+
+  // Scale to mm
+  const scaled = {};
+  for (const col of Object.keys(flipped)) {
+    scaled[col] = flipped[col].map(p => ({ x: p.x / ppm, y: p.y / ppm }));
+  }
+
+  // Analyze each column (same as ergopadToErgogen)
+  const analyses = {};
+  for (const col of MATRIX_COLUMNS) {
+    if (scaled[col] && scaled[col].length) analyses[col] = analyzeColumn(scaled[col]);
+  }
+
+  // For each column, compute where ergogen places each row key.
+  // Ergogen uses: column center as anchor, padding as row spacing along column axis.
+  // Row keys are placed at: center + (rowOffset) * padding along the column angle axis.
+  // Rows: bottom (offset -1), home (offset 0), top (offset +1) for 3-row columns.
+  const rowNames = ['bottom', 'home', 'top'];
+
+  MATRIX_COLUMNS.forEach((colId, ci) => {
+    const info = analyses[colId];
+    if (!info) return;
+    const nRows = Math.min(info.nKeys, 3);
+    const rad = info.angle * Math.PI / 180;
+    const axX = Math.sin(rad), axY = Math.cos(rad);
+
+    // Ergogen places rows at: center + (rowIndex - middleIndex) * padding along axis
+    // For 3 rows: bottom at -1, home at 0, top at +1
+    for (let r = 0; r < nRows; r++) {
+      const offset = r - (nRows - 1) / 2;
+      const ex = info.center[0] + axX * offset * info.padding; // mm
+      const ey = info.center[1] + axY * offset * info.padding; // mm
+
+      // Convert back to canvas space: undo scale, undo Y-flip
+      const canvasX = ex * ppm;
+      const canvasY = -ey * ppm;
+
+      ergogenPreviewKeys.push({
+        col: colId,
+        label: COLUMNS.find(c => c.id === colId)?.label || colId,
+        color: COLUMNS.find(c => c.id === colId)?.color || '#888',
+        row: r,
+        rowName: rowNames[r] || `row${r}`,
+        x: canvasX,
+        y: canvasY,
+        angleDeg: info.angle,
+      });
+    }
+  });
+
+  // Thumb zone
+  const thumbPts = scaled.thumb || [];
+  if (thumbPts.length) {
+    const thumbInfo = analyzeColumn(thumbPts);
+    const nRows = Math.min(thumbInfo.nKeys, 3);
+    const rad = thumbInfo.angle * Math.PI / 180;
+    const axX = Math.sin(rad), axY = Math.cos(rad);
+    for (let r = 0; r < nRows; r++) {
+      const offset = r - (nRows - 1) / 2;
+      const ex = thumbInfo.center[0] + axX * offset * thumbInfo.padding;
+      const ey = thumbInfo.center[1] + axY * offset * thumbInfo.padding;
+      ergogenPreviewKeys.push({
+        col: 'thumb', label: 'Thumb', color: '#aaa',
+        row: r, rowName: `thumb${r}`,
+        x: ex * ppm, y: -ey * ppm,
+        angleDeg: thumbInfo.angle,
+      });
+    }
+  }
+
+  // Now validate: compare each ergogen preview key to its corresponding tapped position
+  COLUMNS.forEach(col => {
+    const tapped = positions[col.id];
+    if (tapped.length < 2) return;
+    const tappedSorted = tapped.slice().sort((a, b) => a.y - b.y);
+    const previewForCol = ergogenPreviewKeys.filter(k => k.col === col.id).sort((a, b) => a.y - b.y);
+
+    const nCompare = Math.min(tappedSorted.length, previewForCol.length);
+    for (let r = 0; r < nCompare; r++) {
+      const tap = tappedSorted[r];
+      const prev = previewForCol[r];
+      const dx = tap.x - prev.x;
+      const dy = tap.y - prev.y;
+      const distPx = Math.sqrt(dx * dx + dy * dy);
+      const distMm = distPx / ppm;
+
+      prev._tapDist = distMm;
+      prev._tapX = tap.x;
+      prev._tapY = tap.y;
+
+      if (distMm > 15 * 0.5) { // > 50% of keycap side
+        validationErrors.push({
+          type: 'position_mismatch',
+          keys: [
+            { x: tap.x, y: tap.y, col: col.id, label: col.label, rowIdx: r, color: col.color },
+            { x: prev.x, y: prev.y, col: col.id, label: col.label + ' (ergogen)', rowIdx: r, color: col.color }
+          ],
+          dist: distPx,
+          msg: `${col.label} row ${r + 1}: tap position differs from ergogen by ${distMm.toFixed(1)}mm (max 7.5mm)`
+        });
+      }
+    }
+  });
+}
+
 function drawCanvas() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   // Draw grid
@@ -1158,54 +1417,187 @@ function drawCanvas() {
   for (let x = 0; x < canvas.width; x += 50) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke(); }
   for (let y = 0; y < canvas.height; y += 50) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke(); }
 
+  // Run validation
+  validatePositions();
+
+  // Build set of error key positions for highlighting
+  const errorKeySet = new Set();
+  validationErrors.forEach(e => {
+    e.keys.forEach(k => errorKeySet.add(`${k.x},${k.y}`));
+  });
+  const warningKeySet = new Set();
+  validationWarnings.forEach(w => {
+    w.keys.forEach(k => warningKeySet.add(`${k.x},${k.y}`));
+  });
+
+  const ppm = currentScalePPM();
+  const rectHalf = 15 * ppm / 2; // half keycap size in pixels
+
   COLUMNS.forEach(col => {
     const pts = positions[col.id];
     if (!pts.length) return;
     const isActive = col.id === activeColumn;
-    // Draw points
+
+    // Draw key rectangles at ACTUAL tapped positions (not redistributed)
     pts.forEach(p => {
+      const hasError = errorKeySet.has(`${p.x},${p.y}`);
+      const hasWarning = !hasError && warningKeySet.has(`${p.x},${p.y}`);
+
+      // Key outline rectangle at tapped position
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      // Use column angle for rotation if available
+      if (pts.length >= 2) {
+        const { angle } = fitLine(pts);
+        ctx.rotate(angle * Math.PI / 180);
+      }
+      if (hasError) {
+        ctx.strokeStyle = '#ff3333';
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([]);
+      } else if (hasWarning) {
+        ctx.strokeStyle = '#ffaa00';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 3]);
+      } else {
+        ctx.strokeStyle = col.color + '66';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([]);
+      }
+      ctx.strokeRect(-rectHalf, -rectHalf, rectHalf * 2, rectHalf * 2);
+      // Valid indicator
+      if (!hasError && !hasWarning && pts.length >= 2) {
+        ctx.strokeStyle = '#33cc5588';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-rectHalf + 2, -rectHalf + 2, rectHalf * 2 - 4, rectHalf * 2 - 4);
+      }
+      ctx.restore();
+
+      // Tap point dot
       ctx.beginPath();
-      ctx.arc(p.x, p.y, isActive ? 10 : 7, 0, Math.PI * 2);
-      ctx.fillStyle = col.color + (isActive ? 'cc' : '66');
+      ctx.arc(p.x, p.y, isActive ? 8 : 5, 0, Math.PI * 2);
+      ctx.fillStyle = hasError ? '#ff3333cc' : (col.color + (isActive ? 'cc' : '66'));
       ctx.fill();
-      ctx.strokeStyle = col.color;
+      ctx.strokeStyle = hasError ? '#ff3333' : col.color;
       ctx.lineWidth = isActive ? 2 : 1;
+      ctx.setLineDash([]);
       ctx.stroke();
     });
-    // Draw trend line and key outlines if 2+ points
+
+    // Draw trend line if 2+ points
     if (pts.length >= 2) {
-      const { angle, cx, cy, distances } = fitLine(pts);
+      const { angle, cx, cy } = fitLine(pts);
       const rad = angle * Math.PI / 180;
-      // Trend line
       const axX = Math.sin(rad), axY = Math.cos(rad);
-      const len = 200;
+      const len = 150;
       ctx.beginPath();
       ctx.moveTo(cx - axX*len, cy - axY*len);
       ctx.lineTo(cx + axX*len, cy + axY*len);
-      ctx.strokeStyle = col.color + '44';
+      ctx.strokeStyle = col.color + '33';
       ctx.lineWidth = 1;
       ctx.setLineDash([5, 5]);
       ctx.stroke();
       ctx.setLineDash([]);
-      // Key outlines at fitted positions
-      const padding = distances.length ? distances.reduce((a,b)=>a+b,0)/distances.length : 40;
-      const sorted = pts.slice().sort((a,b) => a.y - b.y);
-      const nKeys = Math.min(sorted.length, 3);
-      const startOffset = -(nKeys-1)/2 * padding;
-      for (let k = 0; k < nKeys; k++) {
-        const off = startOffset + k * padding;
-        const kx = cx + axX * off;
-        const ky = cy + axY * off;
-        ctx.save();
-        ctx.translate(kx, ky);
-        ctx.rotate(rad);
-        ctx.strokeStyle = col.color + '88';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(-18, -18, 36, 36);
-        ctx.restore();
-      }
     }
   });
+
+  // Compute ergogen preview if enough data
+  computeErgogenPreview();
+
+  // Draw ergogen preview key positions (dashed outlines showing where ergogen places keys)
+  if (ergogenPreviewKeys.length > 0) {
+    ergogenPreviewKeys.forEach(pk => {
+      const hasMismatch = pk._tapDist !== undefined && pk._tapDist > 7.5;
+      ctx.save();
+      ctx.translate(pk.x, pk.y);
+      ctx.rotate(pk.angleDeg * Math.PI / 180);
+      ctx.strokeStyle = hasMismatch ? '#ff555588' : '#44ff4444';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([2, 3]);
+      ctx.strokeRect(-rectHalf, -rectHalf, rectHalf * 2, rectHalf * 2);
+      ctx.setLineDash([]);
+      // Small diamond marker at center
+      ctx.fillStyle = hasMismatch ? '#ff555566' : '#44ff4433';
+      ctx.beginPath();
+      ctx.moveTo(0, -3); ctx.lineTo(3, 0); ctx.lineTo(0, 3); ctx.lineTo(-3, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
+      // Draw arrow from ergogen position to tap position if mismatch
+      if (hasMismatch && pk._tapX !== undefined) {
+        ctx.beginPath();
+        ctx.moveTo(pk.x, pk.y);
+        ctx.lineTo(pk._tapX, pk._tapY);
+        ctx.strokeStyle = '#ff555566';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([2, 2]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    });
+  }
+
+  // Draw error lines between overlapping pairs
+  validationErrors.forEach(e => {
+    if (e.keys.length === 2) {
+      const [a, b] = e.keys;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.strokeStyle = '#ff333388';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([3, 3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // Midpoint label
+      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      const distMm = (e.dist / ppm).toFixed(1);
+      ctx.font = '11px -apple-system, sans-serif';
+      ctx.fillStyle = '#ff5555';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${distMm}mm`, mx, my - 6);
+    }
+  });
+
+  // Draw validation summary below toolbar
+  updateValidationDisplay();
+}
+
+function updateValidationDisplay() {
+  let msgEl = document.getElementById('validation-msg');
+  if (!msgEl) {
+    msgEl = document.createElement('div');
+    msgEl.id = 'validation-msg';
+    msgEl.style.cssText = 'padding:6px 12px;font-size:12px;line-height:1.5;max-height:80px;overflow-y:auto;';
+    const canvasWrap = document.querySelector('#page1 .canvas-wrap');
+    canvasWrap.parentElement.insertBefore(msgEl, canvasWrap);
+  }
+
+  const totalKeys = COLUMNS.reduce((sum, c) => sum + positions[c.id].length, 0);
+
+  if (validationErrors.length > 0) {
+    msgEl.style.background = '#3a1a1a';
+    msgEl.style.borderBottom = '1px solid #663333';
+    msgEl.style.color = '#ff8888';
+    const msgs = validationErrors.map(e => e.msg);
+    msgEl.innerHTML = `<strong>Position errors (${validationErrors.length}):</strong> ` + msgs.join(' | ');
+  } else if (validationWarnings.length > 0) {
+    msgEl.style.background = '#3a3a1a';
+    msgEl.style.borderBottom = '1px solid #666633';
+    msgEl.style.color = '#ffcc66';
+    const msgs = validationWarnings.map(w => w.msg);
+    msgEl.innerHTML = `<strong>Warnings (${validationWarnings.length}):</strong> ` + msgs.join(' | ');
+  } else if (totalKeys >= 2) {
+    msgEl.style.background = '#1a3a1a';
+    msgEl.style.borderBottom = '1px solid #336633';
+    msgEl.style.color = '#88cc88';
+    msgEl.innerHTML = `<strong>Layout OK</strong> — ${totalKeys} keys, no overlaps detected`;
+  } else {
+    msgEl.style.background = 'transparent';
+    msgEl.style.borderBottom = 'none';
+    msgEl.innerHTML = '';
+  }
 }
 
 
@@ -1215,7 +1607,8 @@ function drawCanvas() {
 
 let scene, camera, renderer, controls;
 let leftHalf, rightHalf, cablesGroup, hingeGroup, batteryGroup;
-let hingeX = 0, hingeZ = 0;
+let hingeX = 0, hingeZ = 0, hingeCenterY = 0;
+let clipPlaneLeft, clipPlaneRight;
 let page2Initialized = false;
 let explodedView = false, showLabels = false;
 let labelSprites = [];
@@ -1256,50 +1649,110 @@ function initPage2() {
 function generateWoodTexture(w, h) {
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   const g = c.getContext('2d');
-  // Base color
-  g.fillStyle = '#d2b88d'; g.fillRect(0, 0, w, h);
-  // Grain lines
-  for (let i = 0; i < 80; i++) {
-    const y = (i / 80) * h;
-    const lw = 0.4 + Math.random() * 1.2;
-    const shade = Math.floor(160 + Math.random() * 40);
-    g.strokeStyle = `rgba(${shade - 40}, ${shade - 60}, ${shade - 90}, ${0.15 + Math.random() * 0.2})`;
+
+  // Bamboo base: warm golden-tan gradient background
+  const bgGrad = g.createLinearGradient(0, 0, 0, h);
+  bgGrad.addColorStop(0, '#c9a86c');
+  bgGrad.addColorStop(0.3, '#d4b87a');
+  bgGrad.addColorStop(0.5, '#ccaa6e');
+  bgGrad.addColorStop(0.7, '#d0b474');
+  bgGrad.addColorStop(1, '#c4a064');
+  g.fillStyle = bgGrad;
+  g.fillRect(0, 0, w, h);
+
+  // Dense bamboo grain lines (many thin parallel lines with variation)
+  for (let i = 0; i < 200; i++) {
+    const y = (i / 200) * h + (Math.random() - 0.5) * 3;
+    const lw = 0.3 + Math.random() * 0.8;
+    // Alternate between darker and lighter grain lines
+    const isDark = Math.random() > 0.4;
+    const base = isDark ? 130 + Math.random() * 30 : 180 + Math.random() * 30;
+    const alpha = isDark ? 0.25 + Math.random() * 0.2 : 0.1 + Math.random() * 0.12;
+    g.strokeStyle = `rgba(${base - 20}, ${base - 40}, ${base - 70}, ${alpha})`;
     g.lineWidth = lw;
     g.beginPath();
-    for (let x = 0; x < w; x += 4) {
-      const wobble = Math.sin(x * 0.02 + i * 0.7) * 2 + Math.sin(x * 0.005 + i) * 4;
+    let phase = Math.random() * 10;
+    for (let x = 0; x < w; x += 2) {
+      const wobble = Math.sin(x * 0.015 + phase) * 1.5 + Math.sin(x * 0.003 + i * 0.3) * 3;
       if (x === 0) g.moveTo(x, y + wobble); else g.lineTo(x, y + wobble);
     }
     g.stroke();
   }
-  // Knots (sparse)
-  for (let k = 0; k < 3; k++) {
-    const kx = Math.random() * w, ky = Math.random() * h;
-    const grad = g.createRadialGradient(kx, ky, 0, kx, ky, 8 + Math.random() * 6);
-    grad.addColorStop(0, 'rgba(120, 80, 40, 0.3)');
-    grad.addColorStop(1, 'rgba(120, 80, 40, 0)');
-    g.fillStyle = grad; g.fillRect(kx - 15, ky - 15, 30, 30);
+
+  // Bamboo node lines (horizontal darker bands, characteristic of bamboo)
+  const nNodes = 3 + Math.floor(Math.random() * 3);
+  for (let n = 0; n < nNodes; n++) {
+    const ny = (n + 0.5 + (Math.random() - 0.5) * 0.3) / nNodes * h;
+    const nodeW = 2 + Math.random() * 3;
+    g.fillStyle = `rgba(140, 100, 50, ${0.15 + Math.random() * 0.1})`;
+    g.fillRect(0, ny - nodeW / 2, w, nodeW);
+    // Lighter line above node
+    g.fillStyle = `rgba(220, 200, 150, 0.08)`;
+    g.fillRect(0, ny - nodeW / 2 - 2, w, 2);
   }
+
+  // Color variation patches (natural bamboo has subtle tonal shifts)
+  for (let p = 0; p < 8; p++) {
+    const px = Math.random() * w, py = Math.random() * h;
+    const pr = 40 + Math.random() * 80;
+    const grad = g.createRadialGradient(px, py, 0, px, py, pr);
+    const tone = Math.random() > 0.5 ? 'rgba(200, 170, 100, 0.06)' : 'rgba(160, 120, 60, 0.06)';
+    grad.addColorStop(0, tone);
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    g.fillStyle = grad;
+    g.fillRect(px - pr, py - pr, pr * 2, pr * 2);
+  }
+
+  // Small dark specks (natural fiber texture)
+  for (let s = 0; s < 120; s++) {
+    const sx = Math.random() * w, sy = Math.random() * h;
+    g.fillStyle = `rgba(100, 70, 30, ${0.08 + Math.random() * 0.08})`;
+    g.fillRect(sx, sy, 1 + Math.random(), 0.5 + Math.random() * 1.5);
+  }
+
   const tex = new THREE.CanvasTexture(c);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  // Roughness map: invert brightness
-  const rc = document.createElement('canvas'); rc.width = 128; rc.height = 128;
+
+  // Normal map for surface relief
+  const nc = document.createElement('canvas'); nc.width = 256; nc.height = 256;
+  const ng = nc.getContext('2d');
+  ng.fillStyle = '#8080ff'; ng.fillRect(0, 0, 256, 256); // neutral normal
+  for (let i = 0; i < 150; i++) {
+    const ny = (i / 150) * 256;
+    const alpha = 0.03 + Math.random() * 0.04;
+    // Slight perturbation in normals along grain
+    const nShade = Math.random() > 0.5 ? 135 : 120;
+    ng.strokeStyle = `rgba(${nShade}, ${nShade}, 255, ${alpha})`;
+    ng.lineWidth = 0.5 + Math.random() * 0.8;
+    ng.beginPath();
+    for (let x = 0; x < 256; x += 3) {
+      const wb = Math.sin(x * 0.02 + i * 0.5) * 1;
+      if (x === 0) ng.moveTo(x, ny + wb); else ng.lineTo(x, ny + wb);
+    }
+    ng.stroke();
+  }
+  const normalTex = new THREE.CanvasTexture(nc);
+  normalTex.wrapS = normalTex.wrapT = THREE.RepeatWrapping;
+
+  // Roughness map: bamboo has moderate roughness with grain variation
+  const rc = document.createElement('canvas'); rc.width = 256; rc.height = 256;
   const rg = rc.getContext('2d');
-  rg.fillStyle = '#999'; rg.fillRect(0, 0, 128, 128);
-  for (let i = 0; i < 50; i++) {
-    rg.strokeStyle = `rgba(180, 180, 180, 0.15)`;
-    rg.lineWidth = 0.5 + Math.random();
+  rg.fillStyle = '#888'; rg.fillRect(0, 0, 256, 256); // base roughness ~0.53
+  for (let i = 0; i < 100; i++) {
+    const isDark = Math.random() > 0.5;
+    rg.strokeStyle = isDark ? `rgba(120, 120, 120, 0.15)` : `rgba(170, 170, 170, 0.12)`;
+    rg.lineWidth = 0.5 + Math.random() * 1.0;
     rg.beginPath();
-    const y = (i / 50) * 128;
-    for (let x = 0; x < 128; x += 3) {
-      const wb = Math.sin(x * 0.03 + i) * 1.5;
-      if (x === 0) rg.moveTo(x, y + wb); else rg.lineTo(x, y + wb);
+    const ry = (i / 100) * 256;
+    for (let x = 0; x < 256; x += 3) {
+      const wb = Math.sin(x * 0.025 + i * 0.7) * 1.2;
+      if (x === 0) rg.moveTo(x, ry + wb); else rg.lineTo(x, ry + wb);
     }
     rg.stroke();
   }
   const roughTex = new THREE.CanvasTexture(rc);
   roughTex.wrapS = roughTex.wrapT = THREE.RepeatWrapping;
-  return { map: tex, roughnessMap: roughTex };
+  return { map: tex, roughnessMap: roughTex, normalMap: normalTex };
 }
 
 function generateCorkTexture(w, h) {
@@ -1495,8 +1948,9 @@ function build3DScene() {
 
   // ── PBR Materials (Apple-quality finishes) ──
   const bambooMat = new THREE.MeshStandardMaterial({
-    map: woodTex.map, roughnessMap: woodTex.roughnessMap,
-    roughness: 0.55, metalness: 0.0, envMapIntensity: 0.3
+    map: woodTex.map, roughnessMap: woodTex.roughnessMap, normalMap: woodTex.normalMap,
+    normalScale: new THREE.Vector2(0.3, 0.3),
+    roughness: 0.5, metalness: 0.0, envMapIntensity: 0.4
   });
   const bambooSideMat = bambooMat.clone();
   const corkMat = new THREE.MeshStandardMaterial({ map: corkTex.map, roughness: 0.95, metalness: 0.0 });
@@ -1602,6 +2056,7 @@ function build3DScene() {
   const center = new THREE.Vector3(); bbox.getCenter(center);
   hingeX = center.x;
   hingeZ = center.z;
+  hingeCenterY = center.y;
 
   // ── PCB texture ──
   const pcbTex = generatePCBTexture(1024, 1024, ergogenResults.points, bbox);
@@ -1834,8 +2289,8 @@ function build3DScene() {
   leftHalf = new THREE.Group();
   rightHalf = new THREE.Group();
 
-  const clipLeft = new THREE.Plane(new THREE.Vector3(1, 0, 0), -hingeX);
-  const clipRight = new THREE.Plane(new THREE.Vector3(-1, 0, 0), hingeX);
+  clipPlaneLeft = new THREE.Plane(new THREE.Vector3(1, 0, 0), -hingeX);
+  clipPlaneRight = new THREE.Plane(new THREE.Vector3(-1, 0, 0), hingeX);
 
   function cloneToHalf(src, clipPlane, target) {
     src.children.forEach(child => {
@@ -1850,8 +2305,8 @@ function build3DScene() {
       target.add(c);
     });
   }
-  cloneToHalf(boardGroup, clipLeft, leftHalf);
-  cloneToHalf(boardGroup, clipRight, rightHalf);
+  cloneToHalf(boardGroup, clipPlaneLeft, leftHalf);
+  cloneToHalf(boardGroup, clipPlaneRight, rightHalf);
   scene.add(leftHalf);
   scene.add(rightHalf);
 
@@ -2061,24 +2516,76 @@ function updateKeyPresses() {
 function applyFold(angleDeg) {
   if (!leftHalf || !rightHalf) return;
   const halfRad = (angleDeg * Math.PI / 180) / 2;
+  const pivot = new THREE.Vector3(hingeX, hingeCenterY, hingeZ);
+  const yAxis = new THREE.Vector3(0, 1, 0);
 
-  // Reset transforms
-  leftHalf.position.set(0, 0, 0); leftHalf.quaternion.identity();
-  rightHalf.position.set(0, 0, 0); rightHalf.quaternion.identity();
-
+  // Left half: rotate outward (positive angle around Y from hinge)
+  leftHalf.position.set(0, 0, 0);
+  leftHalf.quaternion.identity();
   if (angleDeg > 0) {
-    const pivot = new THREE.Vector3(hingeX, 0, hingeZ);
-    const yAxis = new THREE.Vector3(0, 1, 0);
+    // Translate so pivot is at origin, rotate, translate back
+    const leftOffset = new THREE.Vector3(-hingeX, -hingeCenterY, -hingeZ);
+    leftHalf.position.copy(leftOffset.clone().applyAxisAngle(yAxis, halfRad).sub(leftOffset));
+    leftHalf.quaternion.setFromAxisAngle(yAxis, halfRad);
+  }
 
-    leftHalf.position.sub(pivot);
-    leftHalf.position.applyAxisAngle(yAxis, halfRad);
-    leftHalf.position.add(pivot);
-    leftHalf.rotateOnWorldAxis(yAxis, halfRad);
+  // Right half: rotate the other way
+  rightHalf.position.set(0, 0, 0);
+  rightHalf.quaternion.identity();
+  if (angleDeg > 0) {
+    const rightOffset = new THREE.Vector3(-hingeX, -hingeCenterY, -hingeZ);
+    rightHalf.position.copy(rightOffset.clone().applyAxisAngle(yAxis, -halfRad).sub(rightOffset));
+    rightHalf.quaternion.setFromAxisAngle(yAxis, -halfRad);
+  }
 
-    rightHalf.position.sub(pivot);
-    rightHalf.position.applyAxisAngle(yAxis, -halfRad);
-    rightHalf.position.add(pivot);
-    rightHalf.rotateOnWorldAxis(yAxis, -halfRad);
+  // Articulate hinge components
+  if (hingeGroup) {
+    hingeGroup.children.forEach(child => {
+      // Reset to stored original position
+      if (!child.userData._origPos) {
+        child.userData._origPos = child.position.clone();
+        child.userData._origQuat = child.quaternion.clone();
+      }
+      child.position.copy(child.userData._origPos);
+      child.quaternion.copy(child.userData._origQuat);
+    });
+
+    if (angleDeg > 0) {
+      hingeGroup.children.forEach(child => {
+        const origX = child.userData._origPos.x;
+        // Left-side hinge parts rotate with left half
+        if (origX < hingeX - 2) {
+          // Move relative to pivot, apply rotation, move back
+          const p = child.position.clone().sub(pivot);
+          p.applyAxisAngle(yAxis, halfRad);
+          child.position.copy(p.add(pivot));
+          const q = new THREE.Quaternion().setFromAxisAngle(yAxis, halfRad);
+          child.quaternion.premultiply(q);
+        }
+        // Right-side hinge parts rotate with right half
+        else if (origX > hingeX + 2) {
+          const p = child.position.clone().sub(pivot);
+          p.applyAxisAngle(yAxis, -halfRad);
+          child.position.copy(p.add(pivot));
+          const q = new THREE.Quaternion().setFromAxisAngle(yAxis, -halfRad);
+          child.quaternion.premultiply(q);
+        }
+        // Center parts (barrel, ball) stay at hinge center
+      });
+    }
+  }
+
+  // Update clipping planes to rotate with the halves
+  if (clipPlaneLeft && clipPlaneRight) {
+    // Left clip plane: normal (1,0,0) rotated by halfRad around Y
+    const leftNormal = new THREE.Vector3(1, 0, 0).applyAxisAngle(yAxis, halfRad);
+    clipPlaneLeft.normal.copy(leftNormal);
+    clipPlaneLeft.constant = -leftNormal.dot(pivot);
+
+    // Right clip plane: normal (-1,0,0) rotated by -halfRad around Y
+    const rightNormal = new THREE.Vector3(-1, 0, 0).applyAxisAngle(yAxis, -halfRad);
+    clipPlaneRight.normal.copy(rightNormal);
+    clipPlaneRight.constant = -rightNormal.dot(pivot);
   }
 
   // Cables only visible when flat
