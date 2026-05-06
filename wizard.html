@@ -386,9 +386,27 @@ function fitLine(points, isThumb = false) {
 
 function analyzeColumn(points, isThumb = false) {
   if (!points || !points.length) return null;
-  const { angle, cx, cy, distances } = fitLine(points, isThumb);
-  const padding = distances.length ? distances.reduce((a,b)=>a+b,0)/distances.length : 18.0;
-  return { center: [cx, cy], angle, padding, nKeys: points.length };
+  const { angle, cx, cy, m, b, distances } = fitLine(points, isThumb);
+  if (points.length < 2) {
+    return { center: [cx, cy], angle, padding: 18.0, nKeys: points.length };
+  }
+  // Use tap-spread CoG placement: project all points onto the regression line,
+  // compute center of gravity of upper/lower halves, derive padding from that.
+  // This matches the drawCanvas algorithm exactly.
+  const dirLen = Math.sqrt(1 + m * m);
+  const projections = points.map(p => projectPointToLine(m, -1, b, p.x, p.y));
+  const projScalars = projections.map(p => p.x / dirLen + p.y * m / dirLen);
+  const minProj = Math.min(...projScalars);
+  const maxProj = Math.max(...projScalars);
+  const midProj = (minProj + maxProj) / 2;
+  const halfSpan = (maxProj - minProj) / 2;
+  const upperScalars = projScalars.filter(s => s >= midProj);
+  const lowerScalars = projScalars.filter(s => s < midProj);
+  const avgUpper = upperScalars.length ? upperScalars.reduce((a, b) => a + b, 0) / upperScalars.length : midProj + halfSpan;
+  const avgLower = lowerScalars.length ? lowerScalars.reduce((a, b) => a + b, 0) / lowerScalars.length : midProj - halfSpan;
+  // Padding = half the span between lower and upper CoG (since 3 keys, 2 gaps)
+  const padding = (avgUpper - avgLower) / 2;
+  return { center: [cx, cy], angle, padding: padding > 0.01 ? padding : 18.0, nKeys: points.length };
 }
 
 function estimateScale(data, keySpacing) {
@@ -1525,76 +1543,66 @@ function drawCanvas() {
 
     if (pts.length < 2) return;
 
-    // ── Compute 3 key positions using the SAME algorithm as ergopadToErgogen ──
-    // This ensures stage 1 preview matches stage 2 render exactly.
-    // 1. Y-flip and scale to mm (same as ergopadToErgogen)
-    const scaledPts = pts.map(p => ({ x: p.x / ppm, y: -p.y / ppm }));
-    // 2. analyzeColumn in mm space
-    const info = analyzeColumn(scaledPts, isThumb);
-    if (!info) return;
-    const nRows = Math.min(info.nKeys, 3);
-    const rad = info.angle * Math.PI / 180;
-    const axX = Math.sin(rad), axY = Math.cos(rad);
-
-    // 3. Compute key positions in mm, then convert back to canvas pixels
-    const keyPositions = [];
-    for (let r = 0; r < nRows; r++) {
-      const offset = r - (nRows - 1) / 2;
-      const ex = info.center[0] + axX * offset * info.padding; // mm
-      const ey = info.center[1] + axY * offset * info.padding; // mm
-      // Convert back to canvas: undo scale, undo Y-flip
-      keyPositions.push({ x: ex * ppm, y: -ey * ppm });
-    }
-
-    // Draw regression line through the key positions
-    if (keyPositions.length >= 2) {
-      const first = keyPositions[0], last = keyPositions[keyPositions.length - 1];
-      const dx = last.x - first.x, dy = last.y - first.y;
-      const len = Math.sqrt(dx * dx + dy * dy);
-      if (len > 0.1) {
-        const ext = 40; // extend line beyond keys
-        const nx = dx / len, ny = dy / len;
-        ctx.beginPath();
-        ctx.moveTo(first.x - nx * ext, first.y - ny * ext);
-        ctx.lineTo(last.x + nx * ext, last.y + ny * ext);
-        ctx.strokeStyle = col.color + '33';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([5, 5]);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
-    }
-
-    // Draw projected points on the regression line (small red dots)
+    // Least-squares regression line through all taps (ergopad algorithm)
     const fit = fitLine(pts, isThumb);
-    pts.forEach(p => {
-      const proj = projectPointToLine(fit.m, -1, fit.b, p.x, p.y);
+    const m = fit.m, b = fit.b;
+    const dirLen = Math.sqrt(1 + m * m);
+
+    // Project all taps onto the regression line
+    const projections = pts.map(p => projectPointToLine(m, -1, b, p.x, p.y));
+    // Scalar projection along the line direction (signed distance from origin)
+    const projScalars = projections.map(p => p.x / dirLen + p.y * m / dirLen);
+    const minProj = Math.min(...projScalars);
+    const maxProj = Math.max(...projScalars);
+    const midProj = (minProj + maxProj) / 2;
+    const halfSpan = (maxProj - minProj) / 2;
+
+    // Draw regression line
+    const lineLen = halfSpan + 60;
+    const ldx = lineLen / dirLen, ldy = lineLen * m / dirLen;
+    ctx.beginPath();
+    ctx.moveTo(fit.cx - ldx, fit.cy - ldy);
+    ctx.lineTo(fit.cx + ldx, fit.cy + ldy);
+    ctx.strokeStyle = col.color + '33';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 5]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Draw projected points on the line (small red dots, like ergopad aux lines)
+    projections.forEach(p => {
       ctx.beginPath();
-      ctx.arc(proj.x, proj.y, 3, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
       ctx.fillStyle = '#ff000044';
       ctx.fill();
     });
 
-    // 4. Draw key rectangles at the computed positions.
-    // Rotation: same angle as analyzeColumn but in canvas space (Y-flipped).
-    // In mm space the axis angle is info.angle (degrees from vertical).
-    // In canvas space (Y down), the angle negates, so rotation = -info.angle.
-    // Canvas rotate: PI/2 + atan(m_canvas) where m_canvas slope in canvas space.
-    // Since the regression was done in mm (Y-up), and we flip back, the canvas
-    // slope is negated: m_canvas = -m_mm. The angle in canvas space = -info.angle.
-    // For ctx.rotate, we want rectangle edges perpendicular to the key column axis.
-    // The axis direction in canvas space points from keyPositions[0] to keyPositions[2].
-    // Rotation = atan2(dy, dx) rotates local +X to align with axis, so +Y is perpendicular.
-    let rotation = 0;
-    if (keyPositions.length >= 2) {
-      const first = keyPositions[0], last = keyPositions[keyPositions.length - 1];
-      rotation = Math.atan2(last.y - first.y, last.x - first.x);
-    }
+    // Place 3 keys along the regression line using tap positions:
+    // - Center key at the midpoint (center of projected range, like ergopad)
+    // - Top and bottom keys at the centers of gravity of the upper/lower halves
+    //   of the projected points. If the span is too small, fall back to even spacing.
+    // This way adding distant taps spreads the keys out naturally.
+    const upperScalars = projScalars.filter(s => s >= midProj);
+    const lowerScalars = projScalars.filter(s => s < midProj);
+    const avgUpper = upperScalars.length ? upperScalars.reduce((a, b) => a + b, 0) / upperScalars.length : midProj + halfSpan;
+    const avgLower = lowerScalars.length ? lowerScalars.reduce((a, b) => a + b, 0) / lowerScalars.length : midProj - halfSpan;
 
-    for (let k = 0; k < keyPositions.length; k++) {
-      const kp = keyPositions[k];
+    // The 3 key positions as scalar projections along the line
+    const nKeys = 3;
+    const keyScalars = [avgLower, midProj, avgUpper];
+
+    // Rotation: perpendicular to regression line, matching ergopad:
+    // group.rotation = Math.PI / 2 + Math.atan(trendline.m)
+    const rotation = Math.PI / 2 + Math.atan(m);
+
+    // Draw exactly 3 switch rectangles
+    for (let k = 0; k < nKeys; k++) {
+      const ds = keyScalars[k] - midProj;
+      const px = fit.cx + ds / dirLen;
+      const py = fit.cy + ds * m / dirLen;
+
       ctx.save();
-      ctx.translate(kp.x, kp.y);
+      ctx.translate(px, py);
       ctx.rotate(rotation);
       ctx.strokeStyle = col.color + '88';
       ctx.lineWidth = 1.5;
@@ -1603,9 +1611,6 @@ function drawCanvas() {
       ctx.restore();
     }
   });
-
-  // Stage 1 rectangles now use the exact same algorithm as ergopadToErgogen,
-  // so the separate ergogen preview overlay is no longer needed.
 
   // Draw error lines between overlapping pairs
   validationErrors.forEach(e => {
