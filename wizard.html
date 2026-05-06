@@ -110,8 +110,11 @@ header { display: flex; align-items: center; justify-content: space-between; pad
   <div class="canvas-wrap">
     <canvas id="tap-canvas"></canvas>
     <div class="canvas-hint" id="canvas-hint">
-      Select a finger column above, then<br>tap 3 positions: bottom, home, top row
+      Place your LEFT hand flat on the screen (or trackpad).<br>
+      Select a finger column above, then tap 3 key positions:<br>
+      bottom row, home row, top row.
     </div>
+    <div style="position:absolute;top:12px;left:16px;color:#555;font-size:13px;font-weight:600;letter-spacing:1px;pointer-events:none;">LEFT HAND</div>
   </div>
 </div>
 
@@ -122,6 +125,9 @@ header { display: flex; align-items: center; justify-content: space-between; pad
     <label><input type="checkbox" id="show-cables" checked> Cables</label>
     <label><input type="checkbox" id="show-hinge" checked> Hinge</label>
     <label><input type="checkbox" id="show-battery" checked> Battery</label>
+    <div style="width:1px;height:20px;background:#444;margin:0 4px;"></div>
+    <label><input type="checkbox" id="show-exploded"> Exploded View</label>
+    <label><input type="checkbox" id="show-labels"> Labels</label>
   </div>
   <div id="viewport">
     <div id="loading">Processing layout...</div>
@@ -1208,9 +1214,12 @@ function drawCanvas() {
 // ══════════════════════════════════════════════════════════════════
 
 let scene, camera, renderer, controls;
-let leftGroup, rightGroup, cablesGroup, hingeGroup, batteryGroup;
-let hingeX = 0, hingeZ = 2.5;
+let leftHalf, rightHalf, cablesGroup, hingeGroup, batteryGroup;
+let hingeX = 0, hingeZ = 0;
 let page2Initialized = false;
+let explodedView = false, showLabels = false;
+let labelSprites = [];
+let groundPlane;
 // Key press state
 const pressedKeys = new Map();
 const PRESS_DEPTH = 1.8, PRESS_DOWN_MS = 80, PRESS_UP_MS = 140;
@@ -1218,6 +1227,10 @@ let keycapMeshL = null, keycapMeshR = null;
 let keycapBaseL = null, keycapBaseR = null;
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
+let hoveredObj = null;
+
+// Layer Z positions (set during build3DScene, used by exploded view)
+let Z_SWITCH_PLATE = 0, Z_CORK_UPPER = 0, Z_PCB = 0, Z_CORK_LOWER = 0;
 
 function initPage2() {
   const loading = document.getElementById('loading');
@@ -1381,7 +1394,7 @@ function roundedRectShape(w, h, r) {
   return s;
 }
 
-// ── Build main 3D scene ──
+// ── Build main 3D scene (complete rewrite) ──
 
 function build3DScene() {
   const viewport = document.getElementById('viewport');
@@ -1389,38 +1402,63 @@ function build3DScene() {
 
   const w = viewport.clientWidth, h = viewport.clientHeight;
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x1a1a1a);
+  scene.background = new THREE.Color(0x0d0d0f);
 
-  // Renderer with PBR settings
+  // ── Renderer: PBR, shadows, high quality ──
   renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   renderer.setSize(w, h);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.2;
+  renderer.toneMappingExposure = 1.0;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.localClippingEnabled = true;
   viewport.appendChild(renderer.domElement);
 
-  // Environment map for metallic reflections
+  // ── Environment for metallic reflections ──
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   pmrem.dispose();
 
-  // Camera
-  camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 2000);
+  // ── Camera ──
+  camera = new THREE.PerspectiveCamera(35, w / h, 0.1, 5000);
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
-  controls.dampingFactor = 0.08;
+  controls.dampingFactor = 0.06;
+  controls.minDistance = 50;
+  controls.maxDistance = 1200;
 
-  // Lighting: 3-point + hemisphere
-  scene.add(new THREE.AmbientLight(0xccddff, 0.25));
-  const keyLight = new THREE.DirectionalLight(0xfff5e6, 1.0);
-  keyLight.position.set(80, -60, 150); scene.add(keyLight);
-  const fillLight = new THREE.DirectionalLight(0xe6eeff, 0.35);
-  fillLight.position.set(-60, 40, 80); scene.add(fillLight);
-  const rimLight = new THREE.DirectionalLight(0xffffff, 0.25);
-  rimLight.position.set(0, 80, -40); scene.add(rimLight);
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 0.15));
+  // ── Lighting: soft studio setup with contact shadows ──
+  const hemi = new THREE.HemisphereLight(0xc8d4f0, 0x2a2a30, 0.4);
+  scene.add(hemi);
+
+  const keyLight = new THREE.DirectionalLight(0xfff5e0, 1.4);
+  keyLight.position.set(120, -80, 250);
+  keyLight.castShadow = true;
+  keyLight.shadow.mapSize.set(2048, 2048);
+  keyLight.shadow.camera.near = 1;
+  keyLight.shadow.camera.far = 800;
+  keyLight.shadow.camera.left = -250;
+  keyLight.shadow.camera.right = 250;
+  keyLight.shadow.camera.top = 250;
+  keyLight.shadow.camera.bottom = -250;
+  keyLight.shadow.bias = -0.001;
+  keyLight.shadow.radius = 4;
+  scene.add(keyLight);
+
+  const fillLight = new THREE.DirectionalLight(0xd0e0ff, 0.5);
+  fillLight.position.set(-100, 60, 120);
+  scene.add(fillLight);
+
+  const rimLight = new THREE.DirectionalLight(0xffffff, 0.3);
+  rimLight.position.set(0, 120, -80);
+  scene.add(rimLight);
+
+  // Subtle warm accent from below
+  const underLight = new THREE.PointLight(0xffcc88, 0.15, 400);
+  underLight.position.set(0, 0, -30);
+  scene.add(underLight);
 
   // ── Parse SVGs ──
   const boardSvg = ergogenResults.outlines.board.svg;
@@ -1432,147 +1470,216 @@ function build3DScene() {
   loader.parse(switchSvg).paths.forEach(p => switchShapes.push(...SVGLoader.createShapes(p)));
   if (!boardShapes.length) { console.error('No board shapes'); return; }
 
-  // Build switch plate shape (board with switch cutouts as holes)
+  // Build switch plate shape (board outline with switch cutouts subtracted)
   const switchPlateShapes = [];
   loader.parse(boardSvg).paths.forEach(p => {
-    const shapes = SVGLoader.createShapes(p);
-    shapes.forEach(s => {
-      switchShapes.forEach(cutout => {
-        const pts = cutout.getPoints(4);
-        s.holes.push(new THREE.Path(pts));
-      });
+    SVGLoader.createShapes(p).forEach(s => {
+      switchShapes.forEach(cutout => s.holes.push(new THREE.Path(cutout.getPoints(4))));
       switchPlateShapes.push(s);
     });
   });
 
-  // ── Generate textures ──
-  const woodTex = generateWoodTexture(512, 512);
-  const corkTex = generateCorkTexture(256, 256);
-  const metalTex = generateBrushedMetalTexture(256, 512);
+  // Frame shape (slightly larger than board, for wooden surround)
+  let frameSvg = null;
+  if (ergogenResults.outlines.frame) frameSvg = ergogenResults.outlines.frame.svg;
+  const frameShapes = [];
+  if (frameSvg) {
+    loader.parse(frameSvg).paths.forEach(p => frameShapes.push(...SVGLoader.createShapes(p)));
+    // Subtract board from frame to make surround
+  }
 
-  // ── PBR Materials ──
-  const bambooMat = new THREE.MeshStandardMaterial({ map: woodTex.map, roughnessMap: woodTex.roughnessMap, roughness: 0.65, metalness: 0.0 });
+  // ── Textures ──
+  const woodTex = generateWoodTexture(1024, 1024);
+  const corkTex = generateCorkTexture(512, 512);
+  const metalTex = generateBrushedMetalTexture(512, 1024);
+
+  // ── PBR Materials (Apple-quality finishes) ──
+  const bambooMat = new THREE.MeshStandardMaterial({
+    map: woodTex.map, roughnessMap: woodTex.roughnessMap,
+    roughness: 0.55, metalness: 0.0, envMapIntensity: 0.3
+  });
+  const bambooSideMat = bambooMat.clone();
   const corkMat = new THREE.MeshStandardMaterial({ map: corkTex.map, roughness: 0.95, metalness: 0.0 });
-  const steelMat = new THREE.MeshStandardMaterial({ map: metalTex.map, roughness: 0.3, metalness: 0.85, envMapIntensity: 1.0 });
-  const brassMat = new THREE.MeshStandardMaterial({ color: 0xb5a642, roughness: 0.35, metalness: 0.92 });
-  const copperMat = new THREE.MeshStandardMaterial({ color: 0xb87333, roughness: 0.4, metalness: 0.9 });
-  const keycapMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.82, metalness: 0.0 });
-  const switchMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.5, metalness: 0.0, transparent: true, opacity: 0.75 });
-  const diodeMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.6, metalness: 0.1 });
-  const battMat = new THREE.MeshStandardMaterial({ color: 0x2244aa, roughness: 0.6, metalness: 0.1 });
-  const blackMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.7, metalness: 0.0 });
-  const redMat = new THREE.MeshStandardMaterial({ color: 0xdd3333, roughness: 0.5, metalness: 0.2 });
-  const goldMat = new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.3, metalness: 0.9 });
-  const nanoPcbMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.7, metalness: 0.1 });
+  const steelMat = new THREE.MeshStandardMaterial({
+    map: metalTex.map, roughness: 0.25, metalness: 0.9, envMapIntensity: 1.2
+  });
+  const brassMat = new THREE.MeshStandardMaterial({ color: 0xb5a642, roughness: 0.3, metalness: 0.95, envMapIntensity: 1.0 });
+  const copperMat = new THREE.MeshStandardMaterial({ color: 0xb87333, roughness: 0.35, metalness: 0.92 });
+
+  // Keycap: very slightly warm dark grey, soft-touch feel
+  const keycapMat = new THREE.MeshStandardMaterial({ color: 0x303032, roughness: 0.78, metalness: 0.0 });
+  const keycapHoverMat = new THREE.MeshStandardMaterial({ color: 0x404045, roughness: 0.7, metalness: 0.0, emissive: 0x1a1a2a, emissiveIntensity: 0.5 });
+  const switchMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1e, roughness: 0.45, metalness: 0.0 });
+  const diodeMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5, metalness: 0.15 });
+  const battMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.55, metalness: 0.1 });
+  const blackMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.6, metalness: 0.0 });
+  const redMat = new THREE.MeshStandardMaterial({ color: 0xcc2222, roughness: 0.4, metalness: 0.2 });
+  const goldMat = new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.25, metalness: 0.95 });
+
+  // nice!nano PCB: dark black with slight sheen
+  const nanoPcbMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.6, metalness: 0.15 });
+
+  // USB-C port: chrome
+  const chromeMat = new THREE.MeshStandardMaterial({ color: 0xd0d0d0, roughness: 0.15, metalness: 0.98, envMapIntensity: 1.5 });
+
+  // Cable: dark braided steel
+  const cableMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.35, metalness: 0.7 });
+
+  // ── Layer stack thicknesses (mm) ──
+  const Z_BOTTOM = 0;
+  const T_BOTTOM_PLATE = 1.0;     // bamboo bottom plate
+  const T_CORK_LOWER = 0.5;       // cork gasket
+  const T_PCB = 1.6;              // FR-4 PCB
+  const T_CORK_UPPER = 0.5;       // cork gasket
+  const T_SWITCH_PLATE = 1.2;     // bamboo switch plate
+  const T_FRAME = T_BOTTOM_PLATE + T_CORK_LOWER + T_PCB + T_CORK_UPPER + T_SWITCH_PLATE; // 4.8mm
+
+  Z_CORK_LOWER = Z_BOTTOM + T_BOTTOM_PLATE;
+  Z_PCB = Z_CORK_LOWER + T_CORK_LOWER;
+  Z_CORK_UPPER = Z_PCB + T_PCB;
+  Z_SWITCH_PLATE = Z_CORK_UPPER + T_CORK_UPPER;
+  const Z_SWITCH_PLATE_TOP = Z_SWITCH_PLATE + T_SWITCH_PLATE;
+  const Z_SWITCH_BASE = Z_SWITCH_PLATE_TOP;
+  const Z_KEYCAP = Z_SWITCH_BASE + 3.5;
+  const Z_STEM = Z_SWITCH_BASE + 2.5;
+  const Z_PCB_TOP = Z_PCB + T_PCB;
+  const Z_DIODE = Z_PCB_TOP + 0.6;
 
   // ── Extrude helper ──
-  function extrudeLayer(shapes, depth, material, zOff) {
+  function extrudeLayer(shapes, depth, material, zOff, bevel) {
     const grp = new THREE.Group();
+    const opts = { depth, bevelEnabled: !!bevel, ...(bevel || {}) };
     shapes.forEach(shape => {
-      const geo = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false });
+      const geo = new THREE.ExtrudeGeometry(shape, opts);
       const m = new THREE.Mesh(geo, material);
       m.position.z = zOff;
+      m.castShadow = true;
+      m.receiveShadow = true;
       grp.add(m);
     });
     return grp;
   }
 
-  // ── Build layer stack ──
-  // Z=0 bottom, layers stack upward
+  // ── Build complete keyboard (both halves as one group, then split) ──
   const boardGroup = new THREE.Group();
-  boardGroup.add(extrudeLayer(boardShapes, 2.0, bambooMat, 0));        // bottom plate (bamboo 2mm)
-  boardGroup.add(extrudeLayer(boardShapes, 0.5, corkMat, 2.0));        // cork gasket
-  // PCB layer needs texture based on bbox
-  const pcbLayer = extrudeLayer(boardShapes, 1.6, corkMat, 2.5); // placeholder, replaced below
-  boardGroup.add(pcbLayer);
-  boardGroup.add(extrudeLayer(boardShapes, 0.5, corkMat, 4.1));        // cork gasket upper
-  boardGroup.add(extrudeLayer(switchPlateShapes, 1.2, bambooMat.clone(), 4.6)); // switch plate with holes
 
-  // Compute bbox for PCB texture and scene layout
+  // Bottom plate — bamboo 1mm with chamfer
+  boardGroup.add(extrudeLayer(boardShapes, T_BOTTOM_PLATE, bambooMat, Z_BOTTOM,
+    { bevelEnabled: true, bevelThickness: 0.3, bevelSize: 0.3, bevelSegments: 2 }));
+
+  // Cork gasket lower
+  boardGroup.add(extrudeLayer(boardShapes, T_CORK_LOWER, corkMat, Z_CORK_LOWER));
+
+  // PCB (FR-4 green) — placeholder, material replaced after bbox calc
+  const pcbLayer = extrudeLayer(boardShapes, T_PCB, corkMat, Z_PCB);
+  boardGroup.add(pcbLayer);
+
+  // Cork gasket upper
+  boardGroup.add(extrudeLayer(boardShapes, T_CORK_UPPER, corkMat, Z_CORK_UPPER));
+
+  // Switch plate — bamboo with cutouts + chamfer
+  boardGroup.add(extrudeLayer(switchPlateShapes, T_SWITCH_PLATE, bambooSideMat, Z_SWITCH_PLATE,
+    { bevelEnabled: true, bevelThickness: 0.2, bevelSize: 0.2, bevelSegments: 1 }));
+
+  // Frame surround (wooden walls around the edge)
+  if (frameShapes.length) {
+    // Frame is the larger outline; we subtract the board from it to get the surround
+    const frameWithHoleShapes = [];
+    loader.parse(frameSvg).paths.forEach(p => {
+      SVGLoader.createShapes(p).forEach(fs => {
+        boardShapes.forEach(bs => fs.holes.push(new THREE.Path(bs.getPoints(12))));
+        frameWithHoleShapes.push(fs);
+      });
+    });
+    if (frameWithHoleShapes.length) {
+      boardGroup.add(extrudeLayer(frameWithHoleShapes, T_FRAME, bambooMat.clone(), Z_BOTTOM,
+        { bevelEnabled: true, bevelThickness: 0.4, bevelSize: 0.4, bevelSegments: 2 }));
+    }
+  }
+
+  // ── Compute bbox and center ──
   const bbox = new THREE.Box3().setFromObject(boardGroup);
   const center = new THREE.Vector3(); bbox.getCenter(center);
   hingeX = center.x;
-  hingeZ = 2.5;
+  hingeZ = center.z;
 
-  // Now create proper PCB material with position-aware texture
+  // ── PCB texture ──
   const pcbTex = generatePCBTexture(1024, 1024, ergogenResults.points, bbox);
-  const pcbMat = new THREE.MeshStandardMaterial({ map: pcbTex.map, roughness: 0.7, metalness: 0.05 });
-  // Replace PCB layer material
+  const pcbMat = new THREE.MeshStandardMaterial({ map: pcbTex.map, roughness: 0.65, metalness: 0.08 });
   pcbLayer.traverse(obj => { if (obj.isMesh) obj.material = pcbMat; });
 
-  // ── Per-key components using InstancedMesh ──
+  // ── Per-key components (InstancedMesh) ──
   const pts = ergogenResults.points;
   const ptEntries = Object.entries(pts);
   const nKeys = ptEntries.length;
 
-  // Switch housing: 14.2 × 12.8 × 3.5mm rounded box
-  const switchGeo = new THREE.ExtrudeGeometry(roundedRectShape(14.2, 12.8, 0.5), { depth: 3.5, bevelEnabled: false });
-  // Keycap: 15 × 15 × 1mm with bevel
-  const keycapGeo = new THREE.ExtrudeGeometry(roundedRectShape(15, 15, 1.2), { depth: 1.0, bevelEnabled: true, bevelThickness: 0.3, bevelSize: 0.3, bevelSegments: 2 });
-  // Stem: small cylinder
-  const stemGeo = new THREE.CylinderGeometry(1.2, 1.2, 1.5, 8);
-  stemGeo.rotateX(Math.PI / 2); // align to Z
-  // Diode: SOD-123 body 2.7×1.6×1.2mm
+  // Geometries
+  const switchGeo = new THREE.ExtrudeGeometry(roundedRectShape(14.2, 12.8, 0.8), { depth: 3.5, bevelEnabled: true, bevelThickness: 0.15, bevelSize: 0.15, bevelSegments: 1 });
+  const keycapGeo = new THREE.ExtrudeGeometry(roundedRectShape(14, 14, 1.5), { depth: 1.2, bevelEnabled: true, bevelThickness: 0.4, bevelSize: 0.4, bevelSegments: 3 });
+  const stemGeo = new THREE.CylinderGeometry(1.0, 1.0, 1.5, 8);
+  stemGeo.rotateX(Math.PI / 2);
   const diodeGeo = new THREE.BoxGeometry(2.7, 1.6, 1.2);
-  // Diode leads
   const diodeLeadGeo = new THREE.BoxGeometry(0.4, 0.3, 0.8);
 
   const switchInst = new THREE.InstancedMesh(switchGeo, switchMat, nKeys);
+  switchInst.castShadow = true;
   const keycapInst = new THREE.InstancedMesh(keycapGeo, keycapMat, nKeys);
+  keycapInst.castShadow = true;
+  keycapInst.receiveShadow = true;
   const stemInst = new THREE.InstancedMesh(stemGeo, steelMat.clone(), nKeys);
   const diodeInst = new THREE.InstancedMesh(diodeGeo, diodeMat, nKeys);
   const diodeLeadInst = new THREE.InstancedMesh(diodeLeadGeo, steelMat.clone(), nKeys * 2);
 
-  // Store base matrices for keycap animation
   const keycapBaseMatrices = new Float32Array(nKeys * 16);
-  const stemBaseMatrices = new Float32Array(nKeys * 16);
 
-  // Z offsets in the layer stack
-  const Z_SWITCH_PLATE_TOP = 4.6 + 1.2; // 5.8mm
-  const Z_SWITCH_BASE = Z_SWITCH_PLATE_TOP;
-  const Z_KEYCAP = Z_SWITCH_BASE + 3.5;  // 9.3mm
-  const Z_STEM = Z_SWITCH_BASE + 2.5;
-  const Z_PCB_TOP = 2.5 + 1.6; // 4.1mm
-  const Z_DIODE = Z_PCB_TOP + 0.6;
-
-  // Coordinate conversion: ergogen points (y-up) → SVG/scene space (y-down)
-  // SVG uses y-down. Ergogen anchors at [100, -100]. The SVG bbox min/max tells us the mapping.
-  // For each point: scene_x = point.x, scene_y = -point.y, scene_r = -point.r
-  // We need an offset: the SVG was generated from the outline, which bounds all keys + padding.
-  // The simplest: use the SVG bbox center vs points centroid to find the offset.
-  const ptXs = ptEntries.map(([,p]) => p.x), ptYs = ptEntries.map(([,p]) => -p.y);
-  const ptCx = ptXs.reduce((a,b) => a+b, 0) / nKeys;
-  const ptCy = ptYs.reduce((a,b) => a+b, 0) / nKeys;
-  const offX = center.x - ptCx, offY = center.y - ptCy;
+  // ── Coordinate conversion (FIXED) ──
+  // Ergogen: X = right, Y = up. SVG: X = right, Y = down.
+  // SVG was generated from the outline. The board group lives in SVG space.
+  // Key positions from ergogen: scene_x = pt.x, scene_y = -pt.y (flip Y)
+  // Then offset to align with the extruded SVG shapes.
+  const ptXs = ptEntries.map(([, p]) => p.x);
+  const ptYs = ptEntries.map(([, p]) => -p.y);
+  const ptCx = ptXs.reduce((a, b) => a + b, 0) / nKeys;
+  const ptCy = ptYs.reduce((a, b) => a + b, 0) / nKeys;
+  const offX = center.x - ptCx;
+  const offY = center.y - ptCy;
 
   const dummy = new THREE.Object3D();
 
   ptEntries.forEach(([name, pt], i) => {
     const sx = pt.x + offX;
     const sy = -pt.y + offY;
+    // Rotation: ergogen rotation is CCW degrees. In SVG (Y-down) space, negate it.
     const sr = -pt.r * Math.PI / 180;
 
-    // Switch housing
-    dummy.position.set(sx, sy, Z_SWITCH_BASE);
-    dummy.rotation.set(0, 0, sr);
-    dummy.updateMatrix();
-    switchInst.setMatrixAt(i, dummy.matrix);
+    // Switch housing (centered on key position, sitting on switch plate)
+    dummy.position.set(sx - 7.1, sy - 6.4, Z_SWITCH_BASE);
+    dummy.rotation.set(0, 0, 0);
+    dummy.scale.set(1, 1, 1);
+    // We need to apply rotation around the key center
+    const m4 = new THREE.Matrix4();
+    m4.makeTranslation(sx, sy, Z_SWITCH_BASE);
+    const rot = new THREE.Matrix4().makeRotationZ(sr);
+    const off1 = new THREE.Matrix4().makeTranslation(-7.1, -6.4, 0);
+    m4.multiply(rot).multiply(off1);
+    switchInst.setMatrixAt(i, m4);
 
-    // Keycap (on top of switch)
-    dummy.position.set(sx, sy, Z_KEYCAP);
-    dummy.rotation.set(0, 0, sr);
-    dummy.updateMatrix();
-    keycapInst.setMatrixAt(i, dummy.matrix);
-    dummy.matrix.toArray(keycapBaseMatrices, i * 16);
+    // Keycap (on top of switch, centered)
+    const m4k = new THREE.Matrix4();
+    m4k.makeTranslation(sx, sy, Z_KEYCAP);
+    const offK = new THREE.Matrix4().makeTranslation(-7, -7, 0);
+    m4k.multiply(rot).multiply(offK);
+    keycapInst.setMatrixAt(i, m4k);
+    m4k.toArray(keycapBaseMatrices, i * 16);
 
-    // Stem
+    // Stem (centered)
     dummy.position.set(sx, sy, Z_STEM);
     dummy.rotation.set(0, 0, sr);
+    dummy.scale.set(1, 1, 1);
     dummy.updateMatrix();
     stemInst.setMatrixAt(i, dummy.matrix);
-    dummy.matrix.toArray(stemBaseMatrices, i * 16);
 
-    // Diode on PCB (offset 5mm in local Y)
+    // Diode on PCB (offset 5mm below key in local coords)
     const dox = sx + 5 * Math.sin(sr);
     const doy = sy + 5 * Math.cos(sr);
     dummy.position.set(dox, doy, Z_DIODE);
@@ -1580,8 +1687,9 @@ function build3DScene() {
     dummy.updateMatrix();
     diodeInst.setMatrixAt(i, dummy.matrix);
 
-    // Diode leads (two per diode)
+    // Diode leads
     dummy.position.set(dox - 1.8 * Math.cos(sr), doy + 1.8 * Math.sin(sr), Z_DIODE - 0.2);
+    dummy.rotation.set(0, 0, 0);
     dummy.updateMatrix();
     diodeLeadInst.setMatrixAt(i * 2, dummy.matrix);
     dummy.position.set(dox + 1.8 * Math.cos(sr), doy - 1.8 * Math.sin(sr), Z_DIODE - 0.2);
@@ -1589,29 +1697,49 @@ function build3DScene() {
     diodeLeadInst.setMatrixAt(i * 2 + 1, dummy.matrix);
   });
 
-  switchInst.instanceMatrix.needsUpdate = true;
-  keycapInst.instanceMatrix.needsUpdate = true;
-  stemInst.instanceMatrix.needsUpdate = true;
-  diodeInst.instanceMatrix.needsUpdate = true;
-  diodeLeadInst.instanceMatrix.needsUpdate = true;
+  [switchInst, keycapInst, stemInst, diodeInst, diodeLeadInst].forEach(inst => {
+    inst.instanceMatrix.needsUpdate = true;
+    boardGroup.add(inst);
+  });
 
-  boardGroup.add(switchInst);
-  boardGroup.add(keycapInst);
-  boardGroup.add(stemInst);
-  boardGroup.add(diodeInst);
-  boardGroup.add(diodeLeadInst);
-
-  // ── nice!nano controllers ──
-  function createNiceNano(posX, posY) {
+  // ── nice!nano v2 controllers (proper position, visible USB-C) ──
+  function createNiceNano(posX, posY, usbFacingRight) {
     const grp = new THREE.Group();
     // PCB body 18×33×1.6mm
-    const body = new THREE.Mesh(new THREE.BoxGeometry(18, 33, 1.6), nanoPcbMat);
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(18, 33, 1.6),
+      nanoPcbMat
+    );
+    body.castShadow = true;
     grp.add(body);
-    // USB-C port
-    const usbGeo = new THREE.BoxGeometry(8.94, 3.26, 2.56);
-    const usb = new THREE.Mesh(usbGeo, steelMat.clone());
-    usb.position.set(0, -33/2 + 1.6, 0.8 + 1.28); grp.add(usb);
-    // Gold pads along edges
+
+    // Components on top (small IC packages)
+    const icGeo = new THREE.BoxGeometry(4, 4, 0.8);
+    const ic = new THREE.Mesh(icGeo, blackMat);
+    ic.position.set(0, 4, 1.2); grp.add(ic);
+    const ic2 = new THREE.Mesh(new THREE.BoxGeometry(3, 2.5, 0.6), blackMat);
+    ic2.position.set(-4, -6, 1.1); grp.add(ic2);
+
+    // USB-C port: 8.94 × 7.5 × 3.26mm, flush with one edge
+    const usbBody = new THREE.Mesh(
+      new THREE.BoxGeometry(8.94, 7.5, 3.26),
+      chromeMat
+    );
+    usbBody.castShadow = true;
+    // USB-C receptacle insert (dark opening)
+    const usbHole = new THREE.Mesh(
+      new THREE.BoxGeometry(7.0, 2.0, 2.0),
+      new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.9, metalness: 0.0 })
+    );
+    usbHole.position.set(0, -3.0, 0);
+    usbBody.add(usbHole);
+
+    // Position USB-C at the inner edge (facing the hinge/center)
+    usbBody.position.set(0, -33 / 2, 2.5);
+    if (usbFacingRight) usbBody.position.y = -33 / 2;
+    grp.add(usbBody);
+
+    // Gold pads along edges (12 per side)
     const padGeo = new THREE.BoxGeometry(1.0, 0.5, 0.05);
     for (let j = 0; j < 12; j++) {
       const lp = new THREE.Mesh(padGeo, goldMat);
@@ -1619,82 +1747,99 @@ function build3DScene() {
       const rp = new THREE.Mesh(padGeo, goldMat);
       rp.position.set(8.5, -13 + j * 2.54, 0.825); grp.add(rp);
     }
+
+    // Reset button (tiny)
+    const btnGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.4, 8);
+    btnGeo.rotateX(Math.PI / 2);
+    const btn = new THREE.Mesh(btnGeo, new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.5, metalness: 0.5 }));
+    btn.position.set(5, -12, 1.1); grp.add(btn);
+
     grp.position.set(posX, posY, Z_PCB_TOP + 0.8);
+    // Rotate so USB faces the inner edge
+    if (usbFacingRight) grp.rotation.z = Math.PI;
     return grp;
   }
-  boardGroup.add(createNiceNano(hingeX - 25, center.y - 8));
-  boardGroup.add(createNiceNano(hingeX + 25, center.y - 8));
 
-  // ── Batteries ──
+  // Place nice!nanos near the inner edge of each half
+  const nanoLeftX = hingeX - 20, nanoRightX = hingeX + 20;
+  const nanoY = center.y + 5;
+  boardGroup.add(createNiceNano(nanoLeftX, nanoY, false));
+  boardGroup.add(createNiceNano(nanoRightX, nanoY, true));
+
+  // ── Batteries (under PCB, between bottom plate and PCB) ──
   batteryGroup = new THREE.Group();
-  const battGeo = new THREE.BoxGeometry(12, 30, 3);
   function addBattery(bx, by) {
     const bg = new THREE.Group();
-    bg.add(new THREE.Mesh(battGeo, battMat));
-    // Wires
-    const wg = new THREE.CylinderGeometry(0.3, 0.3, 8, 6); wg.rotateX(Math.PI / 2);
-    const rw = new THREE.Mesh(wg, redMat); rw.position.set(-2, -19, 0); bg.add(rw);
-    const bw = new THREE.Mesh(wg, blackMat); bw.position.set(2, -19, 0); bg.add(bw);
-    bg.position.set(bx, by, Z_PCB_TOP - 2);
+    // LiPo pouch cell: 30×12×3mm, blue label with silver edges
+    const battBody = new THREE.Mesh(new THREE.BoxGeometry(12, 30, 3), battMat);
+    battBody.castShadow = true;
+    bg.add(battBody);
+    // Wires to nice!nano (red + black)
+    const wireRad = 0.25;
+    [{ color: redMat, dx: -2 }, { color: blackMat, dx: 2 }].forEach(w => {
+      const points = [
+        new THREE.Vector3(w.dx, -15, 0),
+        new THREE.Vector3(w.dx, -18, 1),
+        new THREE.Vector3(w.dx, -20, 2),
+      ];
+      const curve = new THREE.CatmullRomCurve3(points);
+      const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 8, wireRad, 6), w.color);
+      bg.add(tube);
+    });
+    bg.position.set(bx, by, Z_CORK_LOWER + T_CORK_LOWER / 2 + 1.5);
     return bg;
   }
-  batteryGroup.add(addBattery(hingeX - 40, center.y));
-  batteryGroup.add(addBattery(hingeX + 40, center.y));
+  batteryGroup.add(addBattery(hingeX - 35, center.y - 10));
+  batteryGroup.add(addBattery(hingeX + 35, center.y - 10));
   boardGroup.add(batteryGroup);
 
   // ── M2 screws and heat-set inserts ──
-  // Place at corners and midpoints heuristically from bbox
   const screwPositions = [];
-  const bx0 = bbox.min.x + 8, bx1 = bbox.max.x - 8;
-  const by0 = bbox.min.y + 8, by1 = bbox.max.y - 8;
+  const bx0 = bbox.min.x + 10, bx1 = bbox.max.x - 10;
+  const by0 = bbox.min.y + 10, by1 = bbox.max.y - 10;
   const bmx = center.x, bmy = center.y;
-  [[bx0,by0],[bx0,by1],[bx0,bmy],[bx1,by0],[bx1,by1],[bx1,bmy],[bmx,by0],[bmx,by1]].forEach(([x,y]) => screwPositions.push({x,y}));
+  [[bx0, by0], [bx0, by1], [bx0, bmy], [bx1, by0], [bx1, by1], [bx1, bmy], [bmx, by0]].forEach(([x, y]) => screwPositions.push({ x, y }));
 
-  // Screw: countersunk head 4mm dia × 1mm + shaft 2mm dia × 5mm
-  const screwHeadGeo = new THREE.CylinderGeometry(2, 1, 1, 12);
+  const screwHeadGeo = new THREE.CylinderGeometry(2, 1, 1, 16);
   screwHeadGeo.rotateX(Math.PI / 2);
-  const screwShaftGeo = new THREE.CylinderGeometry(1, 1, 5, 8);
+  const screwShaftGeo = new THREE.CylinderGeometry(1, 1, T_FRAME, 8);
   screwShaftGeo.rotateX(Math.PI / 2);
-  const insertGeo = new THREE.CylinderGeometry(1.6, 1.6, 3, 12);
+  const insertGeo = new THREE.CylinderGeometry(1.6, 1.6, 3, 16);
   insertGeo.rotateX(Math.PI / 2);
   const nScrews = screwPositions.length;
 
-  const screwHeadInst = new THREE.InstancedMesh(screwHeadGeo, steelMat.clone(), nScrews);
+  const screwHeadInst = new THREE.InstancedMesh(screwHeadGeo, chromeMat.clone(), nScrews);
+  screwHeadInst.castShadow = true;
   const screwShaftInst = new THREE.InstancedMesh(screwShaftGeo, steelMat.clone(), nScrews);
   const insertInst = new THREE.InstancedMesh(insertGeo, brassMat, nScrews);
 
   screwPositions.forEach((sp, i) => {
-    // Screw head on top of switch plate
     dummy.position.set(sp.x, sp.y, Z_SWITCH_PLATE_TOP + 0.5);
-    dummy.rotation.set(0, 0, 0);
+    dummy.rotation.set(0, 0, 0); dummy.scale.set(1, 1, 1);
     dummy.updateMatrix();
     screwHeadInst.setMatrixAt(i, dummy.matrix);
-    // Shaft going down through all layers
-    dummy.position.set(sp.x, sp.y, Z_SWITCH_PLATE_TOP - 2.5);
+    dummy.position.z = Z_BOTTOM + T_FRAME / 2;
     dummy.updateMatrix();
     screwShaftInst.setMatrixAt(i, dummy.matrix);
-    // Heat-set insert in bottom plate
-    dummy.position.set(sp.x, sp.y, 1.0);
+    dummy.position.z = Z_BOTTOM + 1.5;
     dummy.updateMatrix();
     insertInst.setMatrixAt(i, dummy.matrix);
   });
-  screwHeadInst.instanceMatrix.needsUpdate = true;
-  screwShaftInst.instanceMatrix.needsUpdate = true;
-  insertInst.instanceMatrix.needsUpdate = true;
-  boardGroup.add(screwHeadInst);
-  boardGroup.add(screwShaftInst);
-  boardGroup.add(insertInst);
+  [screwHeadInst, screwShaftInst, insertInst].forEach(inst => {
+    inst.instanceMatrix.needsUpdate = true;
+    boardGroup.add(inst);
+  });
 
-  // ── Split into left/right halves with clipping ──
-  leftGroup = new THREE.Group();
-  rightGroup = new THREE.Group();
+  // ── Split into left/right halves ──
+  leftHalf = new THREE.Group();
+  rightHalf = new THREE.Group();
 
   const clipLeft = new THREE.Plane(new THREE.Vector3(1, 0, 0), -hingeX);
   const clipRight = new THREE.Plane(new THREE.Vector3(-1, 0, 0), hingeX);
 
   function cloneToHalf(src, clipPlane, target) {
     src.children.forEach(child => {
-      const c = child.clone(true); // deep clone
+      const c = child.clone(true);
       c.traverse(obj => {
         if (obj.isMesh || obj.isInstancedMesh) {
           obj.material = obj.material.clone();
@@ -1705,86 +1850,151 @@ function build3DScene() {
       target.add(c);
     });
   }
-  cloneToHalf(boardGroup, clipLeft, leftGroup);
-  cloneToHalf(boardGroup, clipRight, rightGroup);
-  scene.add(leftGroup);
-  scene.add(rightGroup);
+  cloneToHalf(boardGroup, clipLeft, leftHalf);
+  cloneToHalf(boardGroup, clipRight, rightHalf);
+  scene.add(leftHalf);
+  scene.add(rightHalf);
 
-  // Store keycap instanced mesh refs for interaction
-  leftGroup.traverse(obj => { if (obj.isInstancedMesh && obj.geometry === keycapGeo) keycapMeshL = obj; });
-  rightGroup.traverse(obj => { if (obj.isInstancedMesh && obj.geometry === keycapGeo) keycapMeshR = obj; });
+  // Store keycap refs for interaction
+  leftHalf.traverse(obj => { if (obj.isInstancedMesh && obj.geometry === keycapGeo) keycapMeshL = obj; });
+  rightHalf.traverse(obj => { if (obj.isInstancedMesh && obj.geometry === keycapGeo) keycapMeshR = obj; });
   keycapBaseL = new Float32Array(keycapBaseMatrices);
   keycapBaseR = new Float32Array(keycapBaseMatrices);
 
-  // ── Ball joint hinge ──
+  // ── Ball joint hinge (attached to halves, moves with fold) ──
   hingeGroup = new THREE.Group();
-  const hy = center.y, hz2 = hingeZ;
-  // Outer housing
-  const hGeo = new THREE.CylinderGeometry(5, 5, 16, 24);
-  hGeo.rotateZ(Math.PI / 2);
-  hingeGroup.add(new THREE.Mesh(hGeo, steelMat.clone())).position.set(hingeX, hy, hz2);
-  // Ball
-  hingeGroup.add(new THREE.Mesh(new THREE.SphereGeometry(4, 24, 24), copperMat)).position.set(hingeX, hy, hz2);
-  // Rod stubs
-  const rodGeo = new THREE.CylinderGeometry(3, 3, 12, 8); rodGeo.rotateZ(Math.PI / 2);
-  hingeGroup.add(new THREE.Mesh(rodGeo, steelMat.clone())).position.set(hingeX - 14, hy, hz2);
-  hingeGroup.add(new THREE.Mesh(rodGeo, steelMat.clone())).position.set(hingeX + 14, hy, hz2);
-  // Mounting plates
-  const platGeo = new THREE.BoxGeometry(8, 14, 2);
-  hingeGroup.add(new THREE.Mesh(platGeo, steelMat.clone())).position.set(hingeX - 22, hy, hz2);
-  hingeGroup.add(new THREE.Mesh(platGeo, steelMat.clone())).position.set(hingeX + 22, hy, hz2);
-  // Thumb nut
-  const tnutGeo = new THREE.CylinderGeometry(5, 5, 4, 6);
-  const tnut = new THREE.Mesh(tnutGeo, brassMat);
-  tnut.position.set(hingeX, hy - 10, hz2); tnut.rotation.x = Math.PI / 2;
+  const hy = center.y;
+  const hz = center.z;
+
+  // Main barrel — polished steel cylinder
+  const barrelGeo = new THREE.CylinderGeometry(4, 4, 20, 32);
+  barrelGeo.rotateZ(Math.PI / 2);
+  const barrel = new THREE.Mesh(barrelGeo, chromeMat.clone());
+  barrel.position.set(hingeX, hy, hz);
+  barrel.castShadow = true;
+  hingeGroup.add(barrel);
+
+  // Ball inside (visible at gaps)
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(3.5, 32, 32), copperMat);
+  ball.position.set(hingeX, hy, hz);
+  hingeGroup.add(ball);
+
+  // Rod stubs going into each half
+  const rodGeo2 = new THREE.CylinderGeometry(2.5, 2.5, 15, 12);
+  rodGeo2.rotateZ(Math.PI / 2);
+  const rodL = new THREE.Mesh(rodGeo2, steelMat.clone());
+  rodL.position.set(hingeX - 17, hy, hz); rodL.castShadow = true;
+  hingeGroup.add(rodL);
+  const rodR = new THREE.Mesh(rodGeo2, steelMat.clone());
+  rodR.position.set(hingeX + 17, hy, hz); rodR.castShadow = true;
+  hingeGroup.add(rodR);
+
+  // Mounting flanges
+  const flangeGeo = new THREE.BoxGeometry(6, 12, T_FRAME);
+  const flangeL = new THREE.Mesh(flangeGeo, steelMat.clone());
+  flangeL.position.set(hingeX - 27, hy, hz); flangeL.castShadow = true;
+  hingeGroup.add(flangeL);
+  const flangeR = new THREE.Mesh(flangeGeo, steelMat.clone());
+  flangeR.position.set(hingeX + 27, hy, hz); flangeR.castShadow = true;
+  hingeGroup.add(flangeR);
+
+  // Thumb locking nut
+  const tnutGeo = new THREE.CylinderGeometry(5, 5, 3, 6);
+  const tnut = new THREE.Mesh(tnutGeo, brassMat.clone());
+  tnut.position.set(hingeX, hy - 8, hz);
+  tnut.rotation.x = Math.PI / 2;
+  tnut.castShadow = true;
   hingeGroup.add(tnut);
   scene.add(hingeGroup);
 
-  // ── Cables with slight droop ──
+  // ── Cables (braided steel, connected to keyboard edges) ──
   cablesGroup = new THREE.Group();
-  const cableZ = Z_SWITCH_PLATE_TOP + 1;
-  const cYtop = bbox.min.y + (bbox.max.y - bbox.min.y) * 0.15;
-  const cYbot = bbox.min.y + (bbox.max.y - bbox.min.y) * 0.85;
-  const cableMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.4, metalness: 0.6 });
+  const cableZ2 = Z_SWITCH_PLATE_TOP + 1;
+  const cYtop = bbox.min.y + (bbox.max.y - bbox.min.y) * 0.2;
+  const cYbot = bbox.min.y + (bbox.max.y - bbox.min.y) * 0.8;
+
   [cYtop, cYbot].forEach(cy => {
-    const halfLen = (bbox.max.x - bbox.min.x) / 2;
-    const pts3 = [
-      new THREE.Vector3(bbox.min.x + 5, cy, cableZ),
-      new THREE.Vector3(bbox.min.x + halfLen * 0.5, cy, cableZ - 1),
-      new THREE.Vector3(center.x, cy, cableZ - 1.5),
-      new THREE.Vector3(bbox.max.x - halfLen * 0.5, cy, cableZ - 1),
-      new THREE.Vector3(bbox.max.x - 5, cy, cableZ),
+    // Cable from left edge to right edge via droop
+    const halfW = (bbox.max.x - bbox.min.x) / 2;
+    const cPoints = [
+      new THREE.Vector3(bbox.min.x + 6, cy, cableZ2),
+      new THREE.Vector3(bbox.min.x + halfW * 0.4, cy, cableZ2 - 2),
+      new THREE.Vector3(center.x, cy, cableZ2 - 3),
+      new THREE.Vector3(bbox.max.x - halfW * 0.4, cy, cableZ2 - 2),
+      new THREE.Vector3(bbox.max.x - 6, cy, cableZ2),
     ];
-    const curve = new THREE.CatmullRomCurve3(pts3);
-    const tubeGeo = new THREE.TubeGeometry(curve, 32, 0.75, 8, false);
-    cablesGroup.add(new THREE.Mesh(tubeGeo, cableMat));
+    const curve = new THREE.CatmullRomCurve3(cPoints);
+    const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 48, 0.6, 8, false), cableMat);
+    tube.castShadow = true;
+    cablesGroup.add(tube);
+
     // Turnbuckle at center
-    const tbGeo = new THREE.CylinderGeometry(2.5, 2.5, 20, 8); tbGeo.rotateZ(Math.PI / 2);
-    const tb = new THREE.Mesh(tbGeo, steelMat.clone()); tb.position.set(center.x, cy, cableZ - 1.5);
+    const tbGeo = new THREE.CylinderGeometry(2, 2, 16, 12);
+    tbGeo.rotateZ(Math.PI / 2);
+    const tb = new THREE.Mesh(tbGeo, chromeMat.clone());
+    tb.position.set(center.x, cy, cableZ2 - 3); tb.castShadow = true;
     cablesGroup.add(tb);
-    // Clevis pins at ends
-    [bbox.min.x + 5, bbox.max.x - 5].forEach(px => {
-      const pinGeo = new THREE.CylinderGeometry(1.5, 1.5, 5, 8);
-      const pin = new THREE.Mesh(pinGeo, steelMat.clone()); pin.position.set(px, cy, cableZ);
+
+    // Clevis pins at attachment points
+    [bbox.min.x + 6, bbox.max.x - 6].forEach(px => {
+      const pinGeo = new THREE.CylinderGeometry(1.2, 1.2, 4, 8);
+      const pin = new THREE.Mesh(pinGeo, chromeMat.clone());
+      pin.position.set(px, cy, cableZ2); pin.castShadow = true;
       cablesGroup.add(pin);
-      const det = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 10), redMat);
-      det.position.set(px, cy, cableZ + 3); cablesGroup.add(det);
     });
   });
   scene.add(cablesGroup);
 
-  // ── Camera ──
+  // ── Ground plane (subtle reflective surface) ──
+  const groundGeo = new THREE.PlaneGeometry(2000, 2000);
+  const groundMat2 = new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: 0.85, metalness: 0.1 });
+  groundPlane = new THREE.Mesh(groundGeo, groundMat2);
+  groundPlane.position.set(center.x, center.y, Z_BOTTOM - 0.5);
+  groundPlane.receiveShadow = true;
+  scene.add(groundPlane);
+
+  // ── Labels (sprite text) ──
+  labelSprites = [];
+  function addLabel(text, x, y, z) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'rgba(0,0,0,0)'; ctx.fillRect(0, 0, 256, 64);
+    ctx.font = '600 22px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center';
+    ctx.fillText(text, 128, 38);
+    const tex = new THREE.CanvasTexture(canvas);
+    const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0.85 });
+    const sprite = new THREE.Sprite(spriteMat);
+    sprite.position.set(x, y, z);
+    sprite.scale.set(40, 10, 1);
+    sprite.visible = false;
+    scene.add(sprite);
+    labelSprites.push(sprite);
+    return sprite;
+  }
+  addLabel('Bamboo Bottom Plate', center.x, bbox.min.y - 8, Z_BOTTOM + T_BOTTOM_PLATE / 2);
+  addLabel('Cork Gasket', center.x, bbox.min.y - 8, Z_CORK_LOWER + T_CORK_LOWER / 2);
+  addLabel('FR-4 PCB', center.x, bbox.min.y - 8, Z_PCB + T_PCB / 2);
+  addLabel('Switch Plate', center.x, bbox.min.y - 8, Z_SWITCH_PLATE + T_SWITCH_PLATE / 2);
+  addLabel('Cherry MX ULP', center.x, bbox.min.y - 8, Z_KEYCAP);
+  addLabel('nice!nano v2', nanoLeftX, bbox.min.y - 8, Z_PCB_TOP + 4);
+  addLabel('Ball Joint Hinge', hingeX, hy + 20, hz + 8);
+  addLabel('LiPo Battery', hingeX - 35, bbox.min.y - 8, Z_CORK_LOWER + 3);
+
+  // ── Camera position (3/4 top-down, slightly from front) ──
   const size = new THREE.Vector3(); bbox.getSize(size);
   const maxDim = Math.max(size.x, size.y);
-  camera.position.set(center.x, center.y - maxDim * 0.5, maxDim * 0.9);
-  controls.target.set(center.x, center.y, Z_KEYCAP / 2);
+  camera.position.set(center.x + maxDim * 0.15, center.y - maxDim * 0.6, maxDim * 0.7);
+  controls.target.set(center.x, center.y, Z_SWITCH_PLATE_TOP / 2);
   controls.update();
 
   document.getElementById('fold-slider').value = 0;
   document.getElementById('fold-val').textContent = '0';
 
-  // ── Key press interaction ──
+  // ── Interactions ──
   renderer.domElement.addEventListener('pointerdown', onKeyPress);
+  renderer.domElement.addEventListener('pointermove', onHover);
 
   if (!page2Initialized) {
     page2Initialized = true;
@@ -1792,7 +2002,7 @@ function build3DScene() {
   }
 }
 
-// ── Key press handler ──
+// ── Key press ──
 function onKeyPress(event) {
   const rect = renderer.domElement.getBoundingClientRect();
   pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -1808,6 +2018,17 @@ function onKeyPress(event) {
   const key = `${mesh.id}_${id}`;
   if (pressedKeys.has(key)) return;
   pressedKeys.set(key, { id, mesh, bases, progress: 0, dir: 'down', t0: performance.now() });
+}
+
+// ── Hover highlight ──
+function onHover(event) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const targets = [keycapMeshL, keycapMeshR].filter(Boolean);
+  const hits = raycaster.intersectObjects(targets);
+  renderer.domElement.style.cursor = hits.length ? 'pointer' : '';
 }
 
 function updateKeyPresses() {
@@ -1826,7 +2047,7 @@ function updateKeyPresses() {
         pressedKeys.delete(key); continue;
       }
     }
-    const ease = st.progress * (2 - st.progress); // easeOutQuad
+    const ease = st.progress * (2 - st.progress);
     const bm = new THREE.Matrix4(); bm.fromArray(st.bases, st.id * 16);
     const pos = new THREE.Vector3(), quat = new THREE.Quaternion(), scl = new THREE.Vector3();
     bm.decompose(pos, quat, scl);
@@ -1836,41 +2057,82 @@ function updateKeyPresses() {
   }
 }
 
-// ── Fold ──
+// ── Fold mechanism ──
 function applyFold(angleDeg) {
-  if (!leftGroup || !rightGroup) return;
+  if (!leftHalf || !rightHalf) return;
   const halfRad = (angleDeg * Math.PI / 180) / 2;
 
-  // Reset
-  leftGroup.matrix.identity(); leftGroup.matrix.decompose(leftGroup.position, leftGroup.quaternion, leftGroup.scale);
-  rightGroup.matrix.identity(); rightGroup.matrix.decompose(rightGroup.position, rightGroup.quaternion, rightGroup.scale);
+  // Reset transforms
+  leftHalf.position.set(0, 0, 0); leftHalf.quaternion.identity();
+  rightHalf.position.set(0, 0, 0); rightHalf.quaternion.identity();
 
   if (angleDeg > 0) {
     const pivot = new THREE.Vector3(hingeX, 0, hingeZ);
     const yAxis = new THREE.Vector3(0, 1, 0);
-    // Left
-    leftGroup.position.sub(pivot);
-    leftGroup.position.applyAxisAngle(yAxis, halfRad);
-    leftGroup.position.add(pivot);
-    leftGroup.rotateOnWorldAxis(yAxis, halfRad);
-    // Right
-    rightGroup.position.sub(pivot);
-    rightGroup.position.applyAxisAngle(yAxis, -halfRad);
-    rightGroup.position.add(pivot);
-    rightGroup.rotateOnWorldAxis(yAxis, -halfRad);
+
+    leftHalf.position.sub(pivot);
+    leftHalf.position.applyAxisAngle(yAxis, halfRad);
+    leftHalf.position.add(pivot);
+    leftHalf.rotateOnWorldAxis(yAxis, halfRad);
+
+    rightHalf.position.sub(pivot);
+    rightHalf.position.applyAxisAngle(yAxis, -halfRad);
+    rightHalf.position.add(pivot);
+    rightHalf.rotateOnWorldAxis(yAxis, -halfRad);
   }
+
+  // Cables only visible when flat
   if (cablesGroup) cablesGroup.visible = angleDeg === 0 && document.getElementById('show-cables').checked;
 }
 
+// ── Toolbar handlers ──
 document.getElementById('fold-slider').addEventListener('input', e => {
   const v = +e.target.value;
   document.getElementById('fold-val').textContent = v;
   applyFold(v);
 });
-document.getElementById('show-cables').addEventListener('change', e => { if (cablesGroup) cablesGroup.visible = e.target.checked && +document.getElementById('fold-slider').value === 0; });
-document.getElementById('show-hinge').addEventListener('change', e => { if (hingeGroup) hingeGroup.visible = e.target.checked; });
-document.getElementById('show-battery').addEventListener('change', e => { if (batteryGroup) batteryGroup.visible = e.target.checked; });
+document.getElementById('show-cables').addEventListener('change', e => {
+  if (cablesGroup) cablesGroup.visible = e.target.checked && +document.getElementById('fold-slider').value === 0;
+});
+document.getElementById('show-hinge').addEventListener('change', e => {
+  if (hingeGroup) hingeGroup.visible = e.target.checked;
+});
+document.getElementById('show-battery').addEventListener('change', e => {
+  if (batteryGroup) batteryGroup.visible = e.target.checked;
+});
+document.getElementById('show-exploded').addEventListener('change', e => {
+  explodedView = e.target.checked;
+  applyExplodedView(explodedView);
+});
+document.getElementById('show-labels').addEventListener('change', e => {
+  showLabels = e.target.checked;
+  labelSprites.forEach(s => s.visible = showLabels);
+});
 
+function applyExplodedView(on) {
+  if (!leftHalf || !rightHalf) return;
+  // In exploded view, separate layers vertically
+  const gap = on ? 12 : 0;
+  // We traverse each half and shift Z based on layer index
+  [leftHalf, rightHalf].forEach(half => {
+    half.traverse(obj => {
+      if (!obj.isMesh && !obj.isInstancedMesh) return;
+      // Use original Z to determine layer offset
+      if (!obj.userData._origZ && obj.userData._origZ !== 0) {
+        obj.userData._origZ = obj.position.z;
+      }
+      const origZ = obj.userData._origZ;
+      let layerIdx = 0;
+      if (origZ >= Z_SWITCH_PLATE) layerIdx = 4;
+      else if (origZ >= Z_CORK_UPPER) layerIdx = 3;
+      else if (origZ >= Z_PCB) layerIdx = 2;
+      else if (origZ >= Z_CORK_LOWER) layerIdx = 1;
+      obj.position.z = origZ + layerIdx * gap;
+    });
+  });
+}
+
+// ── Animation loop ──
 function animate() {
   requestAnimationFrame(animate);
   updateKeyPresses();

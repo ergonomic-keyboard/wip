@@ -11,11 +11,12 @@ cd /home/a/git/git/keyboard/wip
 python3 -m http.server 8080
 ```
 
-Open http://localhost:8080/wizard.html and follow the 3 steps:
+Open http://localhost:8080/wizard.html and follow the 4 steps:
 
-1. **Tap finger positions** — tap where each finger rests naturally on a surface, for all 6 columns (pinky through thumb)
-2. **3D preview** — see a realistic interactive 3D model of your keyboard with PBR materials, fold simulation, and key press animation
-3. **Bill of materials** — view the full parts list with prices and purchase links, download design files as a ZIP
+1. **Tap finger positions** — place your left hand flat and tap 3 key positions per finger column (pinky through thumb)
+2. **3D preview** — interactive 3D model with shadows, wooden frame enclosure, click-to-press keys, exploded view, and component labels
+3. **Bill of materials** — full parts list with prices and purchase links, download design files as a ZIP
+4. **Firmware & test** — generated ZMK shield files, keymap visualization, native_posix hardware emulation tests
 
 ### 3D Preview Features
 
