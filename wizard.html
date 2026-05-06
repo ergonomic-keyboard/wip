@@ -1200,6 +1200,65 @@ const sep2 = document.createElement('div'); sep2.className = 'sep'; toolbar.appe
 const tuneScaleBtn = document.createElement('div'); tuneScaleBtn.className = 'tool-btn'; tuneScaleBtn.textContent = 'Tune Scale';
 tuneScaleBtn.addEventListener('click', openScaleModal);
 toolbar.appendChild(tuneScaleBtn);
+const sep3 = document.createElement('div'); sep3.className = 'sep'; toolbar.appendChild(sep3);
+const exportBtn = document.createElement('div'); exportBtn.className = 'tool-btn'; exportBtn.textContent = 'Export';
+exportBtn.addEventListener('click', exportPositions);
+toolbar.appendChild(exportBtn);
+const loadBtn = document.createElement('div'); loadBtn.className = 'tool-btn'; loadBtn.textContent = 'Load';
+loadBtn.addEventListener('click', loadPositions);
+toolbar.appendChild(loadBtn);
+
+// ── Export / Load finger positions ──
+function exportPositions() {
+  const data = {
+    positions,
+    calibratedPPM,
+    canvasWidth: canvas.width,
+    canvasHeight: canvas.height,
+  };
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'finger-positions.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function loadPositions() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.addEventListener('change', () => {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if (!data.positions) throw new Error('No positions found in file');
+        // Restore positions for all known columns
+        COLUMNS.forEach(col => {
+          if (Array.isArray(data.positions[col.id])) {
+            positions[col.id] = data.positions[col.id];
+          }
+        });
+        // Restore calibrated PPM if present
+        if (typeof data.calibratedPPM === 'number' && data.calibratedPPM > 0) {
+          calibratedPPM = data.calibratedPPM;
+          localStorage.setItem('keyboard_wizard_ppm', String(calibratedPPM));
+        }
+        drawCanvas();
+        updateToolbar();
+      } catch (e) {
+        alert('Failed to load positions: ' + e.message);
+      }
+    };
+    reader.readAsText(file);
+  });
+  input.click();
+}
 
 // ── Tune Scale (calibrated pixels-per-mm) ──
 let calibratedPPM = null; // null = auto-estimate from tap distances; number = user-calibrated
