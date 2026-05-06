@@ -1103,6 +1103,10 @@ const ctx = canvas.getContext('2d');
 const toolbar = document.getElementById('col-toolbar');
 const hint = document.getElementById('canvas-hint');
 
+// Max keys per column: matrix columns get exactly 3 (bottom, home, top), thumb gets 1-3
+const MAX_KEYS_MATRIX = 3;
+const MAX_KEYS_THUMB = 3;
+
 // Build toolbar
 COLUMNS.forEach(c => {
   const btn = document.createElement('div');
@@ -1142,10 +1146,6 @@ function resizeCanvas() {
 }
 window.addEventListener('resize', resizeCanvas);
 setTimeout(resizeCanvas, 50);
-
-// Max keys per column: matrix columns get exactly 3 (bottom, home, top), thumb gets 1-3
-const MAX_KEYS_MATRIX = 3;
-const MAX_KEYS_THUMB = 3;
 
 canvas.addEventListener('pointerdown', e => {
   const maxKeys = activeColumn === 'thumb' ? MAX_KEYS_THUMB : MAX_KEYS_MATRIX;
