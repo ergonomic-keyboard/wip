@@ -323,30 +323,70 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 const MATRIX_COLUMNS = ['pinky', 'ring', 'middle', 'index', 'index_far'];
 const ERGOGEN_NAMES  = ['pinky', 'ring', 'middle', 'index', 'inner'];
 
-function fitLine(points) {
+// Least-squares linear regression: returns slope m and intercept b for y = mx + b.
+// If invertXY is true, regresses X on Y (better for near-vertical columns),
+// then converts back to y = mx + b form. Matches ergopad's leastSquares().
+function leastSquaresLine(points, invertXY = false) {
   const n = points.length;
-  if (n === 0) return { angle: 0, cx: 0, cy: 0, distances: [] };
-  if (n === 1) return { angle: 0, cx: points[0].x, cy: points[0].y, distances: [] };
-  const xs = points.map(p => p.x), ys = points.map(p => p.y);
-  const cx = xs.reduce((a,b)=>a+b,0)/n, cy = ys.reduce((a,b)=>a+b,0)/n;
-  const sorted = points.slice().sort((a,b) => a.y - b.y);
-  const bot = sorted[0], top = sorted[n-1];
-  const dx = top.x - bot.x, dy = top.y - bot.y;
-  let angle = 0;
-  if (Math.abs(dy) >= 0.01 || Math.abs(dx) >= 0.01) {
-    angle = Math.atan2(dx, dy) * 180 / Math.PI;
+  let xs = points.map(p => p.x), ys = points.map(p => p.y);
+  if (invertXY) { [xs, ys] = [ys, xs]; }
+  const sx = xs.reduce((a, b) => a + b, 0);
+  const sy = ys.reduce((a, b) => a + b, 0);
+  const sxx = xs.reduce((a, x) => a + x * x, 0);
+  const sxy = xs.reduce((a, x, i) => a + x * ys[i], 0);
+  const denom = n * sxx - sx * sx;
+  if (Math.abs(denom) < 1e-12) return { m: 0, b: sy / n };
+  const slope = (n * sxy - sx * sy) / denom;
+  const intercept = (sy - slope * sx) / n;
+  if (invertXY) {
+    // Convert from x = slope*y + intercept  =>  y = (1/slope)*x - intercept/slope
+    if (Math.abs(slope) < 1e-12) return { m: 0, b: intercept };
+    return { m: 1 / slope, b: -intercept / slope };
   }
-  const rad = angle * Math.PI / 180;
-  const axX = Math.sin(rad), axY = Math.cos(rad);
-  const projs = sorted.map(p => (p.x - cx)*axX + (p.y - cy)*axY);
-  const distances = [];
-  for (let i = 1; i < projs.length; i++) distances.push(Math.abs(projs[i] - projs[i-1]));
-  return { angle, cx, cy, distances };
+  return { m: slope, b: intercept };
 }
 
-function analyzeColumn(points) {
+// Project a point onto the line ax + by + c = 0 (standard form).
+function projectPointToLine(a, b, c, px, py) {
+  const denom = a * a + b * b;
+  return {
+    x: (b * (b * px - a * py) - a * c) / denom,
+    y: (a * (-b * px + a * py) - b * c) / denom,
+  };
+}
+
+// Fit a regression line through tap points. Returns: slope m, midpoint (cx,cy),
+// rotation angle in degrees, and distances between consecutive projected points.
+// Uses inverted regression for non-thumb columns (near-vertical).
+// Midpoint is the center of the projected range (like ergopad).
+function fitLine(points, isThumb = false) {
+  const n = points.length;
+  if (n === 0) return { angle: 0, cx: 0, cy: 0, m: 0, b: 0, distances: [] };
+  if (n === 1) return { angle: 0, cx: points[0].x, cy: points[0].y, m: 0, b: 0, distances: [] };
+  // Least-squares regression; invert for near-vertical (non-thumb) columns
+  const { m, b } = leastSquaresLine(points, !isThumb);
+  // Standard form: mx - y + b = 0  =>  a=m, b_coeff=-1, c=b
+  const projections = points.map(p => projectPointToLine(m, -1, b, p.x, p.y));
+  // Midpoint = center of projected X range, evaluated on the line
+  const projXs = projections.map(p => p.x);
+  const minX = Math.min(...projXs), maxX = Math.max(...projXs);
+  const midX = (minX + maxX) / 2;
+  const cx = midX;
+  const cy = m * midX + b;
+  // Angle: perpendicular to the slope => atan(m) + PI/2
+  // But we express as deviation from vertical for our axis system
+  const angle = Math.atan(m) * 180 / Math.PI;
+  // Distances between consecutive projected points (sorted by projection along line)
+  const projAlongLine = projections.map(p => p.x * Math.sqrt(1 + m * m));
+  projAlongLine.sort((a, b) => a - b);
+  const distances = [];
+  for (let i = 1; i < projAlongLine.length; i++) distances.push(Math.abs(projAlongLine[i] - projAlongLine[i - 1]));
+  return { angle, cx, cy, m, b, distances };
+}
+
+function analyzeColumn(points, isThumb = false) {
   if (!points || !points.length) return null;
-  const { angle, cx, cy, distances } = fitLine(points);
+  const { angle, cx, cy, distances } = fitLine(points, isThumb);
   const padding = distances.length ? distances.reduce((a,b)=>a+b,0)/distances.length : 18.0;
   return { center: [cx, cy], angle, padding, nKeys: points.length };
 }
@@ -355,7 +395,7 @@ function estimateScale(data, keySpacing) {
   const allDist = [];
   for (const col of Object.keys(data)) {
     if (data[col].length < 2) continue;
-    const { distances } = fitLine(data[col]);
+    const { distances } = fitLine(data[col], col === 'thumb');
     allDist.push(...distances);
   }
   if (!allDist.length) return 1.0;
@@ -387,7 +427,7 @@ function ergopadToErgogen(data, mirrorDist, keySpacing, ppmOverride) {
   }
   // Analyze thumb
   const thumbPts = scaled.thumb || [];
-  const thumbInfo = thumbPts.length ? analyzeColumn(thumbPts) : null;
+  const thumbInfo = thumbPts.length ? analyzeColumn(thumbPts, true) : null;
 
   // Build ergogen columns
   const columns = {};
@@ -1449,7 +1489,7 @@ function computeErgogenPreview() {
   // Thumb zone
   const thumbPts = scaled.thumb || [];
   if (thumbPts.length) {
-    const thumbInfo = analyzeColumn(thumbPts);
+    const thumbInfo = analyzeColumn(thumbPts, true);
     const nRows = Math.min(thumbInfo.nKeys, 3);
     const rad = thumbInfo.angle * Math.PI / 180;
     const axX = Math.sin(rad), axY = Math.cos(rad);
@@ -1523,25 +1563,16 @@ function drawCanvas() {
   });
 
   const ppm = currentScalePPM();
-  const rectHalf = 15 * ppm / 2; // half keycap size in pixels
+  const keyWidthPx = 17 * ppm;   // 17mm keycap, matching ergopad
+  const gapPx = 2 * ppm;         // 2mm gap between keys
+  const keyStepPx = keyWidthPx + gapPx; // center-to-center spacing
+  const rectHalf = keyWidthPx / 2;
 
   COLUMNS.forEach(col => {
     const pts = positions[col.id];
     if (!pts.length) return;
     const isActive = col.id === activeColumn;
-
-    // Compute column axis from ALL taps (more taps = better fit)
-    let colAngle = 0, colCx = pts[0].x, colCy = pts[0].y;
-    let padding = 40; // default spacing in pixels
-    if (pts.length >= 2) {
-      const fit = fitLine(pts);
-      colAngle = fit.angle;
-      colCx = fit.cx;
-      colCy = fit.cy;
-      padding = fit.distances.length ? fit.distances.reduce((a, b) => a + b, 0) / fit.distances.length : 40;
-    }
-    const rad = colAngle * Math.PI / 180;
-    const axX = Math.sin(rad), axY = Math.cos(rad);
+    const isThumb = col.id === 'thumb';
 
     // Draw small dots at ALL raw tap positions (calibration points)
     pts.forEach(p => {
@@ -1554,37 +1585,59 @@ function drawCanvas() {
       ctx.stroke();
     });
 
-    // Draw column axis line if 2+ points
-    if (pts.length >= 2) {
-      const len = 150;
+    if (pts.length < 2) return;
+
+    // Least-squares regression line through all taps (ergopad algorithm)
+    const fit = fitLine(pts, isThumb);
+    const m = fit.m, b = fit.b;
+
+    // Draw regression line
+    const lineLen = 200;
+    const dirLen = Math.sqrt(1 + m * m);
+    const dx = lineLen / dirLen, dy = m * lineLen / dirLen;
+    ctx.beginPath();
+    ctx.moveTo(fit.cx - dx, fit.cy - dy);
+    ctx.lineTo(fit.cx + dx, fit.cy + dy);
+    ctx.strokeStyle = col.color + '33';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 5]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Draw projected points on the line (small red dots, like ergopad aux lines)
+    pts.forEach(p => {
+      const proj = projectPointToLine(m, -1, b, p.x, p.y);
       ctx.beginPath();
-      ctx.moveTo(colCx - axX * len, colCy - axY * len);
-      ctx.lineTo(colCx + axX * len, colCy + axY * len);
-      ctx.strokeStyle = col.color + '33';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([5, 5]);
-      ctx.stroke();
+      ctx.arc(proj.x, proj.y, 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#ff000044';
+      ctx.fill();
+    });
+
+    // Midpoint: center of the projected X range on the regression line (like ergopad)
+    const midX = fit.cx;
+    const midY = fit.cy;
+
+    // Rotation: perpendicular to regression line, matching ergopad:
+    // group.rotation = Math.PI / 2 + Math.atan(trendline.m)
+    const rotation = Math.PI / 2 + Math.atan(m);
+
+    // Draw exactly 3 switch rectangles centered on midpoint,
+    // spaced by (keyWidth + gap) pixels along the line.
+    const nKeys = 3;
+    for (let k = 0; k < nKeys; k++) {
+      const offset = (k - (nKeys - 1) / 2) * keyStepPx;
+      // Offset along the regression line direction
+      const kx = midX + (offset / dirLen);
+      const ky = midY + (offset * m / dirLen);
+
+      ctx.save();
+      ctx.translate(kx, ky);
+      ctx.rotate(rotation);
+      ctx.strokeStyle = col.color + '88';
+      ctx.lineWidth = 1.5;
       ctx.setLineDash([]);
-    }
-
-    // Draw exactly 3 switch rectangles (bottom, home, top) evenly spaced
-    // along the fitted column axis, regardless of how many taps were placed.
-    if (pts.length >= 2) {
-      const nKeys = 3;
-      for (let k = 0; k < nKeys; k++) {
-        const offset = (k - (nKeys - 1) / 2) * padding;
-        const kx = colCx + axX * offset;
-        const ky = colCy + axY * offset;
-
-        ctx.save();
-        ctx.translate(kx, ky);
-        ctx.rotate(-rad);
-        ctx.strokeStyle = col.color + '88';
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([]);
-        ctx.strokeRect(-rectHalf, -rectHalf, rectHalf * 2, rectHalf * 2);
-        ctx.restore();
-      }
+      ctx.strokeRect(-rectHalf, -rectHalf, rectHalf * 2, rectHalf * 2);
+      ctx.restore();
     }
   });
 
