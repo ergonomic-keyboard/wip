@@ -39,6 +39,22 @@ header { display: flex; align-items: center; justify-content: space-between; pad
 .canvas-hint { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #444; font-size: 18px; pointer-events: none; text-align: center; line-height: 1.6; }
 .canvas-hint.hidden { display: none; }
 
+/* ── Tune Scale Modal ── */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal-box { background: #1e1e22; border: 1px solid #444; border-radius: 8px; padding: 24px; max-width: 420px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+.modal-box h3 { margin: 0 0 12px; font-size: 16px; color: #ddd; }
+.modal-box p { font-size: 13px; color: #aaa; line-height: 1.5; margin: 0 0 12px; }
+.modal-box .ref-line { height: 3px; background: #cc3333; border-radius: 1px; margin: 8px 0 16px; }
+.modal-box label { display: block; font-size: 12px; color: #999; margin-bottom: 4px; }
+.modal-box input[type=number] { width: 100%; padding: 6px 10px; border-radius: 4px; border: 1px solid #555; background: #111; color: #eee; font-size: 14px; }
+.modal-box .modal-footer { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
+.modal-box .modal-footer button { padding: 6px 20px; border-radius: 4px; font-size: 13px; border: 1px solid #555; background: #333; color: #ddd; cursor: pointer; }
+.modal-box .modal-footer button:hover { background: #444; }
+.modal-box .modal-footer button.primary { background: #2a6abf; border-color: #4a8adf; color: #fff; }
+.modal-box .modal-footer button.primary:hover { background: #3a7adf; }
+.modal-box .ppm-display { font-size: 11px; color: #666; margin-top: 8px; }
+
 /* ── Page 2: 3D View ── */
 #page2 .toolbar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #1a1a1a; border-bottom: 1px solid #333; flex-wrap: wrap; }
 #page2 .toolbar label { font-size: 12px; color: #aaa; display: flex; align-items: center; gap: 4px; }
@@ -115,6 +131,22 @@ header { display: flex; align-items: center; justify-content: space-between; pad
       bottom row, home row, top row.
     </div>
     <div style="position:absolute;top:12px;left:16px;color:#555;font-size:13px;font-weight:600;letter-spacing:1px;pointer-events:none;">LEFT HAND</div>
+  </div>
+</div>
+
+<!-- ═══════════════ Tune Scale Modal ═══════════════ -->
+<div class="modal-overlay" id="scale-modal">
+  <div class="modal-box">
+    <h3>Tune scale factor</h3>
+    <p>The default key size may not match your screen. Measure the red line below with a ruler and enter its width in millimeters.</p>
+    <div class="ref-line" id="scale-ref-line"></div>
+    <label for="scale-mm-input">Red line width in mm</label>
+    <input type="number" id="scale-mm-input" min="1" step="0.5" placeholder="e.g. 50">
+    <div class="ppm-display" id="ppm-display"></div>
+    <div class="modal-footer">
+      <button id="scale-reset-btn">Reset to auto</button>
+      <button id="scale-ok-btn" class="primary">OK</button>
+    </div>
   </div>
 </div>
 
@@ -333,7 +365,7 @@ function estimateScale(data, keySpacing) {
 
 function rd(v) { return Math.round(v * 10) / 10; }
 
-function ergopadToErgogen(data, mirrorDist, keySpacing) {
+function ergopadToErgogen(data, mirrorDist, keySpacing, ppmOverride) {
   mirrorDist = mirrorDist || 22;
   keySpacing = keySpacing || 18;
   // Flip Y
@@ -341,8 +373,8 @@ function ergopadToErgogen(data, mirrorDist, keySpacing) {
   for (const col of Object.keys(data)) {
     flipped[col] = data[col].map(p => ({ x: p.x, y: -p.y }));
   }
-  // Scale
-  let ppm = estimateScale(flipped, keySpacing);
+  // Scale: use calibrated ppm if provided, otherwise auto-estimate
+  let ppm = (ppmOverride && ppmOverride > 0) ? ppmOverride : estimateScale(flipped, keySpacing);
   if (ppm <= 0) ppm = 1.0;
   const scaled = {};
   for (const col of Object.keys(flipped)) {
@@ -1125,6 +1157,60 @@ toolbar.appendChild(resetColBtn);
 const resetAllBtn = document.createElement('div'); resetAllBtn.className = 'tool-btn'; resetAllBtn.textContent = 'Reset All';
 resetAllBtn.addEventListener('click', () => { COLUMNS.forEach(c => positions[c.id] = []); drawCanvas(); updateToolbar(); });
 toolbar.appendChild(resetAllBtn);
+const sep2 = document.createElement('div'); sep2.className = 'sep'; toolbar.appendChild(sep2);
+const tuneScaleBtn = document.createElement('div'); tuneScaleBtn.className = 'tool-btn'; tuneScaleBtn.textContent = 'Tune Scale';
+tuneScaleBtn.addEventListener('click', openScaleModal);
+toolbar.appendChild(tuneScaleBtn);
+
+// ── Tune Scale (calibrated pixels-per-mm) ──
+let calibratedPPM = null; // null = auto-estimate from tap distances; number = user-calibrated
+
+// Load from localStorage
+const storedPPM = localStorage.getItem('keyboard_wizard_ppm');
+if (storedPPM !== null) {
+  const v = parseFloat(storedPPM);
+  if (v > 0 && isFinite(v)) calibratedPPM = v;
+}
+
+function openScaleModal() {
+  const modal = document.getElementById('scale-modal');
+  const input = document.getElementById('scale-mm-input');
+  const display = document.getElementById('ppm-display');
+  modal.classList.add('open');
+  input.value = '';
+  if (calibratedPPM) {
+    display.textContent = `Current: ${calibratedPPM.toFixed(2)} px/mm (calibrated)`;
+  } else {
+    const auto = currentScalePPM();
+    display.textContent = `Current: ${auto.toFixed(2)} px/mm (auto-estimated)`;
+  }
+  input.focus();
+}
+
+document.getElementById('scale-ok-btn').addEventListener('click', () => {
+  const input = document.getElementById('scale-mm-input');
+  const refLine = document.getElementById('scale-ref-line');
+  const mm = parseFloat(input.value);
+  if (mm > 0 && isFinite(mm)) {
+    const refPx = refLine.clientWidth;
+    calibratedPPM = refPx / mm;
+    localStorage.setItem('keyboard_wizard_ppm', String(calibratedPPM));
+  }
+  document.getElementById('scale-modal').classList.remove('open');
+  drawCanvas();
+});
+
+document.getElementById('scale-reset-btn').addEventListener('click', () => {
+  calibratedPPM = null;
+  localStorage.removeItem('keyboard_wizard_ppm');
+  document.getElementById('scale-modal').classList.remove('open');
+  drawCanvas();
+});
+
+// Close modal on overlay click
+document.getElementById('scale-modal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+});
 
 function updateToolbar() {
   document.querySelectorAll('#col-toolbar .col-btn').forEach(b => {
@@ -1163,8 +1249,10 @@ let validationErrors = [];
 let validationWarnings = [];
 let ergogenPreviewKeys = []; // computed preview of where ergogen would place keys
 
-// Compute the scale factor (pixels per mm) from current tap data
+// Compute the scale factor (pixels per mm).
+// Uses calibrated value if available, otherwise auto-estimates from tap distances.
 function currentScalePPM() {
+  if (calibratedPPM !== null && calibratedPPM > 0) return calibratedPPM;
   const flipped = {};
   for (const col of Object.keys(positions)) {
     flipped[col] = positions[col].map(p => ({ x: p.x, y: -p.y }));
@@ -1678,7 +1766,7 @@ function initPage2() {
   loading.style.display = 'block';
   setTimeout(async () => {
     try {
-      generatedConfig = ergopadToErgogen(positions);
+      generatedConfig = ergopadToErgogen(positions, 22, 18, calibratedPPM);
       window.generatedConfig = generatedConfig;
       const yamlStr = jsyaml.dump(generatedConfig, { sortKeys: false, lineWidth: 200 });
       ergogenResults = await ergogen.process(yamlStr, { debug: true, svg: true });
