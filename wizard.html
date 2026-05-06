@@ -1564,8 +1564,6 @@ function drawCanvas() {
 
   const ppm = currentScalePPM();
   const keyWidthPx = 17 * ppm;   // 17mm keycap, matching ergopad
-  const gapPx = 2 * ppm;         // 2mm gap between keys
-  const keyStepPx = keyWidthPx + gapPx; // center-to-center spacing
   const rectHalf = keyWidthPx / 2;
 
   COLUMNS.forEach(col => {
@@ -1590,14 +1588,23 @@ function drawCanvas() {
     // Least-squares regression line through all taps (ergopad algorithm)
     const fit = fitLine(pts, isThumb);
     const m = fit.m, b = fit.b;
+    const dirLen = Math.sqrt(1 + m * m);
+
+    // Project all taps onto the regression line
+    const projections = pts.map(p => projectPointToLine(m, -1, b, p.x, p.y));
+    // Scalar projection along the line direction (signed distance from origin)
+    const projScalars = projections.map(p => p.x / dirLen + p.y * m / dirLen);
+    const minProj = Math.min(...projScalars);
+    const maxProj = Math.max(...projScalars);
+    const midProj = (minProj + maxProj) / 2;
+    const halfSpan = (maxProj - minProj) / 2;
 
     // Draw regression line
-    const lineLen = 200;
-    const dirLen = Math.sqrt(1 + m * m);
-    const dx = lineLen / dirLen, dy = m * lineLen / dirLen;
+    const lineLen = halfSpan + 60;
+    const ldx = lineLen / dirLen, ldy = lineLen * m / dirLen;
     ctx.beginPath();
-    ctx.moveTo(fit.cx - dx, fit.cy - dy);
-    ctx.lineTo(fit.cx + dx, fit.cy + dy);
+    ctx.moveTo(fit.cx - ldx, fit.cy - ldy);
+    ctx.lineTo(fit.cx + ldx, fit.cy + ldy);
     ctx.strokeStyle = col.color + '33';
     ctx.lineWidth = 1;
     ctx.setLineDash([5, 5]);
@@ -1605,33 +1612,39 @@ function drawCanvas() {
     ctx.setLineDash([]);
 
     // Draw projected points on the line (small red dots, like ergopad aux lines)
-    pts.forEach(p => {
-      const proj = projectPointToLine(m, -1, b, p.x, p.y);
+    projections.forEach(p => {
       ctx.beginPath();
-      ctx.arc(proj.x, proj.y, 3, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
       ctx.fillStyle = '#ff000044';
       ctx.fill();
     });
 
-    // Midpoint: center of the projected X range on the regression line (like ergopad)
-    const midX = fit.cx;
-    const midY = fit.cy;
+    // Place 3 keys along the regression line using tap positions:
+    // - Center key at the midpoint (center of projected range, like ergopad)
+    // - Top and bottom keys at the centers of gravity of the upper/lower halves
+    //   of the projected points. If the span is too small, fall back to even spacing.
+    // This way adding distant taps spreads the keys out naturally.
+    const upperScalars = projScalars.filter(s => s >= midProj);
+    const lowerScalars = projScalars.filter(s => s < midProj);
+    const avgUpper = upperScalars.length ? upperScalars.reduce((a, b) => a + b, 0) / upperScalars.length : midProj + halfSpan;
+    const avgLower = lowerScalars.length ? lowerScalars.reduce((a, b) => a + b, 0) / lowerScalars.length : midProj - halfSpan;
+
+    // The 3 key positions as scalar projections along the line
+    const nKeys = 3;
+    const keyScalars = [avgLower, midProj, avgUpper];
 
     // Rotation: perpendicular to regression line, matching ergopad:
     // group.rotation = Math.PI / 2 + Math.atan(trendline.m)
     const rotation = Math.PI / 2 + Math.atan(m);
 
-    // Draw exactly 3 switch rectangles centered on midpoint,
-    // spaced by (keyWidth + gap) pixels along the line.
-    const nKeys = 3;
+    // Draw exactly 3 switch rectangles
     for (let k = 0; k < nKeys; k++) {
-      const offset = (k - (nKeys - 1) / 2) * keyStepPx;
-      // Offset along the regression line direction
-      const kx = midX + (offset / dirLen);
-      const ky = midY + (offset * m / dirLen);
+      const ds = keyScalars[k] - midProj;
+      const px = fit.cx + ds / dirLen;
+      const py = fit.cy + ds * m / dirLen;
 
       ctx.save();
-      ctx.translate(kx, ky);
+      ctx.translate(px, py);
       ctx.rotate(rotation);
       ctx.strokeStyle = col.color + '88';
       ctx.lineWidth = 1.5;
