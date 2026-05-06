@@ -1530,107 +1530,61 @@ function drawCanvas() {
     if (!pts.length) return;
     const isActive = col.id === activeColumn;
 
-    // Compute column axis for projecting key positions onto a straight line
+    // Compute column axis from ALL taps (more taps = better fit)
     let colAngle = 0, colCx = pts[0].x, colCy = pts[0].y;
-    let projectedPts = pts.map(p => ({ ...p })); // default: raw positions
+    let padding = 40; // default spacing in pixels
     if (pts.length >= 2) {
       const fit = fitLine(pts);
       colAngle = fit.angle;
       colCx = fit.cx;
       colCy = fit.cy;
-      const rad = colAngle * Math.PI / 180;
-      const axX = Math.sin(rad), axY = Math.cos(rad);
-
-      // Project each tap position onto the column axis line
-      // The axis passes through (colCx, colCy) with direction (axX, axY)
-      projectedPts = pts.map(p => {
-        const dx = p.x - colCx, dy = p.y - colCy;
-        const proj = dx * axX + dy * axY; // scalar projection along axis
-        return {
-          x: colCx + axX * proj,
-          y: colCy + axY * proj,
-          rawX: p.x,  // keep original for tap dot
-          rawY: p.y,
-        };
-      });
-    } else {
-      projectedPts = pts.map(p => ({ x: p.x, y: p.y, rawX: p.x, rawY: p.y }));
+      padding = fit.distances.length ? fit.distances.reduce((a, b) => a + b, 0) / fit.distances.length : 40;
     }
+    const rad = colAngle * Math.PI / 180;
+    const axX = Math.sin(rad), axY = Math.cos(rad);
 
-    // Draw key rectangles at PROJECTED positions (straight along column axis)
-    projectedPts.forEach((p, idx) => {
-      const rawP = pts[idx];
-      const hasError = errorKeySet.has(`${rawP.x},${rawP.y}`);
-      const hasWarning = !hasError && warningKeySet.has(`${rawP.x},${rawP.y}`);
-
-      // Key outline rectangle at projected position, rotated so edges are
-      // perpendicular to the column axis (the line through the tap dots).
-      ctx.save();
-      ctx.translate(p.x, p.y);
-      if (pts.length >= 2) {
-        ctx.rotate(colAngle * Math.PI / 180);
-      }
-      if (hasError) {
-        ctx.strokeStyle = '#ff3333';
-        ctx.lineWidth = 2.5;
-        ctx.setLineDash([]);
-      } else if (hasWarning) {
-        ctx.strokeStyle = '#ffaa00';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([4, 3]);
-      } else {
-        ctx.strokeStyle = col.color + '66';
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([]);
-      }
-      ctx.strokeRect(-rectHalf, -rectHalf, rectHalf * 2, rectHalf * 2);
-      // Valid indicator
-      if (!hasError && !hasWarning && pts.length >= 2) {
-        ctx.strokeStyle = '#33cc5588';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(-rectHalf + 2, -rectHalf + 2, rectHalf * 2 - 4, rectHalf * 2 - 4);
-      }
-      ctx.restore();
-
-      // Tap point dot (at raw position, to show where user actually tapped)
+    // Draw small dots at ALL raw tap positions (calibration points)
+    pts.forEach(p => {
       ctx.beginPath();
-      ctx.arc(rawP.x, rawP.y, isActive ? 8 : 5, 0, Math.PI * 2);
-      ctx.fillStyle = hasError ? '#ff3333cc' : (col.color + (isActive ? 'cc' : '66'));
+      ctx.arc(p.x, p.y, isActive ? 6 : 4, 0, Math.PI * 2);
+      ctx.fillStyle = col.color + (isActive ? '99' : '55');
       ctx.fill();
-      ctx.strokeStyle = hasError ? '#ff3333' : col.color;
-      ctx.lineWidth = isActive ? 2 : 1;
-      ctx.setLineDash([]);
+      ctx.strokeStyle = col.color + (isActive ? 'cc' : '77');
+      ctx.lineWidth = 1;
       ctx.stroke();
-
-      // Faint line from raw tap to projected position (if offset is visible)
-      if (pts.length >= 2) {
-        const dist = Math.sqrt((rawP.x - p.x) ** 2 + (rawP.y - p.y) ** 2);
-        if (dist > 3) {
-          ctx.beginPath();
-          ctx.moveTo(rawP.x, rawP.y);
-          ctx.lineTo(p.x, p.y);
-          ctx.strokeStyle = col.color + '33';
-          ctx.lineWidth = 0.8;
-          ctx.setLineDash([2, 3]);
-          ctx.stroke();
-          ctx.setLineDash([]);
-        }
-      }
     });
 
     // Draw column axis line if 2+ points
     if (pts.length >= 2) {
-      const rad = colAngle * Math.PI / 180;
-      const axX = Math.sin(rad), axY = Math.cos(rad);
       const len = 150;
       ctx.beginPath();
-      ctx.moveTo(colCx - axX*len, colCy - axY*len);
-      ctx.lineTo(colCx + axX*len, colCy + axY*len);
+      ctx.moveTo(colCx - axX * len, colCy - axY * len);
+      ctx.lineTo(colCx + axX * len, colCy + axY * len);
       ctx.strokeStyle = col.color + '33';
       ctx.lineWidth = 1;
       ctx.setLineDash([5, 5]);
       ctx.stroke();
       ctx.setLineDash([]);
+    }
+
+    // Draw exactly 3 switch rectangles (bottom, home, top) evenly spaced
+    // along the fitted column axis, regardless of how many taps were placed.
+    if (pts.length >= 2) {
+      const nKeys = 3;
+      for (let k = 0; k < nKeys; k++) {
+        const offset = (k - (nKeys - 1) / 2) * padding;
+        const kx = colCx + axX * offset;
+        const ky = colCy + axY * offset;
+
+        ctx.save();
+        ctx.translate(kx, ky);
+        ctx.rotate(rad);
+        ctx.strokeStyle = col.color + '88';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([]);
+        ctx.strokeRect(-rectHalf, -rectHalf, rectHalf * 2, rectHalf * 2);
+        ctx.restore();
+      }
     }
   });
 
