@@ -1417,39 +1417,9 @@ function computeErgogenPreview() {
     }
   }
 
-  // Now validate: compare each ergogen preview key to its corresponding tapped position
-  COLUMNS.forEach(col => {
-    const tapped = positions[col.id];
-    if (tapped.length < 2) return;
-    const tappedSorted = tapped.slice().sort((a, b) => a.y - b.y);
-    const previewForCol = ergogenPreviewKeys.filter(k => k.col === col.id).sort((a, b) => a.y - b.y);
-
-    const nCompare = Math.min(tappedSorted.length, previewForCol.length);
-    for (let r = 0; r < nCompare; r++) {
-      const tap = tappedSorted[r];
-      const prev = previewForCol[r];
-      const dx = tap.x - prev.x;
-      const dy = tap.y - prev.y;
-      const distPx = Math.sqrt(dx * dx + dy * dy);
-      const distMm = distPx / ppm;
-
-      prev._tapDist = distMm;
-      prev._tapX = tap.x;
-      prev._tapY = tap.y;
-
-      if (distMm > 15 * 0.5) { // > 50% of keycap side
-        validationErrors.push({
-          type: 'position_mismatch',
-          keys: [
-            { x: tap.x, y: tap.y, col: col.id, label: col.label, rowIdx: r, color: col.color },
-            { x: prev.x, y: prev.y, col: col.id, label: col.label + ' (ergogen)', rowIdx: r, color: col.color }
-          ],
-          dist: distPx,
-          msg: `${col.label} row ${r + 1}: tap position differs from ergogen by ${distMm.toFixed(1)}mm (max 7.5mm)`
-        });
-      }
-    }
-  });
+  // Tap-to-ergogen comparison removed: raw taps are calibration data for
+  // the regression line, not 1:1 key positions. The ergogen preview overlay
+  // provides visual comparison instead.
 }
 
 function drawCanvas() {
