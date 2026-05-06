@@ -1302,118 +1302,29 @@ function validatePositions() {
   validationErrors = [];
   validationWarnings = [];
 
-  // Collect all tapped key positions with their column info
-  const allKeys = [];
+  // With the current tap model, raw taps are calibration data for the
+  // regression line — not 1:1 key positions. Overlap and spacing checks
+  // on raw taps are not meaningful. Instead, validate that each column
+  // has enough taps for a reliable fit.
   COLUMNS.forEach(col => {
     const pts = positions[col.id];
-    if (!pts.length) return;
-    const sorted = pts.slice().sort((a, b) => a.y - b.y);
-    sorted.forEach((p, rowIdx) => {
-      allKeys.push({ x: p.x, y: p.y, col: col.id, label: col.label, rowIdx, color: col.color });
-    });
-  });
-
-  if (allKeys.length < 2) return;
-
-  const ppm = currentScalePPM();
-  const keySizePx = 15 * ppm;         // 15mm keycap side in pixels
-  const switchDiagPx = Math.sqrt(14.2*14.2 + 12.8*12.8) * ppm; // switch housing diagonal in pixels
-  const minCenterDistPx = keySizePx * 0.7; // minimum center-to-center (keys can't overlap)
-
-  // Check all pairs for overlap
-  for (let i = 0; i < allKeys.length; i++) {
-    for (let j = i + 1; j < allKeys.length; j++) {
-      const a = allKeys[i], b = allKeys[j];
-      const dx = a.x - b.x, dy = a.y - b.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-
-      if (dist < minCenterDistPx * 0.5) {
-        validationErrors.push({
-          type: 'overlap',
-          keys: [a, b],
-          dist,
-          msg: `${a.label} row ${a.rowIdx + 1} overlaps with ${b.label} row ${b.rowIdx + 1} (${(dist / ppm).toFixed(1)}mm apart, need >${(minCenterDistPx * 0.5 / ppm).toFixed(1)}mm)`
-        });
-      } else if (dist < minCenterDistPx) {
-        validationWarnings.push({
-          type: 'too_close',
-          keys: [a, b],
-          dist,
-          msg: `${a.label} row ${a.rowIdx + 1} very close to ${b.label} row ${b.rowIdx + 1} (${(dist / ppm).toFixed(1)}mm)`
-        });
-      }
-    }
-  }
-
-  // Check within-column spacing consistency
-  COLUMNS.forEach(col => {
-    const pts = positions[col.id];
-    if (pts.length < 2) return;
-    const sorted = pts.slice().sort((a, b) => a.y - b.y);
-    for (let k = 0; k < sorted.length - 1; k++) {
-      const dx = sorted[k + 1].x - sorted[k].x;
-      const dy = sorted[k + 1].y - sorted[k].y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const distMm = dist / ppm;
-      if (distMm < 14) {
-        validationErrors.push({
-          type: 'column_spacing',
-          keys: [{ ...sorted[k], col: col.id, label: col.label, rowIdx: k, color: col.color },
-                 { ...sorted[k + 1], col: col.id, label: col.label, rowIdx: k + 1, color: col.color }],
-          dist,
-          msg: `${col.label} rows ${k + 1}-${k + 2}: only ${distMm.toFixed(1)}mm apart (min 14mm for switch clearance)`
-        });
-      }
+    if (pts.length === 1) {
+      validationWarnings.push({
+        type: 'insufficient_taps',
+        keys: [{ x: pts[0].x, y: pts[0].y, col: col.id, label: col.label, rowIdx: 0, color: col.color }],
+        msg: `${col.label}: needs at least 2 taps to define the column line`
+      });
     }
   });
 }
 
-// After ergogen runs, compare tapped positions with ergogen output
+// After ergogen runs, compare derived key positions with ergogen output.
+// With the tap-regression model, raw taps are calibration data — the
+// meaningful comparison is between the 3 derived key positions and
+// ergogen's output. This is a stub for now; the ergogen preview overlay
+// already shows the comparison visually.
 function validateAgainstErgogen() {
-  if (!ergogenResults || !ergogenResults.points) return;
-
-  const pts = ergogenResults.points;
-  const ppm = currentScalePPM();
-  const threshold = 15 * ppm * 0.5; // 50% of keycap side
-
-  // Build a map of ergogen positions in canvas space
-  // We need to reverse the ergopadToErgogen transform
-  const ptEntries = Object.entries(pts).filter(([name]) => !name.startsWith('mirror_'));
-  if (!ptEntries.length) return;
-
-  // Collect all tapped positions (left hand only, pre-mirror)
-  const tappedByCol = {};
-  MATRIX_COLUMNS.forEach((colId, ci) => {
-    const colPts = positions[colId];
-    if (!colPts || !colPts.length) return;
-    const sorted = colPts.slice().sort((a, b) => a.y - b.y);
-    tappedByCol[ERGOGEN_NAMES[ci]] = sorted;
-  });
-  if (positions.thumb && positions.thumb.length) {
-    tappedByCol['thumb'] = positions.thumb.slice().sort((a, b) => a.y - b.y);
-  }
-
-  // Get ergogen left-half positions grouped by column
-  const ergogenByCol = {};
-  ptEntries.forEach(([name, pt]) => {
-    if (pt.meta?.mirrored) return;
-    const zoneName = pt.meta?.zone?.name || 'matrix';
-    const colName = name.replace('matrix_', '').replace('thumb_', '').replace(/_(?:top|home|bottom|cluster)$/, '').replace(/^thumbfan_/, '').replace(/_thumb$/, '');
-
-    // Map ergogen column names back
-    let mappedCol = null;
-    for (const eName of ERGOGEN_NAMES) {
-      if (colName === eName || name.includes(`_${eName}_`)) { mappedCol = eName; break; }
-    }
-    if (!mappedCol && zoneName === 'thumb') mappedCol = 'thumb';
-    if (!mappedCol) return;
-
-    if (!ergogenByCol[mappedCol]) ergogenByCol[mappedCol] = [];
-    ergogenByCol[mappedCol].push({ name, x: pt.x, y: pt.y, r: pt.r });
-  });
-
-  // Sort each ergogen column by Y (ascending = bottom to top in ergogen coords)
-  Object.values(ergogenByCol).forEach(arr => arr.sort((a, b) => a.y - b.y));
+  // Visual comparison via ergogenPreviewKeys overlay is sufficient.
 }
 
 // Compute where ergogen would place keys given current tap data, in canvas pixel space.
@@ -1745,7 +1656,7 @@ function updateValidationDisplay() {
     msgEl.style.background = '#1a3a1a';
     msgEl.style.borderBottom = '1px solid #336633';
     msgEl.style.color = '#88cc88';
-    msgEl.innerHTML = `<strong>Layout OK</strong> — ${totalKeys} keys, no overlaps detected`;
+    msgEl.innerHTML = `<strong>Layout OK</strong> — ${totalKeys} taps across ${COLUMNS.filter(c => positions[c.id].length >= 2).length} columns`;
   } else {
     msgEl.style.background = 'transparent';
     msgEl.style.borderBottom = 'none';
