@@ -1118,7 +1118,7 @@ function goToPage(n) {
 }
 
 function canAdvance() {
-  return COLUMNS.every(c => positions[c.id].length >= 2) && validationErrors.length === 0;
+  return COLUMNS.every(c => positions[c.id].length >= MIN_KEYS_PER_COL) && validationErrors.length === 0;
 }
 
 btnNext.addEventListener('click', () => { if (currentPage < 4 && (currentPage !== 1 || canAdvance())) goToPage(currentPage + 1); });
@@ -1135,17 +1135,16 @@ const ctx = canvas.getContext('2d');
 const toolbar = document.getElementById('col-toolbar');
 const hint = document.getElementById('canvas-hint');
 
-// Max keys per column: matrix columns get exactly 3 (bottom, home, top), thumb gets 1-3
-const MAX_KEYS_MATRIX = 3;
-const MAX_KEYS_THUMB = 3;
+// Min keys required per column to define the line, no upper limit on taps.
+// More taps improve the fitted line accuracy. Ergogen uses at most 3 rows per column.
+const MIN_KEYS_PER_COL = 2;
 
 // Build toolbar
 COLUMNS.forEach(c => {
   const btn = document.createElement('div');
   btn.className = 'col-btn' + (c.id === activeColumn ? ' active' : '');
   btn.style.background = c.color;
-  const maxK = c.id === 'thumb' ? MAX_KEYS_THUMB : MAX_KEYS_MATRIX;
-  btn.innerHTML = `${c.label}<span class="count">(0/${maxK})</span>`;
+  btn.innerHTML = `${c.label}<span class="count">(0)</span>`;
   btn.dataset.col = c.id;
   btn.addEventListener('click', () => { activeColumn = c.id; updateToolbar(); });
   toolbar.appendChild(btn);
@@ -1215,9 +1214,8 @@ document.getElementById('scale-modal').addEventListener('click', (e) => {
 function updateToolbar() {
   document.querySelectorAll('#col-toolbar .col-btn').forEach(b => {
     const cid = b.dataset.col;
-    const maxK = cid === 'thumb' ? MAX_KEYS_THUMB : MAX_KEYS_MATRIX;
     b.classList.toggle('active', cid === activeColumn);
-    b.querySelector('.count').textContent = `(${positions[cid].length}/${maxK})`;
+    b.querySelector('.count').textContent = `(${positions[cid].length})`;
   });
   const show = !COLUMNS.some(c => positions[c.id].length > 0);
   hint.classList.toggle('hidden', !show);
@@ -1234,8 +1232,6 @@ window.addEventListener('resize', resizeCanvas);
 setTimeout(resizeCanvas, 50);
 
 canvas.addEventListener('pointerdown', e => {
-  const maxKeys = activeColumn === 'thumb' ? MAX_KEYS_THUMB : MAX_KEYS_MATRIX;
-  if (positions[activeColumn].length >= maxKeys) return; // reject extra taps
   const rect = canvas.getBoundingClientRect();
   const x = (e.clientX - rect.left) * (canvas.width / rect.width);
   const y = (e.clientY - rect.top) * (canvas.height / rect.height);
@@ -1567,10 +1563,13 @@ function drawCanvas() {
       const hasError = errorKeySet.has(`${rawP.x},${rawP.y}`);
       const hasWarning = !hasError && warningKeySet.has(`${rawP.x},${rawP.y}`);
 
-      // Key outline rectangle at projected position, axis-aligned (no rotation).
-      // Edges are perpendicular to screen axes — same as actual keycaps on a keyboard.
+      // Key outline rectangle at projected position, rotated so edges are
+      // perpendicular to the column axis (the line through the tap dots).
       ctx.save();
       ctx.translate(p.x, p.y);
+      if (pts.length >= 2) {
+        ctx.rotate(colAngle * Math.PI / 180);
+      }
       if (hasError) {
         ctx.strokeStyle = '#ff3333';
         ctx.lineWidth = 2.5;
@@ -1644,6 +1643,7 @@ function drawCanvas() {
       const hasMismatch = pk._tapDist !== undefined && pk._tapDist > 7.5;
       ctx.save();
       ctx.translate(pk.x, pk.y);
+      ctx.rotate(pk.angleDeg * Math.PI / 180);
       ctx.strokeStyle = hasMismatch ? '#ff555588' : '#44ff4444';
       ctx.lineWidth = 1;
       ctx.setLineDash([2, 3]);
