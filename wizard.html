@@ -2510,22 +2510,18 @@ function build3DScene() {
     const sr = -pt.r * Math.PI / 180;
 
     // Switch housing (centered on key position, sitting on switch plate)
-    dummy.position.set(sx - 7.1, sy - 6.4, Z_SWITCH_BASE);
-    dummy.rotation.set(0, 0, 0);
-    dummy.scale.set(1, 1, 1);
-    // We need to apply rotation around the key center
+    // roundedRectShape is already centered at origin, so no offset needed
     const m4 = new THREE.Matrix4();
     m4.makeTranslation(sx, sy, Z_SWITCH_BASE);
     const rot = new THREE.Matrix4().makeRotationZ(sr);
-    const off1 = new THREE.Matrix4().makeTranslation(-7.1, -6.4, 0);
-    m4.multiply(rot).multiply(off1);
+    m4.multiply(rot);
     switchInst.setMatrixAt(i, m4);
 
     // Keycap (on top of switch, centered)
+    // roundedRectShape is already centered at origin, so no offset needed
     const m4k = new THREE.Matrix4();
     m4k.makeTranslation(sx, sy, Z_KEYCAP);
-    const offK = new THREE.Matrix4().makeTranslation(-7, -7, 0);
-    m4k.multiply(rot).multiply(offK);
+    m4k.multiply(rot);
     keycapInst.setMatrixAt(i, m4k);
     m4k.toArray(keycapBaseMatrices, i * 16);
 
@@ -2572,20 +2568,20 @@ function build3DScene() {
   const labelTexCache = {};
   function makeLabelTex(letter) {
     if (labelTexCache[letter]) return labelTexCache[letter];
-    const lc = document.createElement('canvas'); lc.width = 64; lc.height = 64;
+    const lc = document.createElement('canvas'); lc.width = 128; lc.height = 128;
     const lg = lc.getContext('2d');
-    lg.clearRect(0, 0, 64, 64);
+    lg.clearRect(0, 0, 128, 128);
     lg.fillStyle = '#cccccc';
-    lg.font = 'bold 28px -apple-system, "Segoe UI", sans-serif';
+    lg.font = 'bold 56px -apple-system, "Segoe UI", sans-serif';
     lg.textAlign = 'center';
     lg.textBaseline = 'middle';
-    lg.fillText(letter, 32, 32);
+    lg.fillText(letter, 64, 64);
     const t = new THREE.CanvasTexture(lc);
     t.needsUpdate = true;
     labelTexCache[letter] = t;
     return t;
   }
-  const labelGeo = new THREE.PlaneGeometry(12, 12);
+  const labelGeo = new THREE.PlaneGeometry(13, 13);
   const labelZ = Z_KEYCAP + 1.7;
   // Map keys to correct keymap positions.
   // DEFAULT_KEYMAPS.layer0 layout: rows interleaved (5 left + 5 right per row), then 3+3 thumb.
@@ -2614,6 +2610,10 @@ function build3DScene() {
     const zmk = layer0[idx];
     return zmkToLabel[zmk] || zmk;
   }
+  // Labels are added to separate groups (not boardGroup) to avoid mirrored text
+  // on the right half. They are attached to leftHalf/rightHalf after the split.
+  const leftLabelGroup = new THREE.Group();
+  const rightLabelGroup = new THREE.Group();
   keyMap.leftKeys.forEach((k) => {
     const label = getKeymapLabel(k);
     if (!label) return;
@@ -2627,7 +2627,23 @@ function build3DScene() {
     const sr2 = -pt2.r * Math.PI / 180;
     lm.position.set(sx2, sy2, labelZ);
     lm.rotation.set(0, 0, sr2);
-    boardGroup.add(lm);
+    leftLabelGroup.add(lm);
+  });
+  // Right-half labels: match each right key to its left counterpart and store
+  // for mirror placement after the split (when hingeX is known).
+  const rightLabelData = [];
+  keyMap.rightKeys.forEach((k) => {
+    const label = getKeymapLabel(k);
+    if (!label) return;
+    // Find matching left key (same zone, colIdx, rowIdx)
+    const leftMatch = keyMap.leftKeys.find(lk => lk.zone === k.zone && lk.colIdx === k.colIdx && lk.rowIdx === k.rowIdx);
+    if (!leftMatch) return;
+    const lpt = pts[leftMatch.name];
+    if (!lpt) return;
+    const sx2 = lpt.x + offX;
+    const sy2 = -lpt.y + offY;
+    const sr2 = -lpt.r * Math.PI / 180;
+    rightLabelData.push({ label, leftSx: sx2, leftSy: sy2, leftSr: sr2 });
   });
 
   // ── nice!nano v2 controllers (proper position, visible USB-C) ──
@@ -2775,6 +2791,21 @@ function build3DScene() {
     }
   });
   rightHalf.add(rightContent);
+
+  // ── Add key letter labels (separate from boardGroup to avoid mirrored text) ──
+  leftHalf.add(leftLabelGroup);
+  // Right-half labels: mirror left positions around hingeX, flip rotation
+  rightLabelData.forEach(({ label, leftSx, leftSy, leftSr }) => {
+    const tex = makeLabelTex(label);
+    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false });
+    const lm = new THREE.Mesh(labelGeo, mat);
+    const mirroredX = 2 * hingeX - leftSx;
+    lm.position.set(mirroredX, leftSy, labelZ);
+    lm.rotation.set(0, 0, -leftSr); // mirror rotation
+    rightLabelGroup.add(lm);
+  });
+  rightHalf.add(rightLabelGroup);
+
   scene.add(leftHalf);
   scene.add(rightHalf);
 
