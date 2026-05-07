@@ -761,8 +761,13 @@ function ergopadToErgogen(data, mirrorDist, keySpacing, ppmOverride) {
     },
     outlines: {
       _keycaps: [{ what: 'rectangle', where: true, size: ['kx - 0.5', 'ky - 0.5'] }],
-      board: [{ what: 'rectangle', where: true, size: ['px', 'py'], bound: true, fillet: 2 }],
-      switch_cutouts: [{ what: 'rectangle', where: true, size: [13.8, 13.8], bound: false }]
+      board: [
+        { what: 'rectangle', where: true, size: ['px + 4', 'py + 4'], bound: true, fillet: 8 }
+      ],
+      switch_cutouts: [{ what: 'rectangle', where: true, size: [13.8, 13.8], bound: false }],
+      frame: [
+        { what: 'rectangle', where: true, size: ['px + 8', 'py + 8'], bound: true, fillet: 8 }
+      ]
     },
     cases: {
       bottom_plate: [{ what: 'outline', name: 'board', extrude: 1.0 }],
@@ -1994,83 +1999,118 @@ function generateWoodTexture(w, h) {
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   const g = c.getContext('2d');
 
-  // Bamboo base: warm golden-tan gradient background
-  const bgGrad = g.createLinearGradient(0, 0, 0, h);
-  bgGrad.addColorStop(0, '#c9a86c');
-  bgGrad.addColorStop(0.3, '#d4b87a');
-  bgGrad.addColorStop(0.5, '#ccaa6e');
-  bgGrad.addColorStop(0.7, '#d0b474');
-  bgGrad.addColorStop(1, '#c4a064');
+  // Rich bamboo base with warm tones
+  const bgGrad = g.createLinearGradient(0, 0, w * 0.3, h);
+  bgGrad.addColorStop(0, '#b8923c');
+  bgGrad.addColorStop(0.2, '#c9a050');
+  bgGrad.addColorStop(0.5, '#d4aa55');
+  bgGrad.addColorStop(0.8, '#c49845');
+  bgGrad.addColorStop(1, '#b08535');
   g.fillStyle = bgGrad;
   g.fillRect(0, 0, w, h);
 
-  // Dense bamboo grain lines (many thin parallel lines with variation)
-  for (let i = 0; i < 200; i++) {
-    const y = (i / 200) * h + (Math.random() - 0.5) * 3;
-    const lw = 0.3 + Math.random() * 0.8;
-    // Alternate between darker and lighter grain lines
-    const isDark = Math.random() > 0.4;
-    const base = isDark ? 130 + Math.random() * 30 : 180 + Math.random() * 30;
-    const alpha = isDark ? 0.25 + Math.random() * 0.2 : 0.1 + Math.random() * 0.12;
-    g.strokeStyle = `rgba(${base - 20}, ${base - 40}, ${base - 70}, ${alpha})`;
+  // Broad tonal variation across board (simulates sapwood/heartwood transition)
+  for (let p = 0; p < 12; p++) {
+    const px = Math.random() * w, py = Math.random() * h;
+    const pr = 80 + Math.random() * 200;
+    const grad = g.createRadialGradient(px, py, 0, px, py, pr);
+    const isDark = Math.random() > 0.5;
+    grad.addColorStop(0, isDark ? 'rgba(130, 85, 30, 0.15)' : 'rgba(210, 170, 80, 0.12)');
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, w, h);
+  }
+
+  // Wood grain — flowing parallel lines with natural waviness
+  for (let i = 0; i < 400; i++) {
+    const y = (i / 400) * h + (Math.random() - 0.5) * 4;
+    const lw = 0.4 + Math.random() * 1.5;
+    const isDark = Math.random() > 0.35;
+    const r = isDark ? 90 + Math.random() * 40 : 160 + Math.random() * 40;
+    const gg = isDark ? 60 + Math.random() * 30 : 120 + Math.random() * 30;
+    const b = isDark ? 20 + Math.random() * 20 : 60 + Math.random() * 20;
+    const alpha = isDark ? 0.3 + Math.random() * 0.35 : 0.15 + Math.random() * 0.2;
+    g.strokeStyle = `rgba(${r|0}, ${gg|0}, ${b|0}, ${alpha})`;
     g.lineWidth = lw;
     g.beginPath();
-    let phase = Math.random() * 10;
+    const phase = Math.random() * 20;
+    const freq1 = 0.004 + Math.random() * 0.008;
+    const freq2 = 0.015 + Math.random() * 0.02;
+    const amp1 = 2 + Math.random() * 5;
+    const amp2 = 0.5 + Math.random() * 2;
     for (let x = 0; x < w; x += 2) {
-      const wobble = Math.sin(x * 0.015 + phase) * 1.5 + Math.sin(x * 0.003 + i * 0.3) * 3;
+      const wobble = Math.sin(x * freq1 + phase) * amp1 + Math.sin(x * freq2 + phase * 3) * amp2;
       if (x === 0) g.moveTo(x, y + wobble); else g.lineTo(x, y + wobble);
     }
     g.stroke();
   }
 
-  // Bamboo node lines (horizontal darker bands, characteristic of bamboo)
-  const nNodes = 3 + Math.floor(Math.random() * 3);
+  // Prominent growth ring arcs (characteristic of bamboo cross-grain cut)
+  for (let ring = 0; ring < 6; ring++) {
+    const ry = (ring + 0.3 + Math.random() * 0.4) / 6 * h;
+    const ringW = 1.5 + Math.random() * 2.5;
+    g.strokeStyle = `rgba(100, 65, 20, ${0.25 + Math.random() * 0.2})`;
+    g.lineWidth = ringW;
+    g.beginPath();
+    const arcPhase = Math.random() * 5;
+    for (let x = 0; x < w; x += 2) {
+      const curve = Math.sin(x * 0.002 + arcPhase) * 15;
+      if (x === 0) g.moveTo(x, ry + curve); else g.lineTo(x, ry + curve);
+    }
+    g.stroke();
+    // Light edge above ring
+    g.strokeStyle = `rgba(220, 190, 120, 0.12)`;
+    g.lineWidth = 0.8;
+    g.beginPath();
+    for (let x = 0; x < w; x += 2) {
+      const curve = Math.sin(x * 0.002 + arcPhase) * 15;
+      if (x === 0) g.moveTo(x, ry + curve - ringW); else g.lineTo(x, ry + curve - ringW);
+    }
+    g.stroke();
+  }
+
+  // Bamboo node bands (thicker, darker horizontal marks)
+  const nNodes = 2 + Math.floor(Math.random() * 2);
   for (let n = 0; n < nNodes; n++) {
-    const ny = (n + 0.5 + (Math.random() - 0.5) * 0.3) / nNodes * h;
-    const nodeW = 2 + Math.random() * 3;
-    g.fillStyle = `rgba(140, 100, 50, ${0.15 + Math.random() * 0.1})`;
-    g.fillRect(0, ny - nodeW / 2, w, nodeW);
-    // Lighter line above node
-    g.fillStyle = `rgba(220, 200, 150, 0.08)`;
-    g.fillRect(0, ny - nodeW / 2 - 2, w, 2);
-  }
-
-  // Color variation patches (natural bamboo has subtle tonal shifts)
-  for (let p = 0; p < 8; p++) {
-    const px = Math.random() * w, py = Math.random() * h;
-    const pr = 40 + Math.random() * 80;
-    const grad = g.createRadialGradient(px, py, 0, px, py, pr);
-    const tone = Math.random() > 0.5 ? 'rgba(200, 170, 100, 0.06)' : 'rgba(160, 120, 60, 0.06)';
-    grad.addColorStop(0, tone);
-    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    const ny = (n + 0.5 + (Math.random() - 0.5) * 0.4) / nNodes * h;
+    const nodeW = 3 + Math.random() * 4;
+    const grad = g.createLinearGradient(0, ny - nodeW, 0, ny + nodeW);
+    grad.addColorStop(0, 'rgba(90, 55, 15, 0)');
+    grad.addColorStop(0.3, 'rgba(90, 55, 15, 0.3)');
+    grad.addColorStop(0.5, 'rgba(70, 40, 10, 0.4)');
+    grad.addColorStop(0.7, 'rgba(90, 55, 15, 0.3)');
+    grad.addColorStop(1, 'rgba(90, 55, 15, 0)');
     g.fillStyle = grad;
-    g.fillRect(px - pr, py - pr, pr * 2, pr * 2);
+    g.fillRect(0, ny - nodeW, w, nodeW * 2);
   }
 
-  // Small dark specks (natural fiber texture)
-  for (let s = 0; s < 120; s++) {
+  // Fine pores and fiber detail
+  for (let s = 0; s < 300; s++) {
     const sx = Math.random() * w, sy = Math.random() * h;
-    g.fillStyle = `rgba(100, 70, 30, ${0.08 + Math.random() * 0.08})`;
-    g.fillRect(sx, sy, 1 + Math.random(), 0.5 + Math.random() * 1.5);
+    const sw = 0.5 + Math.random() * 2;
+    const sh = 0.3 + Math.random() * 0.8;
+    g.fillStyle = `rgba(70, 45, 15, ${0.1 + Math.random() * 0.15})`;
+    g.fillRect(sx, sy, sw, sh);
   }
 
   const tex = new THREE.CanvasTexture(c);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
 
-  // Normal map for surface relief
-  const nc = document.createElement('canvas'); nc.width = 256; nc.height = 256;
+  // Normal map — pronounced grain relief
+  const nc = document.createElement('canvas'); nc.width = 512; nc.height = 512;
   const ng = nc.getContext('2d');
-  ng.fillStyle = '#8080ff'; ng.fillRect(0, 0, 256, 256); // neutral normal
-  for (let i = 0; i < 150; i++) {
-    const ny = (i / 150) * 256;
-    const alpha = 0.03 + Math.random() * 0.04;
-    // Slight perturbation in normals along grain
-    const nShade = Math.random() > 0.5 ? 135 : 120;
-    ng.strokeStyle = `rgba(${nShade}, ${nShade}, 255, ${alpha})`;
-    ng.lineWidth = 0.5 + Math.random() * 0.8;
+  ng.fillStyle = '#8080ff'; ng.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 300; i++) {
+    const ny = (i / 300) * 512;
+    const phase = Math.random() * 10;
+    const isDark = Math.random() > 0.4;
+    const nVal = isDark ? 105 + Math.random() * 20 : 145 + Math.random() * 15;
+    const alpha = isDark ? 0.08 + Math.random() * 0.1 : 0.04 + Math.random() * 0.06;
+    ng.strokeStyle = `rgba(${nVal|0}, ${nVal|0}, 255, ${alpha})`;
+    ng.lineWidth = 0.5 + Math.random() * 1.5;
     ng.beginPath();
-    for (let x = 0; x < 256; x += 3) {
-      const wb = Math.sin(x * 0.02 + i * 0.5) * 1;
+    for (let x = 0; x < 512; x += 2) {
+      const wb = Math.sin(x * 0.012 + phase) * 2 + Math.sin(x * 0.003 + i * 0.4) * 3;
       if (x === 0) ng.moveTo(x, ny + wb); else ng.lineTo(x, ny + wb);
     }
     ng.stroke();
@@ -2078,18 +2118,18 @@ function generateWoodTexture(w, h) {
   const normalTex = new THREE.CanvasTexture(nc);
   normalTex.wrapS = normalTex.wrapT = THREE.RepeatWrapping;
 
-  // Roughness map: bamboo has moderate roughness with grain variation
+  // Roughness map: grain-aligned variation (lower = glossier between grains)
   const rc = document.createElement('canvas'); rc.width = 256; rc.height = 256;
   const rg = rc.getContext('2d');
-  rg.fillStyle = '#888'; rg.fillRect(0, 0, 256, 256); // base roughness ~0.53
-  for (let i = 0; i < 100; i++) {
+  rg.fillStyle = '#777'; rg.fillRect(0, 0, 256, 256); // base roughness ~0.47
+  for (let i = 0; i < 150; i++) {
+    const ry = (i / 150) * 256;
     const isDark = Math.random() > 0.5;
-    rg.strokeStyle = isDark ? `rgba(120, 120, 120, 0.15)` : `rgba(170, 170, 170, 0.12)`;
-    rg.lineWidth = 0.5 + Math.random() * 1.0;
+    rg.strokeStyle = isDark ? `rgba(100, 100, 100, 0.2)` : `rgba(180, 180, 180, 0.15)`;
+    rg.lineWidth = 0.5 + Math.random() * 1.5;
     rg.beginPath();
-    const ry = (i / 100) * 256;
-    for (let x = 0; x < 256; x += 3) {
-      const wb = Math.sin(x * 0.025 + i * 0.7) * 1.2;
+    for (let x = 0; x < 256; x += 2) {
+      const wb = Math.sin(x * 0.02 + i * 0.6) * 1.5;
       if (x === 0) rg.moveTo(x, ry + wb); else rg.lineTo(x, ry + wb);
     }
     rg.stroke();
@@ -2293,8 +2333,8 @@ function build3DScene() {
   // ── PBR Materials (Apple-quality finishes) ──
   const bambooMat = new THREE.MeshStandardMaterial({
     map: woodTex.map, roughnessMap: woodTex.roughnessMap, normalMap: woodTex.normalMap,
-    normalScale: new THREE.Vector2(0.3, 0.3),
-    roughness: 0.5, metalness: 0.0, envMapIntensity: 0.4
+    normalScale: new THREE.Vector2(0.7, 0.7),
+    roughness: 0.4, metalness: 0.0, envMapIntensity: 0.8
   });
   const bambooSideMat = bambooMat.clone();
   const corkMat = new THREE.MeshStandardMaterial({ map: corkTex.map, roughness: 0.95, metalness: 0.0 });
@@ -2431,17 +2471,27 @@ function build3DScene() {
 
   const keycapBaseMatrices = new Float32Array(nKeys * 16);
 
-  // ── Coordinate conversion (FIXED) ──
-  // Ergogen: X = right, Y = up. SVG: X = right, Y = down.
-  // SVG was generated from the outline. The board group lives in SVG space.
-  // Key positions from ergogen: scene_x = pt.x, scene_y = -pt.y (flip Y)
-  // Then offset to align with the extruded SVG shapes.
-  const ptXs = ptEntries.map(([, p]) => p.x);
-  const ptYs = ptEntries.map(([, p]) => -p.y);
-  const ptCx = ptXs.reduce((a, b) => a + b, 0) / nKeys;
-  const ptCy = ptYs.reduce((a, b) => a + b, 0) / nKeys;
-  const offX = center.x - ptCx;
-  const offY = center.y - ptCy;
+  // ── Coordinate conversion ──
+  // Ergogen SVG output and points use the same coordinate system.
+  // SVG: X = right, Y = down. Ergogen points: X = right, Y = up.
+  // So scene coords for a key: scene_x = pt.x, scene_y = -pt.y (matching SVG space).
+  // The offset accounts for any SVG viewBox origin shift.
+  // Compute from switch cutout centers (which are exactly at key positions in SVG space):
+  let offX = 0, offY = 0;
+  if (switchShapes.length > 0) {
+    const cutoutBbox = new THREE.Box3();
+    switchShapes.forEach(s => {
+      const pts2 = s.getPoints(8);
+      pts2.forEach(p2 => cutoutBbox.expandByPoint(new THREE.Vector3(p2.x, p2.y, 0)));
+    });
+    const cutoutCenter = new THREE.Vector3(); cutoutBbox.getCenter(cutoutCenter);
+    const ptXs = ptEntries.map(([, p]) => p.x);
+    const ptYs = ptEntries.map(([, p]) => -p.y);
+    const ptCx = ptXs.reduce((a, b) => a + b, 0) / nKeys;
+    const ptCy = ptYs.reduce((a, b) => a + b, 0) / nKeys;
+    offX = cutoutCenter.x - ptCx;
+    offY = cutoutCenter.y - ptCy;
+  }
 
   const dummy = new THREE.Object3D();
 
@@ -2499,6 +2549,53 @@ function build3DScene() {
   [switchInst, keycapInst, stemInst, diodeInst, diodeLeadInst].forEach(inst => {
     inst.instanceMatrix.needsUpdate = true;
     boardGroup.add(inst);
+  });
+
+  // ── Key letter labels ──
+  // Map ergogen point names to QWERTY keymap positions and render on keycaps
+  const keyMap = buildKeyPositionMap(pts);
+  const zmkToLabel = {
+    'Q':'Q','W':'W','E':'E','R':'R','T':'T','Y':'Y','U':'U','I':'I','O':'O','P':'P',
+    'A':'A','S':'S','D':'D','F':'F','G':'G','H':'H','J':'J','K':'K','L':'L',
+    'SEMI':';','Z':'Z','X':'X','C':'C','V':'V','B':'B','N':'N','M':'M',
+    'COMMA':',','DOT':'.','FSLH':'/','LGUI':'\u2318','SPACE':'\u2423','TAB':'\u21e5',
+    'RET':'\u21b5','BSPC':'\u232b','RALT':'Alt'
+  };
+  const labelTexCache = {};
+  function makeLabelTex(letter) {
+    if (labelTexCache[letter]) return labelTexCache[letter];
+    const lc = document.createElement('canvas'); lc.width = 64; lc.height = 64;
+    const lg = lc.getContext('2d');
+    lg.clearRect(0, 0, 64, 64);
+    lg.fillStyle = '#cccccc';
+    lg.font = 'bold 28px -apple-system, "Segoe UI", sans-serif';
+    lg.textAlign = 'center';
+    lg.textBaseline = 'middle';
+    lg.fillText(letter, 32, 32);
+    const t = new THREE.CanvasTexture(lc);
+    t.needsUpdate = true;
+    labelTexCache[letter] = t;
+    return t;
+  }
+  const labelGeo = new THREE.PlaneGeometry(8, 8);
+  const labelZ = Z_KEYCAP + 1.25;
+  keyMap.allKeys.forEach((k, idx) => {
+    const layer0 = DEFAULT_KEYMAPS.layer0;
+    if (idx >= layer0.length) return;
+    const zmk = layer0[idx];
+    const label = zmkToLabel[zmk] || zmk;
+    if (!label) return;
+    const tex = makeLabelTex(label);
+    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false });
+    const lm = new THREE.Mesh(labelGeo, mat);
+    const pt2 = pts[k.name];
+    if (!pt2) return;
+    const sx2 = pt2.x + offX;
+    const sy2 = -pt2.y + offY;
+    const sr2 = -pt2.r * Math.PI / 180;
+    lm.position.set(sx2, sy2, labelZ);
+    lm.rotation.set(0, 0, sr2);
+    boardGroup.add(lm);
   });
 
   // ── nice!nano v2 controllers (proper position, visible USB-C) ──
@@ -2870,29 +2967,27 @@ function applyFold(angleDeg) {
   const pivot = new THREE.Vector3(hingeX, hingeCenterY, hingeZ);
   const yAxis = new THREE.Vector3(0, 1, 0);
 
-  // Left half: rotate outward (positive angle around Y from hinge)
+  // Keys fold TOGETHER (inward): left half rotates -Y, right half rotates +Y
+  // This makes the keycap surfaces face each other when fully folded.
   leftHalf.position.set(0, 0, 0);
   leftHalf.quaternion.identity();
   if (angleDeg > 0) {
-    // Translate so pivot is at origin, rotate, translate back
     const leftOffset = new THREE.Vector3(-hingeX, -hingeCenterY, -hingeZ);
-    leftHalf.position.copy(leftOffset.clone().applyAxisAngle(yAxis, halfRad).sub(leftOffset));
-    leftHalf.quaternion.setFromAxisAngle(yAxis, halfRad);
+    leftHalf.position.copy(leftOffset.clone().applyAxisAngle(yAxis, -halfRad).sub(leftOffset));
+    leftHalf.quaternion.setFromAxisAngle(yAxis, -halfRad);
   }
 
-  // Right half: rotate the other way
   rightHalf.position.set(0, 0, 0);
   rightHalf.quaternion.identity();
   if (angleDeg > 0) {
     const rightOffset = new THREE.Vector3(-hingeX, -hingeCenterY, -hingeZ);
-    rightHalf.position.copy(rightOffset.clone().applyAxisAngle(yAxis, -halfRad).sub(rightOffset));
-    rightHalf.quaternion.setFromAxisAngle(yAxis, -halfRad);
+    rightHalf.position.copy(rightOffset.clone().applyAxisAngle(yAxis, halfRad).sub(rightOffset));
+    rightHalf.quaternion.setFromAxisAngle(yAxis, halfRad);
   }
 
   // Articulate hinge components
   if (hingeGroup) {
     hingeGroup.children.forEach(child => {
-      // Reset to stored original position
       if (!child.userData._origPos) {
         child.userData._origPos = child.position.clone();
         child.userData._origQuat = child.quaternion.clone();
@@ -2904,37 +2999,30 @@ function applyFold(angleDeg) {
     if (angleDeg > 0) {
       hingeGroup.children.forEach(child => {
         const origX = child.userData._origPos.x;
-        // Left-side hinge parts rotate with left half
         if (origX < hingeX - 2) {
-          // Move relative to pivot, apply rotation, move back
+          const p = child.position.clone().sub(pivot);
+          p.applyAxisAngle(yAxis, -halfRad);
+          child.position.copy(p.add(pivot));
+          const q = new THREE.Quaternion().setFromAxisAngle(yAxis, -halfRad);
+          child.quaternion.premultiply(q);
+        } else if (origX > hingeX + 2) {
           const p = child.position.clone().sub(pivot);
           p.applyAxisAngle(yAxis, halfRad);
           child.position.copy(p.add(pivot));
           const q = new THREE.Quaternion().setFromAxisAngle(yAxis, halfRad);
           child.quaternion.premultiply(q);
         }
-        // Right-side hinge parts rotate with right half
-        else if (origX > hingeX + 2) {
-          const p = child.position.clone().sub(pivot);
-          p.applyAxisAngle(yAxis, -halfRad);
-          child.position.copy(p.add(pivot));
-          const q = new THREE.Quaternion().setFromAxisAngle(yAxis, -halfRad);
-          child.quaternion.premultiply(q);
-        }
-        // Center parts (barrel, ball) stay at hinge center
       });
     }
   }
 
   // Update clipping planes to rotate with the halves
   if (clipPlaneLeft && clipPlaneRight) {
-    // Left clip plane: normal (1,0,0) rotated by halfRad around Y
-    const leftNormal = new THREE.Vector3(1, 0, 0).applyAxisAngle(yAxis, halfRad);
+    const leftNormal = new THREE.Vector3(1, 0, 0).applyAxisAngle(yAxis, -halfRad);
     clipPlaneLeft.normal.copy(leftNormal);
     clipPlaneLeft.constant = -leftNormal.dot(pivot);
 
-    // Right clip plane: normal (-1,0,0) rotated by -halfRad around Y
-    const rightNormal = new THREE.Vector3(-1, 0, 0).applyAxisAngle(yAxis, -halfRad);
+    const rightNormal = new THREE.Vector3(-1, 0, 0).applyAxisAngle(yAxis, halfRad);
     clipPlaneRight.normal.copy(rightNormal);
     clipPlaneRight.constant = -rightNormal.dot(pivot);
   }
