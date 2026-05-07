@@ -71,7 +71,7 @@ function estimateScale(data, keySpacing) {
   return avg < 0.01 ? 1.0 : avg / keySpacing;
 }
 
-function rd(v) { return Math.round(v * 10) / 10; }
+function rd(v) { return Math.round(v * 100) / 100; }
 
 const MATRIX_COLUMNS = ['pinky', 'ring', 'middle', 'index', 'index_far'];
 const ERGOGEN_NAMES = ['pinky', 'ring', 'middle', 'index', 'inner'];
@@ -168,10 +168,16 @@ function simulateErgogen(config) {
   colNames.forEach((colName, ci) => {
     const colDef = columns[colName];
     const key = colDef.key || {};
+    const colRows = colDef.rows || {};
     const spread = key.spread || 0;
     const stagger = key.stagger || 0;
     const splay = key.splay || 0;
-    const padding = key.padding || 18;
+    // Per-row padding from config
+    const rowPaddings = [
+      (colRows.bottom && colRows.bottom.padding != null) ? colRows.bottom.padding : (key.padding || 18),
+      (colRows.home && colRows.home.padding != null) ? colRows.home.padding : (key.padding || 18),
+      (colRows.top && colRows.top.padding != null) ? colRows.top.padding : 0,
+    ];
 
     if (!firstCol) {
       zoneAnchor.x += spread;
@@ -197,10 +203,10 @@ function simulateErgogen(config) {
     const keys = [];
     for (let ri = 0; ri < 3; ri++) {
       keys.push({ x: runX, y: runY, rotDeg: runR, row: ri, label: rowLabels[ri] });
-      // Advance: shift([0, padding], relative=true) — rotate [0, padding] by runR
+      // Advance by this row's padding along rotated +Y
       const padRad = runR * Math.PI / 180;
-      runX += -padding * Math.sin(padRad);
-      runY += padding * Math.cos(padRad);
+      runX += -rowPaddings[ri] * Math.sin(padRad);
+      runY += rowPaddings[ri] * Math.cos(padRad);
     }
 
     if (ergopadCol) results[ergopadCol] = keys;
@@ -277,8 +283,12 @@ function ergopadToErgogen(data, mirrorDist, keySpacing, ppmOverride) {
     // To match (dx, dy): r = atan2(-dx, dy)
     const angleRad = Math.atan2(-dx, dy);
     const angleDeg = angleRad * 180 / Math.PI;
-    const padding = span / 2;
-    ergoKeys[colId] = { home, bottom, top, angleDeg, padding };
+    // Per-row padding: project bottom→home and home→top along column axis
+    const axisX = -Math.sin(angleRad);
+    const axisY = Math.cos(angleRad);
+    const padBottom = (home.x - bottom.x) * axisX + (home.y - bottom.y) * axisY;
+    const padHome = (top.x - home.x) * axisX + (top.y - home.y) * axisY;
+    ergoKeys[colId] = { home, bottom, top, angleDeg, padBottom, padHome };
   });
 
   // Reverse-engineer ergogen parameters using absolute coordinates
@@ -306,7 +316,7 @@ function ergopadToErgogen(data, mirrorDist, keySpacing, ppmOverride) {
       if (Math.abs(splay) > 0.01) {
         pushRotation(rotations, splay, [zoneAnchorX, zoneAnchorY]);
       }
-      colParams.push({ spread: 0, stagger: 0, splay, padding: ek.padding });
+      colParams.push({ spread: 0, stagger: 0, splay, padBottom: ek.padBottom, padHome: ek.padHome });
       firstCol = false;
     } else {
       if (Math.abs(splay) < 0.01) {
@@ -315,7 +325,7 @@ function ergopadToErgogen(data, mirrorDist, keySpacing, ppmOverride) {
         const stagger = za.y - zoneAnchorY;
         zoneAnchorX = za.x;
         zoneAnchorY = za.y;
-        colParams.push({ spread, stagger, splay: 0, padding: ek.padding });
+        colParams.push({ spread, stagger, splay: 0, padBottom: ek.padBottom, padHome: ek.padHome });
       } else {
         let za = unRotateAll(ek.bottom.x, ek.bottom.y, rotations);
         for (let iter = 0; iter < 20; iter++) {
@@ -337,18 +347,20 @@ function ergopadToErgogen(data, mirrorDist, keySpacing, ppmOverride) {
         zoneAnchorX = za.x;
         zoneAnchorY = za.y;
         pushRotation(rotations, splay, [zoneAnchorX, zoneAnchorY]);
-        colParams.push({ spread, stagger, splay, padding: ek.padding });
+        colParams.push({ spread, stagger, splay, padBottom: ek.padBottom, padHome: ek.padHome });
       }
     }
 
-    const colDef = { key: { column_net: `C${i}` } };
+    const colDef = { key: { column_net: `C${i}` }, rows: {} };
     const p = colParams[colParams.length - 1];
     if (i > 0) {
       colDef.key.spread = rd(p.spread);
       colDef.key.stagger = rd(p.stagger);
     }
     if (Math.abs(p.splay) > 0.01) colDef.key.splay = rd(p.splay);
-    colDef.key.padding = rd(p.padding);
+    colDef.rows.bottom = { padding: rd(p.padBottom) };
+    colDef.rows.home = { padding: rd(p.padHome) };
+    colDef.rows.top = { padding: 0 };
     columns[ergogenName] = colDef;
   });
 
@@ -434,7 +446,7 @@ files.forEach(file => {
       // Bottom and top keys should match exactly (<0.5mm). Home key may have
       // up to ~12mm error because ergogen uses uniform padding but stage 1's
       // CoG-based placement can be asymmetric (especially with few taps).
-      const threshold = k2.label === 'home' ? 13.0 : 0.5;
+      const threshold = 0.5;
       const posOk = distMm < threshold;
       const status = posOk ? 'OK' : 'MISMATCH';
       if (!posOk) allPass = false;

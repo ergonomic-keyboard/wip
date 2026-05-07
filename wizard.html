@@ -421,7 +421,7 @@ function estimateScale(data, keySpacing) {
   return avg < 0.01 ? 1.0 : avg / keySpacing;
 }
 
-function rd(v) { return Math.round(v * 10) / 10; }
+function rd(v) { return Math.round(v * 100) / 100; }
 
 function ergopadToErgogen(data, mirrorDist, keySpacing, ppmOverride) {
   mirrorDist = mirrorDist || 22;
@@ -519,9 +519,14 @@ function ergopadToErgogen(data, mirrorDist, keySpacing, ppmOverride) {
     // To match actual direction (dx, dy): -sin(r) = dx/span, cos(r) = dy/span → r = atan2(-dx, dy)
     const angleRad = Math.atan2(-dx, dy);
     const angleDeg = angleRad * 180 / Math.PI;
-    const padding = span / 2; // 3 keys, 2 gaps of padding each
+    // Per-row padding: project bottom→home and home→top distances along the column axis
+    // Column axis unit vector: (-sin(r), cos(r))
+    const axisX = -Math.sin(angleRad);
+    const axisY = Math.cos(angleRad);
+    const padBottom = (home.x - bottom.x) * axisX + (home.y - bottom.y) * axisY; // bottom→home
+    const padHome = (top.x - home.x) * axisX + (top.y - home.y) * axisY; // home→top
 
-    ergoKeys[colId] = { home, bottom, top, angleDeg, padding };
+    ergoKeys[colId] = { home, bottom, top, angleDeg, padBottom, padHome };
   });
 
   // ── Step 3: Reverse-engineer ergogen's placement algorithm ──
@@ -635,7 +640,7 @@ function ergopadToErgogen(data, mirrorDist, keySpacing, ppmOverride) {
       if (Math.abs(splay) > 0.01) {
         pushRotation(rotations, splay, [zoneAnchorX, zoneAnchorY]);
       }
-      colParams.push({ spread: 0, stagger: 0, splay, padding: ek.padding });
+      colParams.push({ spread: 0, stagger: 0, splay, padBottom: ek.padBottom, padHome: ek.padHome });
       firstCol = false;
     } else {
       // Find zone_anchor (world coords) that after all rotations gives desiredBottom.
@@ -645,7 +650,7 @@ function ergopadToErgogen(data, mirrorDist, keySpacing, ppmOverride) {
         const stagger = za.y - zoneAnchorY;
         zoneAnchorX = za.x;
         zoneAnchorY = za.y;
-        colParams.push({ spread, stagger, splay: 0, padding: ek.padding });
+        colParams.push({ spread, stagger, splay: 0, padBottom: ek.padBottom, padHome: ek.padHome });
       } else {
         // With splay: iterate (splay origin depends on zone_anchor, which we're solving for)
         let za = unRotateAll(desiredBottom.x, desiredBottom.y, rotations);
@@ -671,18 +676,21 @@ function ergopadToErgogen(data, mirrorDist, keySpacing, ppmOverride) {
         zoneAnchorX = za.x;
         zoneAnchorY = za.y;
         pushRotation(rotations, splay, [zoneAnchorX, zoneAnchorY]);
-        colParams.push({ spread, stagger, splay, padding: ek.padding });
+        colParams.push({ spread, stagger, splay, padBottom: ek.padBottom, padHome: ek.padHome });
       }
     }
 
-    const colDef = { key: { column_net: `C${i}` } };
+    const colDef = { key: { column_net: `C${i}` }, rows: {} };
     const p = colParams[colParams.length - 1];
     if (i > 0) {
       colDef.key.spread = rd(p.spread);
       colDef.key.stagger = rd(p.stagger);
     }
     if (Math.abs(p.splay) > 0.01) colDef.key.splay = rd(p.splay);
-    colDef.key.padding = rd(p.padding);
+    // Per-row padding: bottom.padding advances to home, home.padding advances to top
+    colDef.rows.bottom = { padding: rd(p.padBottom) };
+    colDef.rows.home = { padding: rd(p.padHome) };
+    colDef.rows.top = { padding: 0 };
     columns[ergogenName] = colDef;
   });
 
@@ -713,12 +721,36 @@ function ergopadToErgogen(data, mirrorDist, keySpacing, ppmOverride) {
     thumbZone = { anchor: { ref: 'matrix_inner_bottom', shift: [shiftX, shiftY] }, columns: thumbCols, rows: { cluster: { row_net: 'R3' } } };
   }
 
+  // ── Step 5b: Compute mirror distance dynamically ──
+  // Ensure at least 5mm (0.5cm) gap between the innermost key edges of the two halves.
+  // The mirror axis is at: inner_home.x + distance/2
+  // A mirrored key at X has its mirror at: 2*axis - X = 2*(inner_home.x + distance/2) - X = 2*inner_home.x + distance - X
+  // Gap between key at X_max and its mirror = 2*axis - 2*X_max = distance - 2*(X_max - inner_home.x)
+  // Edge-to-edge gap = gap_center - keycap_width = distance - 2*(X_max - inner_home.x) - keySpacing
+  // For 5mm edge gap: distance >= 2*(X_max - inner_home.x) + keySpacing + 5
+  const innerHome = ergoKeys.index_far ? ergoKeys.index_far.home : null;
+  let maxX = innerHome ? innerHome.x : 0;
+  // Check all matrix column key X positions
+  for (const colId of MATRIX_COLUMNS) {
+    const ek = ergoKeys[colId];
+    if (!ek) continue;
+    maxX = Math.max(maxX, ek.bottom.x, ek.home.x, ek.top.x);
+  }
+  // Check thumb key X positions (they often extend furthest)
+  if (thumbEk) {
+    maxX = Math.max(maxX, thumbEk.bottom.x, thumbEk.home.x, thumbEk.top.x);
+  }
+  const minGap = 5; // 5mm = 0.5cm minimum edge-to-edge gap
+  const computedMirrorDist = innerHome
+    ? Math.max(mirrorDist, rd(2 * (maxX - innerHome.x) + keySpacing + minGap))
+    : mirrorDist;
+
   // ── Step 6: Assemble config ──
   const config = {
     meta: { engine: '4.1.0' },
     units: { kx: keySpacing, ky: keySpacing, px: 'kx + 1', py: 'ky + 1' },
     points: {
-      mirror: { ref: 'matrix_inner_home', distance: mirrorDist },
+      mirror: { ref: 'matrix_inner_home', distance: computedMirrorDist },
       zones: {
         matrix: {
           anchor: { shift: anchorShift },
@@ -1663,10 +1695,16 @@ function computeErgogenPreview() {
   colNames.forEach((colName, ci) => {
     const colDef = columns[colName];
     const key = colDef.key || {};
+    const colRows = colDef.rows || {};
     const spread = key.spread || 0;
     const stagger = key.stagger || 0;
     const splay = key.splay || 0;
-    const padding = key.padding || 18;
+    // Per-row padding from config (fallback to key.padding or 18)
+    const rowPaddings = [
+      (colRows.bottom && colRows.bottom.padding != null) ? colRows.bottom.padding : (key.padding || 18),
+      (colRows.home && colRows.home.padding != null) ? colRows.home.padding : (key.padding || 18),
+      (colRows.top && colRows.top.padding != null) ? colRows.top.padding : 0,
+    ];
 
     if (!firstCol) { zoneAnchor.x += spread; }
     zoneAnchor.y += stagger;
@@ -1692,10 +1730,10 @@ function computeErgogenPreview() {
         x: runX * ppm, y: -runY * ppm,
         angleDeg: runR,
       });
-      // Advance by padding along rotated +Y
+      // Advance by this row's padding along rotated +Y
       const padRad = runR * Math.PI / 180;
-      runX += -padding * Math.sin(padRad);
-      runY += padding * Math.cos(padRad);
+      runX += -rowPaddings[ri] * Math.sin(padRad);
+      runY += rowPaddings[ri] * Math.cos(padRad);
     }
     firstCol = false;
   });
@@ -2623,12 +2661,19 @@ function build3DScene() {
   keycapBaseR = new Float32Array(keycapBaseMatrices);
 
   // ── Ball joint hinge (attached to halves, moves with fold) ──
+  // Hinge spans the gap between the two halves. Compute dimensions from bbox.
   hingeGroup = new THREE.Group();
   const hy = center.y;
   const hz = center.z;
+  const halfBoardW = (bbox.max.x - bbox.min.x) / 2;
+  // Rod should reach from center into each half (~60% of half-width)
+  const rodLen = Math.max(15, halfBoardW * 0.35);
+  const rodOffset = rodLen / 2 + 5; // center of rod from hinge center
+  const flangeOffset = rodOffset + rodLen / 2 + 3; // flange just beyond rod end
+  const barrelLen = Math.max(20, rodOffset * 0.6); // barrel width at center
 
   // Main barrel — polished steel cylinder
-  const barrelGeo = new THREE.CylinderGeometry(4, 4, 20, 32);
+  const barrelGeo = new THREE.CylinderGeometry(4, 4, barrelLen, 32);
   barrelGeo.rotateZ(Math.PI / 2);
   const barrel = new THREE.Mesh(barrelGeo, chromeMat.clone());
   barrel.position.set(hingeX, hy, hz);
@@ -2641,22 +2686,22 @@ function build3DScene() {
   hingeGroup.add(ball);
 
   // Rod stubs going into each half
-  const rodGeo2 = new THREE.CylinderGeometry(2.5, 2.5, 15, 12);
+  const rodGeo2 = new THREE.CylinderGeometry(2.5, 2.5, rodLen, 12);
   rodGeo2.rotateZ(Math.PI / 2);
   const rodL = new THREE.Mesh(rodGeo2, steelMat.clone());
-  rodL.position.set(hingeX - 17, hy, hz); rodL.castShadow = true;
+  rodL.position.set(hingeX - rodOffset, hy, hz); rodL.castShadow = true;
   hingeGroup.add(rodL);
   const rodR = new THREE.Mesh(rodGeo2, steelMat.clone());
-  rodR.position.set(hingeX + 17, hy, hz); rodR.castShadow = true;
+  rodR.position.set(hingeX + rodOffset, hy, hz); rodR.castShadow = true;
   hingeGroup.add(rodR);
 
   // Mounting flanges
   const flangeGeo = new THREE.BoxGeometry(6, 12, T_FRAME);
   const flangeL = new THREE.Mesh(flangeGeo, steelMat.clone());
-  flangeL.position.set(hingeX - 27, hy, hz); flangeL.castShadow = true;
+  flangeL.position.set(hingeX - flangeOffset, hy, hz); flangeL.castShadow = true;
   hingeGroup.add(flangeL);
   const flangeR = new THREE.Mesh(flangeGeo, steelMat.clone());
-  flangeR.position.set(hingeX + 27, hy, hz); flangeR.castShadow = true;
+  flangeR.position.set(hingeX + flangeOffset, hy, hz); flangeR.castShadow = true;
   hingeGroup.add(flangeR);
 
   // Thumb locking nut
