@@ -1493,9 +1493,11 @@ function loadPositions() {
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = '.json';
+  input.style.display = 'none';
+  document.body.appendChild(input);
   input.addEventListener('change', () => {
     const file = input.files[0];
-    if (!file) return;
+    if (!file) { document.body.removeChild(input); return; }
     const reader = new FileReader();
     reader.onload = () => {
       try {
@@ -1515,15 +1517,16 @@ function loadPositions() {
         });
         // Restore calibrated PPM if present, scaled to current canvas
         if (typeof data.calibratedPPM === 'number' && data.calibratedPPM > 0) {
-          // PPM needs to scale with canvas (it's pixels per mm)
           calibratedPPM = data.calibratedPPM * ((scaleX + scaleY) / 2);
           localStorage.setItem('keyboard_wizard_ppm', String(calibratedPPM));
         }
+        computeErgogenPreview();
         drawCanvas();
         updateToolbar();
       } catch (e) {
         alert('Failed to load positions: ' + e.message);
       }
+      document.body.removeChild(input);
     };
     reader.readAsText(file);
   });
@@ -2456,6 +2459,8 @@ function build3DScene() {
   // ── Per-key components (InstancedMesh) ──
   const pts = ergogenResults.points;
   const ptEntries = Object.entries(pts);
+  const leftPtEntries = ptEntries.filter(([, p]) => !p.meta?.mirrored);
+  const rightPtEntries = ptEntries.filter(([, p]) => !!p.meta?.mirrored);
 
   // Geometries
   const switchGeo = new THREE.ExtrudeGeometry(roundedRectShape(14.2, 12.8, 0.8), { depth: 3.5, bevelEnabled: true, bevelThickness: 0.15, bevelSize: 0.15, bevelSegments: 1 });
@@ -2480,8 +2485,6 @@ function build3DScene() {
   // ── Coordinate conversion ──
   // Outlines use asym:'source' so SVG only contains left-half keys.
   // Compute offset from switch cutout centroids (left-half only) vs left-half point positions.
-  const leftPtEntries = ptEntries.filter(([, p]) => !p.meta?.mirrored);
-  const rightPtEntries = ptEntries.filter(([, p]) => !!p.meta?.mirrored);
   let offX = 0, offY = 0;
   if (switchShapes.length > 0 && leftPtEntries.length > 0) {
     const cutoutBbox = new THREE.Box3();
