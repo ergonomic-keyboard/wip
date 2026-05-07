@@ -762,11 +762,11 @@ function ergopadToErgogen(data, mirrorDist, keySpacing, ppmOverride) {
     outlines: {
       _keycaps: [{ what: 'rectangle', where: true, size: ['kx - 0.5', 'ky - 0.5'] }],
       board: [
-        { what: 'rectangle', where: true, size: ['px + 4', 'py + 4'], bound: true, fillet: 8 }
+        { what: 'rectangle', where: true, size: ['px + 4', 'py + 4'], bound: true, fillet: 8, asym: 'source' }
       ],
-      switch_cutouts: [{ what: 'rectangle', where: true, size: [13.8, 13.8], bound: false }],
+      switch_cutouts: [{ what: 'rectangle', where: true, size: [13.8, 13.8], bound: false, asym: 'source' }],
       frame: [
-        { what: 'rectangle', where: true, size: ['px + 8', 'py + 8'], bound: true, fillet: 8 }
+        { what: 'rectangle', where: true, size: ['px + 8', 'py + 8'], bound: true, fillet: 8, asym: 'source' }
       ]
     },
     cases: {
@@ -2438,19 +2438,24 @@ function build3DScene() {
   // ── Compute bbox and center ──
   const bbox = new THREE.Box3().setFromObject(boardGroup);
   const center = new THREE.Vector3(); bbox.getCenter(center);
-  hingeX = center.x;
+  // Hinge is at the right edge of the left half (mirror axis)
+  hingeX = bbox.max.x;
   hingeZ = center.z;
   hingeCenterY = center.y;
 
   // ── PCB texture ──
-  const pcbTex = generatePCBTexture(1024, 1024, ergogenResults.points, bbox);
+  // PCB texture uses only left-half points (right half is mirrored)
+  const leftPts = {};
+  for (const [name, pt] of Object.entries(ergogenResults.points)) {
+    if (!pt.meta?.mirrored) leftPts[name] = pt;
+  }
+  const pcbTex = generatePCBTexture(1024, 1024, leftPts, bbox);
   const pcbMat = new THREE.MeshStandardMaterial({ map: pcbTex.map, roughness: 0.65, metalness: 0.08 });
   pcbLayer.traverse(obj => { if (obj.isMesh) obj.material = pcbMat; });
 
   // ── Per-key components (InstancedMesh) ──
   const pts = ergogenResults.points;
   const ptEntries = Object.entries(pts);
-  const nKeys = ptEntries.length;
 
   // Geometries
   const switchGeo = new THREE.ExtrudeGeometry(roundedRectShape(14.2, 12.8, 0.8), { depth: 3.5, bevelEnabled: true, bevelThickness: 0.15, bevelSize: 0.15, bevelSegments: 1 });
@@ -2460,42 +2465,42 @@ function build3DScene() {
   const diodeGeo = new THREE.BoxGeometry(2.7, 1.6, 1.2);
   const diodeLeadGeo = new THREE.BoxGeometry(0.4, 0.3, 0.8);
 
-  const switchInst = new THREE.InstancedMesh(switchGeo, switchMat, nKeys);
+  const nLeftKeys = leftPtEntries.length;
+  const switchInst = new THREE.InstancedMesh(switchGeo, switchMat, nLeftKeys);
   switchInst.castShadow = true;
-  const keycapInst = new THREE.InstancedMesh(keycapGeo, keycapMat, nKeys);
+  const keycapInst = new THREE.InstancedMesh(keycapGeo, keycapMat, nLeftKeys);
   keycapInst.castShadow = true;
   keycapInst.receiveShadow = true;
-  const stemInst = new THREE.InstancedMesh(stemGeo, steelMat.clone(), nKeys);
-  const diodeInst = new THREE.InstancedMesh(diodeGeo, diodeMat, nKeys);
-  const diodeLeadInst = new THREE.InstancedMesh(diodeLeadGeo, steelMat.clone(), nKeys * 2);
+  const stemInst = new THREE.InstancedMesh(stemGeo, steelMat.clone(), nLeftKeys);
+  const diodeInst = new THREE.InstancedMesh(diodeGeo, diodeMat, nLeftKeys);
+  const diodeLeadInst = new THREE.InstancedMesh(diodeLeadGeo, steelMat.clone(), nLeftKeys * 2);
 
-  const keycapBaseMatrices = new Float32Array(nKeys * 16);
+  const keycapBaseMatrices = new Float32Array(nLeftKeys * 16);
 
   // ── Coordinate conversion ──
-  // Ergogen SVG output and points use the same coordinate system.
-  // SVG: X = right, Y = down. Ergogen points: X = right, Y = up.
-  // So scene coords for a key: scene_x = pt.x, scene_y = -pt.y (matching SVG space).
-  // The offset accounts for any SVG viewBox origin shift.
-  // Compute from switch cutout centers (which are exactly at key positions in SVG space):
+  // Outlines use asym:'source' so SVG only contains left-half keys.
+  // Compute offset from switch cutout centroids (left-half only) vs left-half point positions.
+  const leftPtEntries = ptEntries.filter(([, p]) => !p.meta?.mirrored);
+  const rightPtEntries = ptEntries.filter(([, p]) => !!p.meta?.mirrored);
   let offX = 0, offY = 0;
-  if (switchShapes.length > 0) {
+  if (switchShapes.length > 0 && leftPtEntries.length > 0) {
     const cutoutBbox = new THREE.Box3();
     switchShapes.forEach(s => {
       const pts2 = s.getPoints(8);
       pts2.forEach(p2 => cutoutBbox.expandByPoint(new THREE.Vector3(p2.x, p2.y, 0)));
     });
     const cutoutCenter = new THREE.Vector3(); cutoutBbox.getCenter(cutoutCenter);
-    const ptXs = ptEntries.map(([, p]) => p.x);
-    const ptYs = ptEntries.map(([, p]) => -p.y);
-    const ptCx = ptXs.reduce((a, b) => a + b, 0) / nKeys;
-    const ptCy = ptYs.reduce((a, b) => a + b, 0) / nKeys;
+    const ptXs = leftPtEntries.map(([, p]) => p.x);
+    const ptYs = leftPtEntries.map(([, p]) => -p.y);
+    const ptCx = ptXs.reduce((a, b) => a + b, 0) / leftPtEntries.length;
+    const ptCy = ptYs.reduce((a, b) => a + b, 0) / leftPtEntries.length;
     offX = cutoutCenter.x - ptCx;
     offY = cutoutCenter.y - ptCy;
   }
 
   const dummy = new THREE.Object3D();
 
-  ptEntries.forEach(([name, pt], i) => {
+  leftPtEntries.forEach(([name, pt], i) => {
     const sx = pt.x + offX;
     const sy = -pt.y + offY;
     // Rotation: ergogen rotation is CCW degrees. In SVG (Y-down) space, negate it.
@@ -2577,13 +2582,37 @@ function build3DScene() {
     labelTexCache[letter] = t;
     return t;
   }
-  const labelGeo = new THREE.PlaneGeometry(8, 8);
-  const labelZ = Z_KEYCAP + 1.25;
-  keyMap.allKeys.forEach((k, idx) => {
-    const layer0 = DEFAULT_KEYMAPS.layer0;
-    if (idx >= layer0.length) return;
+  const labelGeo = new THREE.PlaneGeometry(12, 12);
+  const labelZ = Z_KEYCAP + 1.7;
+  // Map keys to correct keymap positions.
+  // DEFAULT_KEYMAPS.layer0 layout: rows interleaved (5 left + 5 right per row), then 3+3 thumb.
+  // Left half keys: row0 cols 0-4, row1 cols 0-4, row2 cols 0-4, thumb cols 0-2
+  // Right half keys: row0 cols 0-4, row1 cols 0-4, row2 cols 0-4, thumb cols 0-2
+  const layer0 = DEFAULT_KEYMAPS.layer0;
+  const nColsHalf = 5;
+  function getKeymapLabel(key) {
+    const isRight = key.mirrored;
+    const isThumb = key.zone !== 'matrix';
+    let idx;
+    if (isThumb) {
+      // Thumb keys: indices 30-32 (left), 33-35 (right)
+      const thumbBase = nColsHalf * 2 * 3; // 30
+      idx = thumbBase + (isRight ? nColsHalf - 2 : 0) + key.colIdx - (isThumb ? Math.min(...keyMap.allKeys.filter(k2 => k2.zone !== 'matrix' && k2.mirrored === key.mirrored).map(k2 => k2.colIdx)) : 0);
+      // Simpler: thumb keys sorted by colIdx within their half
+      const thumbKeys = (isRight ? keyMap.rightKeys : keyMap.leftKeys).filter(k2 => k2.zone !== 'matrix');
+      const thumbIdx = thumbKeys.indexOf(key);
+      idx = thumbBase + (isRight ? 3 : 0) + thumbIdx;
+    } else {
+      // Matrix: rowIdx 0 = top (R0), 1 = home (R1), 2 = bottom (R2)
+      const row = key.rowIdx;
+      idx = row * (nColsHalf * 2) + (isRight ? nColsHalf : 0) + key.colIdx;
+    }
+    if (idx < 0 || idx >= layer0.length) return null;
     const zmk = layer0[idx];
-    const label = zmkToLabel[zmk] || zmk;
+    return zmkToLabel[zmk] || zmk;
+  }
+  keyMap.leftKeys.forEach((k) => {
+    const label = getKeymapLabel(k);
     if (!label) return;
     const tex = makeLabelTex(label);
     const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false });
@@ -2656,11 +2685,10 @@ function build3DScene() {
     return grp;
   }
 
-  // Place nice!nanos near the inner edge of each half
-  const nanoLeftX = hingeX - 20, nanoRightX = hingeX + 20;
+  // Place nice!nano near the inner edge of the left half (right half is mirrored)
+  const nanoLeftX = hingeX - 20;
   const nanoY = center.y + 5;
   boardGroup.add(createNiceNano(nanoLeftX, nanoY, false));
-  boardGroup.add(createNiceNano(nanoRightX, nanoY, true));
 
   // ── Batteries (under PCB, between bottom plate and PCB) ──
   batteryGroup = new THREE.Group();
@@ -2686,14 +2714,13 @@ function build3DScene() {
     return bg;
   }
   batteryGroup.add(addBattery(hingeX - 35, center.y - 10));
-  batteryGroup.add(addBattery(hingeX + 35, center.y - 10));
   boardGroup.add(batteryGroup);
 
   // ── M2 screws and heat-set inserts ──
   const screwPositions = [];
   const bx0 = bbox.min.x + 10, bx1 = bbox.max.x - 10;
   const by0 = bbox.min.y + 10, by1 = bbox.max.y - 10;
-  const bmx = center.x, bmy = center.y;
+  const bmx = (bbox.min.x + bbox.max.x) / 2, bmy = center.y;
   [[bx0, by0], [bx0, by1], [bx0, bmy], [bx1, by0], [bx1, by1], [bx1, bmy], [bmx, by0]].forEach(([x, y]) => screwPositions.push({ x, y }));
 
   const screwHeadGeo = new THREE.CylinderGeometry(2, 1, 1, 16);
@@ -2727,29 +2754,30 @@ function build3DScene() {
   });
 
   // ── Split into left/right halves ──
+  // boardGroup contains only the left half (source/unmirrored).
+  // Left half: wrap boardGroup in a group for fold animation control.
   leftHalf = new THREE.Group();
+  leftHalf.add(boardGroup);
+  // Right half: clone boardGroup into a sub-group, mirror all geometry within it.
   rightHalf = new THREE.Group();
-
-  clipPlaneLeft = new THREE.Plane(new THREE.Vector3(1, 0, 0), -hingeX);
-  clipPlaneRight = new THREE.Plane(new THREE.Vector3(-1, 0, 0), hingeX);
-
-  function cloneToHalf(src, clipPlane, target) {
-    src.children.forEach(child => {
-      const c = child.clone(true);
-      c.traverse(obj => {
-        if (obj.isMesh || obj.isInstancedMesh) {
-          obj.material = obj.material.clone();
-          obj.material.clippingPlanes = [clipPlane];
-          obj.material.clipShadows = true;
-        }
-      });
-      target.add(c);
-    });
-  }
-  cloneToHalf(boardGroup, clipPlaneLeft, leftHalf);
-  cloneToHalf(boardGroup, clipPlaneRight, rightHalf);
+  const rightContent = boardGroup.clone(true);
+  // Apply mirror transform to the content sub-group (preserved during fold animation)
+  rightContent.applyMatrix4(new THREE.Matrix4().makeTranslation(-hingeX, 0, 0));
+  rightContent.applyMatrix4(new THREE.Matrix4().makeScale(-1, 1, 1));
+  rightContent.applyMatrix4(new THREE.Matrix4().makeTranslation(hingeX, 0, 0));
+  rightContent.traverse(obj => {
+    if (obj.isMesh || obj.isInstancedMesh) {
+      obj.material = obj.material.clone();
+      obj.material.side = THREE.DoubleSide;
+    }
+  });
+  rightHalf.add(rightContent);
   scene.add(leftHalf);
   scene.add(rightHalf);
+
+  // Clip planes (not used for geometry splitting but kept for potential fold overlap)
+  clipPlaneLeft = new THREE.Plane(new THREE.Vector3(1, 0, 0), -hingeX);
+  clipPlaneRight = new THREE.Plane(new THREE.Vector3(-1, 0, 0), hingeX);
 
   // Store keycap refs for interaction
   leftHalf.traverse(obj => { if (obj.isInstancedMesh && obj.geometry === keycapGeo) keycapMeshL = obj; });
@@ -2811,20 +2839,20 @@ function build3DScene() {
   scene.add(hingeGroup);
 
   // ── Cables (braided steel, connected to keyboard edges) ──
+  // Cables span from left half outer edge to right half outer edge (mirrored)
   cablesGroup = new THREE.Group();
   const cableZ2 = Z_SWITCH_PLATE_TOP + 1;
   const cYtop = bbox.min.y + (bbox.max.y - bbox.min.y) * 0.2;
   const cYbot = bbox.min.y + (bbox.max.y - bbox.min.y) * 0.8;
+  const rightEdgeX = 2 * hingeX - bbox.min.x; // mirrored left edge
 
   [cYtop, cYbot].forEach(cy => {
-    // Cable from left edge to right edge via droop
-    const halfW = (bbox.max.x - bbox.min.x) / 2;
     const cPoints = [
       new THREE.Vector3(bbox.min.x + 6, cy, cableZ2),
-      new THREE.Vector3(bbox.min.x + halfW * 0.4, cy, cableZ2 - 2),
-      new THREE.Vector3(center.x, cy, cableZ2 - 3),
-      new THREE.Vector3(bbox.max.x - halfW * 0.4, cy, cableZ2 - 2),
-      new THREE.Vector3(bbox.max.x - 6, cy, cableZ2),
+      new THREE.Vector3(bbox.min.x + (hingeX - bbox.min.x) * 0.5, cy, cableZ2 - 2),
+      new THREE.Vector3(hingeX, cy, cableZ2 - 3),
+      new THREE.Vector3(rightEdgeX - (hingeX - bbox.min.x) * 0.5, cy, cableZ2 - 2),
+      new THREE.Vector3(rightEdgeX - 6, cy, cableZ2),
     ];
     const curve = new THREE.CatmullRomCurve3(cPoints);
     const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 48, 0.6, 8, false), cableMat);
@@ -2835,11 +2863,11 @@ function build3DScene() {
     const tbGeo = new THREE.CylinderGeometry(2, 2, 16, 12);
     tbGeo.rotateZ(Math.PI / 2);
     const tb = new THREE.Mesh(tbGeo, chromeMat.clone());
-    tb.position.set(center.x, cy, cableZ2 - 3); tb.castShadow = true;
+    tb.position.set(hingeX, cy, cableZ2 - 3); tb.castShadow = true;
     cablesGroup.add(tb);
 
     // Clevis pins at attachment points
-    [bbox.min.x + 6, bbox.max.x - 6].forEach(px => {
+    [bbox.min.x + 6, rightEdgeX - 6].forEach(px => {
       const pinGeo = new THREE.CylinderGeometry(1.2, 1.2, 4, 8);
       const pin = new THREE.Mesh(pinGeo, chromeMat.clone());
       pin.position.set(px, cy, cableZ2); pin.castShadow = true;
@@ -2852,7 +2880,7 @@ function build3DScene() {
   const groundGeo = new THREE.PlaneGeometry(2000, 2000);
   const groundMat2 = new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: 0.85, metalness: 0.1 });
   groundPlane = new THREE.Mesh(groundGeo, groundMat2);
-  groundPlane.position.set(center.x, center.y, Z_BOTTOM - 0.5);
+  groundPlane.position.set(hingeX, center.y, Z_BOTTOM - 0.5);
   groundPlane.receiveShadow = true;
   scene.add(groundPlane);
 
@@ -2876,20 +2904,22 @@ function build3DScene() {
     labelSprites.push(sprite);
     return sprite;
   }
-  addLabel('Bamboo Bottom Plate', center.x, bbox.min.y - 8, Z_BOTTOM + T_BOTTOM_PLATE / 2);
-  addLabel('Cork Gasket', center.x, bbox.min.y - 8, Z_CORK_LOWER + T_CORK_LOWER / 2);
-  addLabel('FR-4 PCB', center.x, bbox.min.y - 8, Z_PCB + T_PCB / 2);
-  addLabel('Switch Plate', center.x, bbox.min.y - 8, Z_SWITCH_PLATE + T_SWITCH_PLATE / 2);
-  addLabel('Cherry MX ULP', center.x, bbox.min.y - 8, Z_KEYCAP);
+  addLabel('Bamboo Bottom Plate', hingeX, bbox.min.y - 8, Z_BOTTOM + T_BOTTOM_PLATE / 2);
+  addLabel('Cork Gasket', hingeX, bbox.min.y - 8, Z_CORK_LOWER + T_CORK_LOWER / 2);
+  addLabel('FR-4 PCB', hingeX, bbox.min.y - 8, Z_PCB + T_PCB / 2);
+  addLabel('Switch Plate', hingeX, bbox.min.y - 8, Z_SWITCH_PLATE + T_SWITCH_PLATE / 2);
+  addLabel('Cherry MX ULP', hingeX, bbox.min.y - 8, Z_KEYCAP);
   addLabel('nice!nano v2', nanoLeftX, bbox.min.y - 8, Z_PCB_TOP + 4);
   addLabel('Ball Joint Hinge', hingeX, hy + 20, hz + 8);
   addLabel('LiPo Battery', hingeX - 35, bbox.min.y - 8, Z_CORK_LOWER + 3);
 
   // ── Camera position (3/4 top-down, slightly from front) ──
-  const size = new THREE.Vector3(); bbox.getSize(size);
-  const maxDim = Math.max(size.x, size.y);
-  camera.position.set(center.x + maxDim * 0.15, center.y - maxDim * 0.6, maxDim * 0.7);
-  controls.target.set(center.x, center.y, Z_SWITCH_PLATE_TOP / 2);
+  // Full keyboard spans both halves: left edge = bbox.min.x, right edge = rightEdgeX
+  const fullWidth = rightEdgeX - bbox.min.x;
+  const fullHeight = bbox.max.y - bbox.min.y;
+  const maxDim = Math.max(fullWidth, fullHeight);
+  camera.position.set(hingeX + maxDim * 0.15, center.y - maxDim * 0.6, maxDim * 0.7);
+  controls.target.set(hingeX, center.y, Z_SWITCH_PLATE_TOP / 2);
   controls.update();
 
   document.getElementById('fold-slider').value = 0;
@@ -3014,17 +3044,6 @@ function applyFold(angleDeg) {
         }
       });
     }
-  }
-
-  // Update clipping planes to rotate with the halves
-  if (clipPlaneLeft && clipPlaneRight) {
-    const leftNormal = new THREE.Vector3(1, 0, 0).applyAxisAngle(yAxis, -halfRad);
-    clipPlaneLeft.normal.copy(leftNormal);
-    clipPlaneLeft.constant = -leftNormal.dot(pivot);
-
-    const rightNormal = new THREE.Vector3(-1, 0, 0).applyAxisAngle(yAxis, halfRad);
-    clipPlaneRight.normal.copy(rightNormal);
-    clipPlaneRight.constant = -rightNormal.dot(pivot);
   }
 
   // Cables only visible when flat
