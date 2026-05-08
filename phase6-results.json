@@ -1,0 +1,55 @@
+{
+  "phase": 6,
+  "timestamp": "2026-05-08T19:07:06.828Z",
+  "total": 9,
+  "passed": 9,
+  "flagged": 0,
+  "note": "Design guidelines are subjective assessments, not hard pass/fail",
+  "results": [
+    {
+      "id": "DG-01",
+      "pass": true,
+      "note": "✓ Fillet applied (8mm). ✓ Convex hull used for board outline. ✓ Thumb bridge shapes defined (connects thumb to main body). ✓ Generous fillet (8mm ≥ 8mm) — smooth corners"
+    },
+    {
+      "id": "DG-02",
+      "pass": true,
+      "note": "✓ Shadow casting enabled on meshes. ✓ Anti-aliasing enabled. ✓ Tone mapping active (ACES Filmic). ✓ PBR materials (MeshStandardMaterial with roughness/metalness). ✓ High metalness on chrome parts (reflective). ✓ Smooth camera damping (professional feel)"
+    },
+    {
+      "id": "DG-03",
+      "pass": true,
+      "note": "✓ generateWoodTexture function present. ✓ Warm bamboo color tones. ✓ Grain line pattern (400 wobble lines). ✓ Growth rings (6 curved arcs). ✓ Node bands (2-3 horizontal gradient bands). ✓ Normal map for surface relief. ✓ Roughness map for texture variation"
+    },
+    {
+      "id": "DG-04",
+      "pass": true,
+      "note": "✓ Board outline has fillet (rounded corners). ✓ Frame outline has fillet. ✓ Thumb bridge has fillet. ✓ Convex hull ensures smooth silhouette. ✓ S02 verified: fillet ≥ 8mm in defaults.yaml"
+    },
+    {
+      "id": "DG-05",
+      "pass": true,
+      "note": "✓ S09 verified: total stack = 4.8mm (1.0+0.5+1.6+0.5+1.2). ✓ Cherry MX ULP (ultra-low-profile) switches minimize height. ✓ 2mm bamboo plywood (thin viable thickness). ✓ 0.5mm cork gaskets (minimal dampening layer)"
+    },
+    {
+      "id": "DG-06",
+      "pass": true,
+      "note": "✓ Quick-release clevis pins (one-handed press-button). ✓ Single-step cable release documented in assembly. ✓ Elastic bands eliminate turnbuckle adjustment on fold/unfold. ✓ Cable detach: 2 button presses total (one per cable)"
+    },
+    {
+      "id": "DG-07",
+      "pass": true,
+      "note": "✓ Fold up to 160° (near-flat close). ✓ Inward fold (keycaps face each other — compact). ✓ Magnets hold halves closed. ✓ Cables wrap around closed keyboard (like diary rope)"
+    },
+    {
+      "id": "DG-08",
+      "pass": true,
+      "note": "✓ Cork gaskets present (acoustic dampening). ✓ Two cork layers (upper + lower) — full sandwich dampening. ✓ Layer stack precisely defined (no air gaps). ✓ Bamboo frame (natural dampening material)"
+    },
+    {
+      "id": "DG-09",
+      "pass": true,
+      "note": "✓ generateWoodTexture produces bamboo appearance. ✓ Normal map provides surface relief (grain visible). ✓ Zero metalness on wood (not plastic/metallic). ✓ Roughness = 0.4 (appropriate for wood). ✓ Tonal variation in wood texture"
+    }
+  ]
+}

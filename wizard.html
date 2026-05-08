@@ -1472,6 +1472,30 @@ const sep2 = document.createElement('div'); sep2.className = 'sep'; toolbar.appe
 const tuneScaleBtn = document.createElement('div'); tuneScaleBtn.className = 'tool-btn'; tuneScaleBtn.textContent = 'Tune Scale';
 tuneScaleBtn.addEventListener('click', openScaleModal);
 toolbar.appendChild(tuneScaleBtn);
+// Thumb mode selector (REQ-L07)
+const sep3a = document.createElement('div'); sep3a.className = 'sep'; toolbar.appendChild(sep3a);
+const thumbModeLabel = document.createElement('span');
+thumbModeLabel.style.cssText = 'font-size:11px;color:#999;margin-right:2px;';
+thumbModeLabel.textContent = 'Thumb:';
+toolbar.appendChild(thumbModeLabel);
+['STRAIGHT','ROTATED','ERGOGEN'].forEach(mode => {
+  const btn = document.createElement('div');
+  btn.className = 'tool-btn thumb-mode-btn' + (mode === thumbMode ? ' active' : '');
+  btn.textContent = mode;
+  btn.dataset.mode = mode;
+  btn.style.cssText = mode === thumbMode ? 'background:#2a6abf;color:#fff;border-color:#4a8adf;' : '';
+  btn.addEventListener('click', () => {
+    thumbMode = mode;
+    // Update button styles
+    document.querySelectorAll('.thumb-mode-btn').forEach(b => {
+      b.style.background = b.dataset.mode === thumbMode ? '#2a6abf' : '#333';
+      b.style.color = b.dataset.mode === thumbMode ? '#fff' : '#ccc';
+      b.style.borderColor = b.dataset.mode === thumbMode ? '#4a8adf' : '#555';
+    });
+    drawCanvas(); // REQ-L07b: immediate redraw, taps preserved
+  });
+  toolbar.appendChild(btn);
+});
 const sep3 = document.createElement('div'); sep3.className = 'sep'; toolbar.appendChild(sep3);
 const exportBtn = document.createElement('div'); exportBtn.className = 'tool-btn'; exportBtn.textContent = 'Export';
 exportBtn.addEventListener('click', exportPositions);
@@ -1481,10 +1505,64 @@ loadBtn.addEventListener('click', loadPositions);
 toolbar.appendChild(loadBtn);
 
 // ── Export / Load finger positions ──
+function computeExportSwitchPositions() {
+  // Compute switch positions in mm for export (REQ-L10 item b)
+  const ppm = currentScalePPM();
+  const ALL_COLS = [...MATRIX_COLUMNS, 'thumb'];
+  const computedSwitches = {};
+  const fittingAlgorithm = {};
+  ALL_COLS.forEach(colId => {
+    const pts = positions[colId];
+    if (!pts || pts.length < 2) return;
+    const isThumb = colId === 'thumb';
+    const fit = fitLine(pts, isThumb);
+    const m = fit.m, b = fit.b;
+    const dirLen = Math.sqrt(1 + m * m);
+    const projections = pts.map(p => projectPointToLine(m, -1, b, p.x, p.y));
+    const projScalars = projections.map(p => p.x / dirLen + p.y * m / dirLen);
+    const minProj = Math.min(...projScalars);
+    const maxProj = Math.max(...projScalars);
+    const midProj = (minProj + maxProj) / 2;
+    const halfSpan = (maxProj - minProj) / 2;
+    const upperScalars = projScalars.filter(s => s >= midProj);
+    const lowerScalars = projScalars.filter(s => s < midProj);
+    const avgUpper = upperScalars.length ? upperScalars.reduce((a, b) => a + b, 0) / upperScalars.length : midProj + halfSpan;
+    const avgLower = lowerScalars.length ? lowerScalars.reduce((a, b) => a + b, 0) / lowerScalars.length : midProj - halfSpan;
+    const keyScalars = [avgLower, midProj, avgUpper];
+    const canvasKeys = keyScalars.map(s => {
+      const ds = s - midProj;
+      return { x: fit.cx + ds / dirLen, y: fit.cy + ds * m / dirLen };
+    });
+    // Convert to ergogen mm space (flip Y)
+    const ergoMm = canvasKeys.map(k => ({ x: k.x / ppm, y: -k.y / ppm }));
+    const sorted = [...ergoMm].sort((a, b) => a.y - b.y);
+    const dx = sorted[2].x - sorted[0].x, dy = sorted[2].y - sorted[0].y;
+    const angleRad = Math.atan2(-dx, dy);
+    const angleDeg = angleRad * 180 / Math.PI;
+    computedSwitches[colId] = sorted.map((k, i) => ({
+      center: { x: k.x, y: k.y },
+      rotation: angleDeg,
+      size: { w: 13.8, h: 13.8 },
+      label: ['bottom', 'home', 'top'][i],
+    }));
+    fittingAlgorithm[colId] = isThumb ? thumbMode : 'regression-line';
+  });
+  return { computedSwitches, fittingAlgorithm };
+}
+
 function exportPositions() {
+  const { computedSwitches, fittingAlgorithm } = computeExportSwitchPositions();
+  const currentThumbParams = Object.assign({}, thumbParams);
+  if (thumbMode === 'STRAIGHT' && computedSwitches.thumb) {
+    currentThumbParams.lineAngle = computedSwitches.thumb[0].rotation;
+  }
   const data = {
     positions,
-    calibratedPPM,
+    computedSwitches,
+    fittingAlgorithm,
+    thumbMode,
+    thumbParams: currentThumbParams,
+    calibratedPPM: currentScalePPM(),
     canvasWidth: canvas.width,
     canvasHeight: canvas.height,
   };
@@ -1529,6 +1607,16 @@ function loadPositions() {
           calibratedPPM = data.calibratedPPM * ((scaleX + scaleY) / 2);
           localStorage.setItem('keyboard_wizard_ppm', String(calibratedPPM));
         }
+        // Restore thumb mode and params (REQ-L07a)
+        if (data.thumbMode && ['STRAIGHT','ROTATED','ERGOGEN'].includes(data.thumbMode)) {
+          thumbMode = data.thumbMode;
+          document.querySelectorAll('.thumb-mode-btn').forEach(b => {
+            b.style.background = b.dataset.mode === thumbMode ? '#2a6abf' : '#333';
+            b.style.color = b.dataset.mode === thumbMode ? '#fff' : '#ccc';
+            b.style.borderColor = b.dataset.mode === thumbMode ? '#4a8adf' : '#555';
+          });
+        }
+        if (data.thumbParams) thumbParams = data.thumbParams;
         computeErgogenPreview();
         drawCanvas();
         updateToolbar();
@@ -1620,6 +1708,46 @@ canvas.addEventListener('pointerdown', e => {
   drawCanvas();
   updateToolbar();
 });
+
+// ── Zoom keyboard shortcuts (REQ-L11) ──
+// Uses '[' and ']' keys which do not interfere with browser or other website shortcuts.
+// Scale tuning PPM updates on 1:1 ratio with zoom level if it was specified earlier.
+document.addEventListener('keydown', e => {
+  if (currentPage !== 1) return;
+  // Ignore if user is typing in an input
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  let handled = false;
+  if (e.key === ']' || e.key === '=') {
+    zoomLevel = Math.min(ZOOM_MAX, zoomLevel + ZOOM_STEP);
+    handled = true;
+  } else if (e.key === '[' || e.key === '-') {
+    zoomLevel = Math.max(ZOOM_MIN, zoomLevel - ZOOM_STEP);
+    handled = true;
+  }
+  if (handled) {
+    e.preventDefault();
+    // Update PPM proportionally (REQ-L11: 1:1 ratio with zoom level if scale was specified)
+    if (calibratedPPM !== null && calibratedPPM > 0) {
+      // Recompute from base: basePPM * zoomLevel
+      // Store the base PPM on first zoom action
+      if (!window._basePPM) window._basePPM = calibratedPPM;
+      calibratedPPM = window._basePPM * zoomLevel;
+      localStorage.setItem('keyboard_wizard_ppm', String(calibratedPPM));
+    }
+    drawCanvas();
+  }
+});
+
+// ── Thumb mode state ──
+// Three thumb modes per REQ-L07: STRAIGHT, ROTATED, ERGOGEN
+let thumbMode = 'STRAIGHT';
+let thumbParams = { lineAngle: 0 }; // mode-specific parameters
+
+// ── Zoom state (REQ-L11) ──
+let zoomLevel = 1.0;
+const ZOOM_STEP = 0.1;
+const ZOOM_MIN = 0.3;
+const ZOOM_MAX = 5.0;
 
 // ── Validation state ──
 let validationErrors = [];
