@@ -8,9 +8,11 @@ All requirements use **shall** language and are deterministic and verifiable unl
 
 **REQ-L01** — The system shall use the passhutk ergogen website to capture finger tap positions and generate a JSON layout for the split keyboard.
 
-**REQ-L02** — The system shall convert the passhutk JSON output into a `config.yaml` compatible with ergogen.xyz.
+**REQ-L02** — The system shall convert the computed switch positions from the passhutk JSON (per REQ-L10 item b) into a `config.yaml` compatible with ergogen.xyz. The conversion shall use the computed switch positions and the fitting algorithm metadata, not the raw tap coordinates directly.
 
-**REQ-L03** — The ergogen-generated layout shall match the passhutk JSON in switch absolute positions (within 0.05 mm), relative positions (within 0.05 mm), orientations/rotations, and switch-edge-size.
+**REQ-L03a** — The fitting algorithm shall deterministically compute switch center positions (x, y in mm), rotations (degrees), and sizes (mm) from the raw tap coordinates, the calibrated PPM, and the selected fitting algorithm per column. Given identical inputs (same taps, same PPM, same algorithm selection), the computed switch positions, rotations, and sizes shall be bit-identical.
+
+**REQ-L03b** — The ergogen config.yaml, when processed by the ergogen engine, shall produce switch positions within 0.05 mm, rotations within 0.05 degrees, and matching switch-edge-sizes compared to the computed switch positions from REQ-L03a. This tolerance is the single source of truth for the taps-to-ergogen conversion fidelity.
 
 **REQ-L04** — Each column (pinky, ring, middle, index, inner, and thumb) shall have exactly 3 keys. The user shall provide at least 3 finger taps per column; additional taps beyond 3 are permitted and encouraged as they are used by the passhutk layout tool to determine the key switch positions.
 
@@ -21,22 +23,36 @@ All requirements use **shall** language and are deterministic and verifiable unl
 **REQ-L06** — The thumb cluster shall be the only zone permitted to have a separate splay/rotation angle independent of the matrix columns.
 
 
-**REQ-L07** — If it is impossible to generate a config.yaml for the thumb keys based on the finger tap json layout, the user shall be asked to specify either, a rotation in degrees that allows the rotation of the 3 thumb keys around a common center of origin at a radius R (located roughly at the handpalm) in mm. If that still does not allow the user to generate a valid config.yaml for the ergogenxyz, then the user may be asked to enter the key.spread:, key.splay:  and key.origin: [00, 0] directly.
+**REQ-L07** — The user shall select a thumb fitting mode from three options:
+  (a) **STRAIGHT** — The 3 thumb key centers shall be projected onto a best-fit regression line through the thumb taps, using the same CoG-based placement algorithm as matrix columns (REQ-SF03). All 3 thumb keys shall share one rotation angle (the line angle). This mode always produces a valid ergogen config.yaml (splay=0, spread=inter-key distance along line).
+  (b) **ROTATED** — The 3 thumb key centers shall be placed on a circular arc. The user shall specify (or the system shall fit from taps) a center point and radius R. Keys are spaced at angular intervals on the arc. Each key's rotation shall be tangent to the arc. This mode always produces a valid ergogen config.yaml (uniform splay per column, inverse-solved origin offsets).
+  (c) **ERGOGEN** — The user shall directly enter ergogen thumb zone parameters (key.spread, key.splay, key.origin per column). These values shall be passed through to the config.yaml verbatim.
+
+**REQ-L07a** — The selected thumb mode and its parameters (line angle for STRAIGHT; center, radius, angular offsets for ROTATED; raw ergogen params for ERGOGEN) shall be stored in the export JSON (per REQ-L10).
+
+**REQ-L07b** — When the user switches thumb mode, the stage 1 canvas shall immediately recompute and redraw the 3 thumb switch positions using the newly selected algorithm. The previous thumb taps shall be preserved (not cleared).
 
 **REQ-L08** — The system shall provide a "Tune Scale" calibration function: a modal displaying a reference line, user entry of measured physical width in mm, computing px/mm from CSS pixel width / entered mm. The calibrated value shall persist across sessions via localStorage.
 
-**REQ-L09** — The ergopadToErgogen converter shall produce ergogen config parameters (spread, stagger, splay, padding) that reconstruct the stage 1 key positions when processed by ergogen's placement algorithm. The converter shall simulate ergogen's rotation stack and inverse-solve for world-space zone_anchor positions.
+**REQ-L09** — The ergopadToErgogen converter shall produce ergogen config parameters (spread, stagger, splay, padding, origin) that, when processed by ergogen's placement algorithm, reconstruct the computed switch positions from REQ-L03a within the tolerance of REQ-L03b. The converter shall simulate ergogen's cumulative rotation stack and inverse-solve for world-space zone_anchor positions. For the thumb zone, the converter shall use the algorithm-specific parameter derivation corresponding to the selected thumb mode (REQ-L07).
 
-**REQ-L10** — The user shall be able to export finger position data (tap coordinates, calibrated PPM, canvas dimensions) as JSON and reload it. Loading shall scale positions correctly if canvas dimensions differ from the original.
+**REQ-L10** — The user shall be able to export and reload layout data as JSON. The export shall include:
+  (a) Raw tap coordinates per column (as `{x, y}` arrays).
+  (b) Computed switch positions per key: center (x, y) in mm, rotation in degrees, and switch size (width, height) in mm.
+  (c) The fitting algorithm used per column: `regression-line` for matrix columns; `STRAIGHT`, `ROTATED`, or `ERGOGEN` for the thumb column, plus the algorithm-specific parameters (per REQ-L07a).
+  (d) `calibratedPPM`, `canvasWidth`, `canvasHeight`.
+Loading shall scale raw tap positions correctly if canvas dimensions differ from the original. After loading, the system shall recompute switch positions from the stored taps and algorithm, and verify they match the stored computed positions (within floating-point tolerance).
 
 **REQ-L11** — In the first screen where the finger taps are added the user shall be able to zoom in and out the key switches using 2 keyboard buttons/shortcuts that do not interfere with the normal browser/rest of the website. (The scale tuning number shall change on a 1:1 ratio with the zoomlevel if it was specified earlier).
 ---
 
 ## 2. Validation
 
-**REQ-V01** — For each key, the distance between the tapped switch position and the ergogen-computed position shall be less than the tolerance defined in REQ-L03 (0.05 mm). If exceeded, the system shall flag the specific key with its position delta and throw an error.
+**REQ-V01a** — (Boundary 1 — taps to computed switches) The system shall verify that the fitting algorithm (per REQ-L03a) produces deterministic switch positions from the stored raw taps. On JSON reload, the recomputed switch positions shall match the stored computed positions within floating-point tolerance (< 1e-6 mm). If they differ, the system shall flag a fitting algorithm inconsistency error.
 
-**REQ-V02** — The relative arrangement of keys (center-to-center distances and directions between adjacent keys) shall be preserved between tapped input and ergogen output. The system shall detect if ergogen reorders, collapses, or distorts spatial relationships.
+**REQ-V01b** — (Boundary 2 — computed switches to ergogen output) For each key, the distance between the computed switch position (from REQ-L03a) and the ergogen-generated position (from the config.yaml processed by ergogen) shall be less than the tolerance defined in REQ-L03b (0.05 mm). Rotation shall match within 0.05 degrees. If exceeded, the system shall flag the specific key with its position and rotation delta and throw an error.
+
+**REQ-V02** — The relative arrangement of keys (center-to-center distances and directions between adjacent keys) shall be preserved between the computed switch positions and the ergogen output. The system shall detect if ergogen reorders, collapses, or distorts spatial relationships.
 
 **REQ-V03** — No two switches shall occupy the same position. The center-to-center distance between every pair of keys shall exceed the switch housing diagonal. This check shall apply both within each column and across columns.
 
@@ -206,7 +222,7 @@ Note: Half-to-half communication shall use Bluetooth (not wired USB-C between ha
 
 ## 10. Stage Fidelity
 
-**REQ-SF01** — Key positions and orientations computed in stage 1 (finger position (from pink to index, excluding thumb) canvas) shall be reproduced in stage 2 (ergogen output / 3D render) within the tolerance defined in REQ-L03 (0.05 mm) for all keys (bottom, home, top) in each column possibly excluding the thumb column. Per-row padding shall match stage 1's center-of-gravity-based asymmetric placement.
+**REQ-SF01** — The computed switch positions and orientations stored in the export JSON (per REQ-L10 item b) shall be reproduced in the ergogen output and 3D render within the tolerance defined in REQ-L03b (0.05 mm position, 0.05 degrees rotation) for all keys in all columns, including the thumb column regardless of thumb mode. Per-row padding shall match stage 1's center-of-gravity-based asymmetric placement. This requirement is verified by REQ-V01b.
 
 **REQ-SF02** — Switch rectangles drawn on the page 1 canvas shall have their edges perpendicular to the column regression line. The rotation angle shall be `PI/2 + atan(slope)` applied via `ctx.rotate(-rad)` in canvas coordinates.
 
