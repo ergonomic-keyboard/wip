@@ -95,13 +95,12 @@ All requirements use **shall** language and are deterministic and verifiable unl
 **REQ-F01** — The folding mechanism shall connect the two halves at the center (approximately between the R and T key positions). It shall be made of metal and shall weigh at most 50 grams total.
 
 **REQ-F01a** — The mechanism shall support two independent rotation axes:
-  (a) **Fold axis** (horizontal, from user belly to screen): The two halves shall fold from flat on the table (0 degrees) to fully tented (at most 90 degrees). Around that axis it, ideally should also be foldable to be closed. 
-**REQ-F01b** — If a single mechanism (e.g., ball joint) cannot provide both axes with the required range, the two connecting poles to the hinge mechanism shall be disconnectable (e.g., via magnetic breakaway or quick-release) so the halves can be separated to fold flat. 1 or 2 magnetic connectors may be used in the hinge poles for this purpose. In that case the 2 keyboard halves fold close against eachother and stay in place with 2 or 3 magnets embedded in the keyboard wood frame.
-The keycap surfaces shall face each other when folded (inward fold).
+  (a) **Fold axis** (horizontal, running from user belly toward screen): The two halves shall fold from flat on the table (0 degrees) to fully tented (at most 90 degrees).
   (b) **Butterfly axis** (vertical, perpendicular to the table surface): When flat on the table, the two halves shall rotate forward and backward like wings (toward/away from the screen) up to approximately 45 degrees from the centerline.
 
-**REQ-F01b** — The butterfly rotation range (up to ~45 degrees) may be limited due to geometric constraints (e.g. the thumb pads bumping into eachother) at various fold angles from 0 to 90 degrees.
+**REQ-F01b** — The butterfly rotation range (up to ~45 degrees) may be limited at certain fold angles due to geometric constraints (e.g., thumb pads colliding). The 3D render shall enforce these collision limits per REQ-R07.
 
+**REQ-F01c** — The keyboard shall fold fully closed for transport. When folded closed, the keycap surfaces shall face each other (inward fold). If a single mechanism cannot provide both the fold/butterfly range (REQ-F01a) and fold-to-close, the two connecting poles to the hinge shall be disconnectable (e.g., via magnetic breakaway or quick-release). In that case, 2 or 3 magnets embedded in the keyboard wood frame shall hold the two halves closed.
 
 **REQ-F01d** — The hinge shall be lockable/fixable at a chosen tenting angle. The tenting angle shall be determined by the cable turnbuckle settings (REQ-F09).
 
