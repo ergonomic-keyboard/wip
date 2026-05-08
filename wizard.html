@@ -1451,6 +1451,17 @@ const hint = document.getElementById('canvas-hint');
 // More taps improve the fitted line accuracy. Ergogen uses at most 3 rows per column.
 const MIN_KEYS_PER_COL = 2;
 
+// ── Thumb mode state ──
+// Three thumb modes per REQ-L07: STRAIGHT, ROTATED, ERGOGEN
+let thumbMode = 'STRAIGHT';
+let thumbParams = { lineAngle: 0 }; // mode-specific parameters
+
+// ── Zoom state (REQ-L11) ──
+let zoomLevel = 1.0;
+const ZOOM_STEP = 0.1;
+const ZOOM_MIN = 0.3;
+const ZOOM_MAX = 5.0;
+
 // Build toolbar
 COLUMNS.forEach(c => {
   const btn = document.createElement('div');
@@ -1737,17 +1748,6 @@ document.addEventListener('keydown', e => {
     drawCanvas();
   }
 });
-
-// ── Thumb mode state ──
-// Three thumb modes per REQ-L07: STRAIGHT, ROTATED, ERGOGEN
-let thumbMode = 'STRAIGHT';
-let thumbParams = { lineAngle: 0 }; // mode-specific parameters
-
-// ── Zoom state (REQ-L11) ──
-let zoomLevel = 1.0;
-const ZOOM_STEP = 0.1;
-const ZOOM_MIN = 0.3;
-const ZOOM_MAX = 5.0;
 
 // ── Validation state ──
 let validationErrors = [];
