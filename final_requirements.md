@@ -54,7 +54,7 @@ Loading shall scale raw tap positions correctly if canvas dimensions differ from
 
 **REQ-V02** — The relative arrangement of keys (center-to-center distances and directions between adjacent keys) shall be preserved between the computed switch positions and the ergogen output. The system shall detect if ergogen reorders, collapses, or distorts spatial relationships.
 
-**REQ-V03** — No two switches shall occupy the same position. The center-to-center distance between every pair of keys shall exceed the switch housing diagonal. This check shall apply both within each column and across columns.
+**REQ-V03** — No two switches shall occupy the same position. The center-to-center distance between every pair of keys shall exceed the switch housing width. This check shall apply both within each column and across columns.
 
 **REQ-V04** — Validation shall recompute every time a finger tap is added or removed, without requiring navigation to a separate page.
 
