@@ -1119,3 +1119,4 @@ function buildNewScene(ergogenResults, config, container) {
 
 // Export to global scope for wizard.html
 window.buildNewScene = buildNewScene;
+window.THREE = THREE; // Expose for runtime verification (verify-runtime.js)

@@ -19,5 +19,8 @@
     "kle-serial-alt": "^0.1.0",
     "makerjs": "^0.19.2",
     "mathjs": "^15.2.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.59.1"
   }
 }
