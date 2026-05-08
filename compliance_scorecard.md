@@ -26,7 +26,7 @@
 | V01b | SELF_PASS | 1 | 0 | 0 | All 9 examples: computed→ergogen position delta < 0.05mm, rotation delta < 0.05° |
 | V02 | SELF_PASS | 1 | 0 | 0 | All 9 examples: center-to-center distances and direction vectors preserved (delta < 0.1mm / 0.1°) |
 | V03 | SELF_PASS | 1 | 0 | 0 | All 9 examples: no overlapping switches (all center-to-center distances > 13.8mm switch housing width) |
-| SF01 | SELF_PASS | 1 | 0 | 0 | All 9 examples: full pipeline traceability — taps → computed → ergogen all within 0.05mm/0.05° |
+| SF01 | USER_FAIL | 1 | 0 | 1 | Static: pipeline traceability within tolerance. USER_FAIL: stage 1 thumb splay ~90° does not match 3D render thumb splay ~20° — positions not reproduced in render |
 
 ## Phase 2 — UI/UX Verification
 
@@ -50,7 +50,7 @@
 |-----|--------|--------------|------------|-----------------|-------|
 | R01 | SELF_PASS | 1 | 0 | 0 | WebGLRenderer + OrbitControls (orbit/zoom/pan) + PerspectiveCamera + damping + animation loop + toolbar controls |
 | R02 | SELF_PASS | 1 | 0 | 0 | build3DScene/buildNewScene called after ergogen.process() — model updates on config change |
-| R03 | SELF_PASS | 2 | 0 | 1 | Static: all 12 component types in code. USER_FAIL: layers not visible. Runtime re-verify: all layers present — bottom(8), cork_low(2), pcb(17), cork_up(2), switchPlate(54), keycaps(72). 145 meshes, 92123 vertices |
+| R03 | USER_FAIL | 2 | 0 | 2 | Runtime pass: layers present at correct Z. USER_FAIL #2: duplicate/overlapping board geometry visible — extra outline pieces or redundant layers in scene |
 | R04 | SELF_PASS | 2 | 0 | 1 | Static: exploded view code present. USER_FAIL: layers not distinct. Runtime re-verify: 5.8x Z-separation, 8 labels, 7 material bands, 23 distinct colors |
 | R05 | SELF_PASS | 1 | 0 | 0 | Raycaster click → press state → PRESS_DEPTH 1.5mm → ease curve → Z decrease → return to base. Pointer + hover cursor |
 | R06 | SELF_PASS | 2 | 0 | 1 | Static: hinge group + applyFold code. USER_FAIL: hinge misaligned at fold angles. Runtime re-verify: 4/13 components moved between fold=0° and 45°, max delta=18.4mm, halves articulated |
@@ -58,10 +58,10 @@
 | R08 | SELF_PASS | 1 | 0 | 0 | Fold slider 0–160° (req 180), applyFold with pivot at hinge center, both halves always visible, no localClippingEnabled |
 | R09 | SELF_PASS | 2 | 0 | 1 | Static: cable geometry in code. USER_FAIL: cables invisible at fold=0. Runtime re-verify: 6 cables visible at fold=0° (cablesGroup.visible=true) |
 | R10 | SELF_PASS | 1 | 0 | 0 | Chrome material (metalness 0.98, roughness 0.15) on USB body, dark inner opening (0x050505), correct USB-C dimensions |
-| R11 | SELF_PASS | 2 | 1 | 0 | Keys at ergogen coords, cutouts from same array, no SVG parsing. Self-fail 1: ergopadToErgogen returns {config,...} wrapper |
+| R11 | USER_FAIL | 2 | 1 | 1 | Keys at ergogen coords, cutouts from same array, no SVG parsing. Self-fail 1: ergopadToErgogen returns {config,...} wrapper. USER_FAIL: key positions wrong in 3D — thumb cluster angle ~20° in render vs ~90° in stage 1. Keys in wrong places |
 | R12 | SELF_PASS | 2 | 0 | 1 | Static: CanvasTexture label code present. USER_FAIL: labels invisible. Runtime re-verify: 36 key label planes with canvas textures found (all 36 total) |
 | R13 | SELF_PASS | 1 | 0 | 0 | generateWoodTexture with normalMap + roughnessMap, roughness=0.4 metalness=0, grain lines, growth rings, nodes, fiber |
-| R14 | SELF_PASS | 2 | 0 | 1 | Static: fold code present. USER_FAIL: fold appeared outward. Runtime re-verify: fold is INWARD at 160° — left normal X=0.98 (→right), right normal X=-0.98 (→left), dot=-0.94 |
+| R14 | USER_FAIL | 2 | 0 | 2 | Runtime pass: fold normals correct at 160°. USER_FAIL #2: thumb clusters face the screen instead of the user — keyboard orientation/fold direction wrong |
 | R15 | SELF_PASS | 1 | 0 | 0 | No localClippingEnabled, DoubleSide on mirrored half, both halves always in scene, pivot-based rotation |
 | R16 | SELF_PASS | 1 | 0 | 0 | Convex hull from ALL leftKeys (matrix+thumb) ensures single connected polygon. No floating island |
 
@@ -74,7 +74,7 @@
 | H03 | SELF_PASS | 1 | 0 | 0 | QWERTY labels in render3d.js, keycaps listed in BOM |
 | S01 | SELF_PASS | 1 | 0 | 0 | Mirror config produces 2 halves, left/right in render3d.js |
 | S02 | SELF_PASS | 1 | 0 | 0 | Fillet >= 8mm in defaults.yaml, convex hull + filletedHullShape in render3d.js, thumb bridge fillet |
-| S03 | SELF_PASS | 1 | 0 | 0 | Convex hull ensures single connected polygon, thumb bridge shapes in config |
+| S03 | USER_FAIL | 1 | 0 | 1 | Static: convex hull in code. USER_FAIL: duplicate/disconnected board sections visible — outline not a single connected piece covering all keys smoothly |
 | S04 | SELF_PASS | 1 | 0 | 0 | BOM lists bamboo 2mm, two-part frame (bottom + bezel), frame in config + render3d.js |
 | S05 | SELF_PASS | 1 | 0 | 0 | Wall width = (26-18)/2 = 4mm exactly. Frame wider than board in config |
 | S06 | SELF_PASS | 1 | 0 | 0 | BOM: 14x M2 countersunk + 14x M2 heat-set brass inserts. Geometry in render3d.js |
@@ -126,7 +126,7 @@
 
 | DG | Status | Notes |
 |----|--------|-------|
-| DG-01 | SELF_PASS | [AI] Static: fillet 8mm, convex hull. USER_FAIL: dashed edge artifacts. Runtime re-verify: 12 outline meshes, 70704 vertices (smooth). Screenshot saved for human review |
+| DG-01 | USER_FAIL | [AI] Static: fillet 8mm, convex hull. USER_FAIL #1: dashed edge artifacts. Runtime pass: 70704 vertices (smooth). USER_FAIL #2: dashed/dotted outline still visible — board outline has visible artifacts, not a clean deliberate shape |
 | DG-02 | SELF_PASS | Shadow casting, anti-aliasing, ACES Filmic tone mapping, PBR materials, high metalness on chrome, camera damping |
 | DG-03 | SELF_PASS | generateWoodTexture with 400 grain lines (wobble), 6 growth rings (curved arcs), 2-3 node bands, normalMap, roughnessMap |
 | DG-04 | SELF_PASS | Board fillet, frame fillet, thumb bridge fillet, convex hull silhouette. Cross-ref: S02 verified fillet ≥ 8mm |
@@ -141,16 +141,22 @@
 | Metric | Count |
 |--------|-------|
 | Total requirements | 97 |
-| Self-verified PASS | 97 |
+| Self-verified PASS | 91 |
 | User-confirmed PASS | 0 |
-| User corrections (I was wrong) | 12 |
-| Runtime re-verified (after fix) | 12 |
+| User corrections (I was wrong) | 18 |
+| Runtime re-verified (after fix) | 9 |
+| Currently USER_FAIL | 6 |
 | Blocked | 0 |
 | Not started | 0 |
 
-### Runtime Verification Summary
+### USER_FAIL Summary
 
-All 12 previously USER_FAIL requirements re-verified via Playwright headless browser
-(verify-runtime.js). 12/12 PASS. Methods:
-- **[AUTO]**: L01, L06, L10, R03, R04, R06, R09, R12, R14, S08, S09
-- **[AI]**: DG-01 (screenshot saved for human review)
+**Session 6 failures (12)**: L01, L06, L10 (TDZ crash — fixed), R03, R04, R06, R09, R12, R14, S08, S09, DG-01 — 9 of these re-verified PASS via runtime.
+
+**Session 7 failures (6 new)**: From user screenshot review of 3D render:
+- **R03** (2nd): Duplicate/overlapping board geometry
+- **R11**: Key positions wrong — thumb splay ~20° in 3D vs ~90° in stage 1
+- **R14** (2nd): Thumbs face screen instead of user — orientation wrong
+- **SF01**: Stage 1 positions not faithfully reproduced in 3D render
+- **S03**: Duplicate/disconnected board sections visible
+- **DG-01** (2nd): Dashed/dotted outline artifacts still visible

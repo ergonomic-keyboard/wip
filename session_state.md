@@ -11,7 +11,7 @@ Phase 4 — Hardware / BOM / Assembly: **COMPLETE** (all 28 requirements SELF_PA
 Phase 5 — Hinge & Mechanism A: **COMPLETE** (all 19 requirements SELF_PASS)
 Phase 6 — Design Guidelines: **COMPLETE** (all 9 guidelines SELF_PASS)
 
-**ALL 97 REQUIREMENTS VERIFIED — 97/97 SELF_PASS, 12 USER CORRECTIONS (all re-verified)**
+**6 REQUIREMENTS CURRENTLY USER_FAIL — 91/97 SELF_PASS, 18 total user corrections**
 
 ## Session History
 
@@ -24,55 +24,68 @@ Phase 6 — Design Guidelines: **COMPLETE** (all 9 guidelines SELF_PASS)
 | 4 | 2026-05-08 | H01–H03, S01–S12, E01–E05, B01–B03, A01–A03 | **28/28 SELF_PASS** |
 | 5 | 2026-05-08 | F01–F01d, F05–F09, MA01–MA09, DG-01–DG-09 | **28/28 SELF_PASS** (19 Phase 5 + 9 Phase 6) |
 | 6 | 2026-05-08 | User bug reports + runtime verification | **12 USER_FAIL detected, TDZ bug fixed, 12/12 runtime re-verified PASS** |
+| 7 | 2026-05-08 | User screenshot review + root cause analysis | **6 new USER_FAIL: R03, R11, R14, SF01, S03, DG-01. Root cause: render3d.js uses wrong coordinate system** |
 
 ## Last Session Summary
 
-**Session 6 — Runtime Verification (12 USER_FAIL → 12 PASS)**
+**Session 7 — Root Cause: render3d.js coordinate system mismatch**
 
 ### What was done:
-1. **User bug reports**: Canvas click not working, Load/Export buttons missing. Identified as L01, L06, L10 USER_FAIL.
-2. **TDZ bug fix**: `let thumbMode = 'STRAIGHT'` declared at line 1743 but used at line 1483 during module initialization. Moved 6 declarations before toolbar builder. Committed fix.
-3. **User 3D screenshot review**: Identified 9 additional USER_FAIL: R03, R04, R06, R09, R12, R14, S08, S09, DG-01.
-4. **Root cause analysis**: All 12 failures undetectable by static code analysis (regex). Required runtime verification.
-5. **Runtime verification infrastructure**:
-   - Installed Playwright (headless Chromium)
-   - Exposed `window.THREE` from render3d.js for scene graph queries
-   - Created `verify-runtime.js` — Playwright-based verification script
-   - Created `runtime_verification_spec.md` — detailed specification per requirement
-6. **Runtime verification results**: **12/12 PASS**
-   - L01: Canvas click registered, 6 column buttons, no fatal JS errors
-   - L06: Load button present and visible
-   - L10: Export button present and visible
-   - R03: All 5 layers + keycaps present (145 meshes, 92123 vertices)
-   - R04: Exploded view 5.8x Z-separation, 8 labels, 23 distinct colors
-   - R06: Hinge articulates (4/13 components moved, max delta 18.4mm)
-   - R09: 6 cables visible at fold=0°
-   - R12: 36 key label planes with canvas textures
-   - R14: Fold direction INWARD (left normal X=0.98, right X=-0.98, dot=-0.94)
-   - S08: All 5 layers at correct Z positions (12 distinct Z levels)
-   - S09: Multi-layer stack, 11 Z-levels spanning 5.1mm
-   - DG-01: [AI] 12 outline meshes, 70704 vertices. Screenshot for review.
+1. **User screenshot review**: User loaded `new*.json` in wizard, compared stage 1 layout to 3D render. Found:
+   - Thumb cluster angle ~20° in 3D but ~90° in stage 1
+   - Keys in wrong places
+   - Duplicate geometry visible
+   - Thumbs face the screen instead of the user
+   - Dashed outline artifacts
+2. **Root cause analysis**: render3d.js (`buildNewScene`) was written independently of the ergogen pipeline. It uses ergogen coordinates RAW without applying the coordinate transformations that the OLD `build3DScene()` in wizard.html does correctly:
+   - **Missing Y negation**: ergogen is Y-up, rendering needs Y-down → `sy = -pt.y`
+   - **Missing rotation negation**: `sr = -pt.r`
+   - **Missing centroid offset**: old renderer computes offset between SVG cutout centroids and ergogen point centroids
+   - **Duplicate geometry**: BOTH old `build3DScene()` AND new `buildNewScene()` are called in `initPage2()`, creating overlapping scenes
+3. **Decision**: Fix via Option A — apply correct coordinate transforms in render3d.js and remove the old `build3DScene()` call. If this doesn't work, fall back to Option B (delete render3d.js, build on the old renderer).
+4. **Updated scorecard**: 6 new USER_FAIL entries recorded.
 
-### Key lesson learned:
-Static code analysis (regex) is insufficient for rendering/UI verification. Runtime verification via headless browser + scene graph queries catches failures that are invisible to source-level analysis. The verification methodology was upgraded to include both static and runtime checks.
+### The two renderers (the core problem):
+
+**Old `build3DScene()` (wizard.html ~line 2381)** — WORKS CORRECTLY:
+```javascript
+// Applies coordinate transformation:
+const sx = pt.x + offX;       // X + centroid offset
+const sy = -pt.y + offY;      // Y NEGATED + offset
+const sr = -pt.r * Math.PI / 180;  // Rotation NEGATED
+```
+
+**New `buildNewScene()` (render3d.js ~line 640)** — BROKEN:
+```javascript
+// Uses coordinates RAW:
+const sx = k.x, sy = k.y;     // NO negation, NO offset
+const sr = k.r * Math.PI / 180;    // NO negation
+```
+
+### Fix plan (Option A):
+1. In render3d.js where `leftKeys` are built from ergogen points (~line 640): negate Y, negate rotation
+2. In `buildOutlineShape()`: hull is computed from these same points, so fix propagates
+3. Remove `build3DScene()` call from `initPage2()` in wizard.html to eliminate duplicate geometry
+4. Run `verify-runtime.js` + take screenshot for user review
+5. **If still broken after Option A**: tell user to take the loss and go to Option B (delete render3d.js, build features on top of the old renderer's correct coordinate system)
 
 ## What To Do Next
 
-All 97 requirements re-verified. 12 user corrections addressed. Remaining work:
+**IMMEDIATE**: Fix the 6 USER_FAIL requirements (R03, R11, R14, SF01, S03, DG-01) via Option A.
 
-1. **User review**: All results are SELF_PASS. The user should spot-check specific requirements to convert SELF_PASS → USER_PASS. DG-01 has an [AI] screenshot for visual review.
-2. **Known implementation gaps** (not verification failures):
-   - Hirth discs + butterfly nut are in mechanisms/demo but NOT in main render3d.js
-   - Butterfly rotation slider is in demo but NOT in wizard.html
-   - Full E2E collision detection (F01b/R07) exists conceptually in demo but not in main wizard
-   - Cable wrap animation at fold > 0 is simplified to visibility toggle
-3. **BOM completeness**: BOM.md now includes all B03-required items including Mechanism A components (Hirth, butterfly nut, magnets, elastic bands). Grand total updated to ~€326.
-4. **Documentation**: All verification scripts in `wip/verify-phase{1-6}.js` + `wip/verify-runtime.js`. Machine-readable results in `wip/phase{1-6}-results.json` + `wip/runtime-results.json`.
+1. Read the old `build3DScene()` in wizard.html (~line 2381) to understand the exact coordinate transforms
+2. Apply the same transforms in render3d.js `buildNewScene()` (~line 640)
+3. Remove the old `build3DScene()` call from `initPage2()` to stop duplicate geometry
+4. Run `verify-runtime.js` to confirm
+5. Take screenshot, have user verify
+6. **If still wrong**: tell user to take the loss, go to Option B (delete render3d.js entirely, rebuild on old renderer)
 
 ## Known Issues / Blockers
 
+- **CRITICAL — OPEN**: render3d.js uses raw ergogen coordinates without Y-negation, rotation-negation, or centroid offset. This is the root cause of 6 USER_FAIL requirements. Fix via Option A (coordinate transform in render3d.js) or Option B (delete render3d.js, rebuild on old renderer).
+- **CRITICAL — OPEN**: Both `build3DScene()` and `buildNewScene()` are called in `initPage2()`, creating duplicate overlapping geometry.
 - **Resolved**: TDZ bug in wizard.html — `let thumbMode` declared after first use. Fixed by moving declarations before toolbar builder.
-- **Resolved**: 12 USER_FAIL requirements re-verified via Playwright runtime verification (verify-runtime.js). All 12/12 PASS.
+- **Resolved**: 9 of 12 earlier USER_FAIL requirements re-verified via Playwright runtime verification (verify-runtime.js).
 - **Resolved**: Example JSONs now have computed switch positions (in `examples/extended/`).
 - **Resolved**: Thumb modes (STRAIGHT/ROTATED/ERGOGEN) now implemented in wizard.html.
 - **Resolved**: Zoom keyboard shortcuts now implemented in wizard.html.
