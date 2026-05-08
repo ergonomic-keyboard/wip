@@ -792,6 +792,12 @@ function ergopadToErgogen(data, mirrorDist, keySpacing, ppmOverride) {
     }
   };
   if (thumbZone) config.points.zones.thumb = thumbZone;
+
+  // Attach stage 1 key positions (ergogen mm space, before ergogen processing)
+  // These are the raw fitted-line positions: {colId: {bottom, home, top, angleDeg}}
+  config._stage1Keys = ergoKeys;
+  config._stage1Ppm = ppm;
+
   return config;
 }
 

@@ -219,7 +219,9 @@ Note: Half-to-half communication shall use Bluetooth (not wired USB-C between ha
 **REQ-R16** — The 3D render shall visually reflect REQ-S03: the thumb cluster shall appear connected to the main body in all views (not as a floating island).
 
 **REQ-R17** - You shall show the key switch outlines from the 1.Finger Positions as the highest layer in purple at 3 mm above the highest point of the board. (Don't edit them or anything, just a raw coordinate and rotational copy paste).
+**REQ-R18** -  You shall show the angle in degrees between the inner column line and the thumb column line in case the Thumb STRAIGHT option is shown. also in purple (with a circular arrow between the two lines.)
 
+**REQ-R19** -  You shall render the board from a point of view like the user sees it when the user starts typing, so left is the left thumb pad (the left hand is also entered in stage 1Figure Postions with the pinky column left and the left thumb in the BOTTOM right). So the thumbs are closer to the user than the other columns (NOT FURTHER AWAY).
 ---
 
 ## 10. Stage Fidelity

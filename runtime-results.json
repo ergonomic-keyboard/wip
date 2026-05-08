@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-05-08T20:41:25.332Z",
+  "timestamp": "2026-05-08T21:06:04.172Z",
   "example": "examples/extended/finger-positions (another copy).json",
   "summary": {
     "total": 12,
@@ -11,82 +11,82 @@
       "status": "PASS",
       "details": "Canvas click registered — tap count=1, toolbar has 6 column buttons, no fatal JS errors",
       "method": "AUTO",
-      "timestamp": "2026-05-08T20:40:44.317Z"
+      "timestamp": "2026-05-08T21:05:13.233Z"
     },
     "L06": {
       "status": "PASS",
       "details": "Load button present: \"Load\", visible, file inputs: 0",
       "method": "AUTO",
-      "timestamp": "2026-05-08T20:40:44.320Z"
+      "timestamp": "2026-05-08T21:05:13.248Z"
     },
     "L10": {
       "status": "PASS",
       "details": "Export button present: \"Export\", visible",
       "method": "AUTO",
-      "timestamp": "2026-05-08T20:40:44.322Z"
+      "timestamp": "2026-05-08T21:05:13.254Z"
     },
     "R03": {
       "status": "PASS",
       "details": "All layers present: bottom(8), cork_low(2), pcb(17), cork_up(2), switchPlate(54), keycaps(72). Total: 145 meshes, 92123 vertices",
       "method": "AUTO",
-      "timestamp": "2026-05-08T20:41:03.437Z"
+      "timestamp": "2026-05-08T21:05:33.770Z"
     },
     "R04": {
       "status": "PASS",
-      "details": "Exploded view: 5.8x Z-separation, 8 labels, 7 material bands, 23 distinct colors",
+      "details": "Exploded view: 5.8x Z-separation, 10 labels, 7 material bands, 23 distinct colors",
       "method": "AUTO",
-      "timestamp": "2026-05-08T20:41:05.020Z"
+      "timestamp": "2026-05-08T21:05:35.278Z"
     },
     "S08": {
       "status": "PASS",
       "details": "All 5 layers found: bottomPlate, corkLower, pcb, corkUpper, switchPlate. 12 distinct Z levels in stack region",
       "method": "AUTO",
-      "timestamp": "2026-05-08T20:41:06.148Z"
+      "timestamp": "2026-05-08T21:05:36.769Z"
     },
     "S09": {
       "status": "PASS",
       "details": "Multi-layer stack: 11 distinct Z-levels spanning 5.1mm (Z: 0.0 to 5.1). 101 board meshes. Levels: [0.0, 1.0, 1.5, 2.4, 2.8, 3.1, 3.6, 3.9, 4.7, 5.0, 5.1]",
       "method": "AUTO",
-      "timestamp": "2026-05-08T20:41:07.224Z"
+      "timestamp": "2026-05-08T21:05:38.304Z"
     },
     "R06": {
       "status": "PASS",
       "details": "Hinge articulates: 4/13 components moved, max delta=18.4mm, halves articulated=true",
       "method": "AUTO",
-      "timestamp": "2026-05-08T20:41:08.302Z"
+      "timestamp": "2026-05-08T21:05:39.802Z"
     },
     "R09": {
       "status": "PASS",
       "details": "6 cables visible at fold=0° (cablesGroup.visible=true)",
       "method": "AUTO",
-      "timestamp": "2026-05-08T20:41:09.329Z"
+      "timestamp": "2026-05-08T21:05:41.340Z"
     },
     "R12": {
       "status": "PASS",
-      "details": "36 key label planes with canvas textures found (of 36 total planes). Sprites: 8",
+      "details": "36 key label planes with canvas textures found (of 36 total planes). Sprites: 10",
       "method": "AUTO",
-      "timestamp": "2026-05-08T20:41:10.445Z"
+      "timestamp": "2026-05-08T21:05:42.842Z"
     },
     "R14": {
       "status": "PASS",
       "details": "Fold direction is INWARD at 160°. Left normal X=0.98 (→right), right normal X=-0.98 (→left). Dot=-0.94",
       "method": "AUTO",
-      "timestamp": "2026-05-08T20:41:11.526Z"
+      "timestamp": "2026-05-08T21:05:44.385Z"
     },
     "DG-01": {
       "status": "PASS",
       "details": "12 outline meshes, 70704 vertices (smooth). [AI] Screenshot saved for human review: /home/a/git/git/keyboard/wip/runtime-screenshots/dg01-board-outline.png",
       "method": "AI",
-      "timestamp": "2026-05-08T20:41:19.486Z"
+      "timestamp": "2026-05-08T21:05:55.803Z"
     }
   },
   "consoleErrorCount": 0,
   "screenshots": [
-    "debug-new0.png",
-    "debug-render.png",
     "dg01-board-outline.png",
     "page1-toolbar.png",
     "page2-3d-final.png",
-    "page2-3d-initial.png"
+    "page2-3d-initial.png",
+    "r17-purple-outlines.png",
+    "r17r18-stage1-outlines.png"
   ]
 }

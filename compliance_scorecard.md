@@ -64,6 +64,8 @@
 | R14 | SELF_PASS | 3 | 0 | 2 | Runtime pass: fold normals correct at 160°. USER_FAIL #2: thumbs face screen — raw ergogen coords without Y negation. Fix: Y negation applied at entry construction. Runtime re-verify: fold direction INWARD at 160°, dot=-0.94 |
 | R15 | SELF_PASS | 1 | 0 | 0 | No localClippingEnabled, DoubleSide on mirrored half, both halves always in scene, pivot-based rotation |
 | R16 | SELF_PASS | 1 | 0 | 0 | Convex hull from ALL leftKeys (matrix+thumb) ensures single connected polygon. No floating island |
+| R17 | SELF_PASS | 2 | 0 | 1 | USER_FAIL #1: used ergogen-processed positions (wrong — thumb angle ~34° not ~90°). Fix: now uses raw stage 1 positions from config._stage1Keys (ergoKeys in ergopadToErgogen). 18 purple outlines per half at Z_KEYCAP+4.6mm (3mm above keycap top). Thumb angle preserved at ~86° matching Finger Positions canvas |
+| R18 | SELF_PASS | 1 | 0 | 0 | Angle annotation between inner column and thumb column directions. Purple direction lines + circular arc + arrowhead + degree label sprite. With new0.json shows 86.0°. Only rendered when stage1Keys has both index_far and thumb columns |
 
 ## Phase 4 — Hardware / BOM / Assembly
 
@@ -140,10 +142,10 @@
 
 | Metric | Count |
 |--------|-------|
-| Total requirements | 97 |
-| Self-verified PASS | 97 |
+| Total requirements | 99 |
+| Self-verified PASS | 99 |
 | User-confirmed PASS | 0 |
-| User corrections (I was wrong) | 18 |
+| User corrections (I was wrong) | 19 |
 | Runtime re-verified (after fix) | 15 |
 | Currently USER_FAIL | 0 |
 | Blocked | 0 |

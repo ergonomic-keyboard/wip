@@ -706,6 +706,174 @@ function buildNewScene(ergogenResults, config, container) {
     }
   }
 
+  // ── R17: Stage 1 switch outlines (purple, 3mm above highest board point) ──
+  // These are the raw fitted-line positions from stage 1 (before ergogen processing),
+  // showing where the CoG/spread algorithm placed keys. They preserve the original
+  // thumb splay angle visible on the Finger Positions canvas.
+  const Z_PURPLE_OUTLINES = Z_KEYCAP + 1.6 + 3; // keycap top + 3mm
+  const purpleMat = new THREE.LineBasicMaterial({ color: 0x9933ff, linewidth: 2 });
+  const outlineGroup = new THREE.Group();
+  outlineGroup.name = 'stage1Outlines';
+  const OUTLINE_SIZE = 14; // mm, matches keycap footprint
+  const stage1Keys = config._stage1Keys;
+  if (stage1Keys) {
+    // Collect all stage 1 key positions (ergogen mm space → scene space)
+    const s1Entries = []; // {x, y, r} in scene coords
+    const S1_COLS = ['pinky', 'ring', 'middle', 'index', 'index_far', 'thumb'];
+    S1_COLS.forEach(colId => {
+      const ek = stage1Keys[colId];
+      if (!ek) return;
+      // angleDeg: ergogen CCW from +Y. In scene (Y-down) → negate.
+      const sceneRotDeg = -ek.angleDeg;
+      [ek.bottom, ek.home, ek.top].forEach(pos => {
+        // ergogen mm Y-up → scene Y-down: negate Y
+        s1Entries.push({ x: pos.x, y: -pos.y, r: sceneRotDeg });
+      });
+    });
+
+    const hw = OUTLINE_SIZE / 2, hh = OUTLINE_SIZE / 2;
+    s1Entries.forEach(k => {
+      const rad = k.r * Math.PI / 180;
+      const cos = Math.cos(rad), sin = Math.sin(rad);
+      const corners = [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh], [-hw, -hh]].map(([dx, dy]) => [
+        k.x + dx * cos - dy * sin,
+        k.y + dx * sin + dy * cos
+      ]);
+      const pts3 = corners.map(([cx, cy]) => new THREE.Vector3(cx, cy, Z_PURPLE_OUTLINES));
+      const geo = new THREE.BufferGeometry().setFromPoints(pts3);
+      outlineGroup.add(new THREE.Line(geo, purpleMat));
+    });
+
+    // ── R18: Angle annotation between inner column and thumb column (STRAIGHT mode) ──
+    const innerCol = stage1Keys['index_far'];
+    const thumbCol = stage1Keys['thumb'];
+    if (innerCol && thumbCol) {
+      // Inner column direction in scene space (Y-down)
+      const innerDirRad = -innerCol.angleDeg * Math.PI / 180;
+      // Thumb column direction in scene space
+      const thumbDirRad = -thumbCol.angleDeg * Math.PI / 180;
+      // Column directions point along local +Y (padding direction).
+      // In scene coords: direction = (sin(sceneRot), cos(sceneRot)) because
+      // ergogen rotation r → local Y axis = (-sin(r), cos(r)) in ergogen space,
+      // after Y-negation → (sin(-r), -cos(-r)) ... let's just compute from the actual positions.
+      // Use bottom→top vector for each column.
+      const innerBot = { x: innerCol.bottom.x, y: -innerCol.bottom.y };
+      const innerTop = { x: innerCol.top.x, y: -innerCol.top.y };
+      const thumbBot = { x: thumbCol.bottom.x, y: -thumbCol.bottom.y };
+      const thumbTop = { x: thumbCol.top.x, y: -thumbCol.top.y };
+
+      const innerDx = innerTop.x - innerBot.x, innerDy = innerTop.y - innerBot.y;
+      const thumbDx = thumbTop.x - thumbBot.x, thumbDy = thumbTop.y - thumbBot.y;
+      const innerLen = Math.sqrt(innerDx * innerDx + innerDy * innerDy);
+      const thumbLen = Math.sqrt(thumbDx * thumbDx + thumbDy * thumbDy);
+
+      if (innerLen > 0.1 && thumbLen > 0.1) {
+        // Angle between the two column directions
+        const dot = (innerDx * thumbDx + innerDy * thumbDy) / (innerLen * thumbLen);
+        const angleBetween = Math.acos(Math.max(-1, Math.min(1, dot)));
+        const angleDeg = angleBetween * 180 / Math.PI;
+
+        // Draw from inner column home position
+        const origin = { x: innerCol.home.x, y: -innerCol.home.y };
+        const lineLen = 25; // mm, length of direction lines
+
+        // Inner column direction line (normalized, scaled)
+        const iux = innerDx / innerLen, iuy = innerDy / innerLen;
+        const tux = thumbDx / thumbLen, tuy = thumbDy / thumbLen;
+
+        // Two purple direction lines from origin
+        const innerLineGeo = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(origin.x, origin.y, Z_PURPLE_OUTLINES),
+          new THREE.Vector3(origin.x + iux * lineLen, origin.y + iuy * lineLen, Z_PURPLE_OUTLINES)
+        ]);
+        outlineGroup.add(new THREE.Line(innerLineGeo, purpleMat));
+
+        const thumbLineGeo = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(origin.x, origin.y, Z_PURPLE_OUTLINES),
+          new THREE.Vector3(origin.x + tux * lineLen, origin.y + tuy * lineLen, Z_PURPLE_OUTLINES)
+        ]);
+        outlineGroup.add(new THREE.Line(thumbLineGeo, purpleMat));
+
+        // Circular arc between the two lines
+        const arcRadius = 15; // mm
+        const innerAngle = Math.atan2(iuy, iux);
+        const thumbAngle = Math.atan2(tuy, tux);
+        // Determine sweep direction (shortest arc)
+        let startAngle = innerAngle, endAngle = thumbAngle;
+        let sweep = endAngle - startAngle;
+        if (sweep > Math.PI) sweep -= 2 * Math.PI;
+        if (sweep < -Math.PI) sweep += 2 * Math.PI;
+
+        const arcSegments = 32;
+        const arcPts = [];
+        for (let i = 0; i <= arcSegments; i++) {
+          const t = i / arcSegments;
+          const a = startAngle + sweep * t;
+          arcPts.push(new THREE.Vector3(
+            origin.x + arcRadius * Math.cos(a),
+            origin.y + arcRadius * Math.sin(a),
+            Z_PURPLE_OUTLINES
+          ));
+        }
+        const arcGeo = new THREE.BufferGeometry().setFromPoints(arcPts);
+        outlineGroup.add(new THREE.Line(arcGeo, purpleMat));
+
+        // Arrowhead at the end of the arc (pointing along arc direction)
+        const lastA = startAngle + sweep;
+        const arrowTip = new THREE.Vector3(
+          origin.x + arcRadius * Math.cos(lastA),
+          origin.y + arcRadius * Math.sin(lastA),
+          Z_PURPLE_OUTLINES
+        );
+        // Tangent at end of arc: perpendicular to radial direction, in sweep direction
+        const tangentSign = sweep > 0 ? 1 : -1;
+        const tangentX = -Math.sin(lastA) * tangentSign;
+        const tangentY = Math.cos(lastA) * tangentSign;
+        const arrowLen = 3;
+        const arrowSpread = 1.2;
+        const arrowBase = new THREE.Vector3(
+          arrowTip.x - tangentX * arrowLen,
+          arrowTip.y - tangentY * arrowLen,
+          Z_PURPLE_OUTLINES
+        );
+        const perpX = -tangentY, perpY = tangentX;
+        const arrowGeo = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(arrowBase.x + perpX * arrowSpread, arrowBase.y + perpY * arrowSpread, Z_PURPLE_OUTLINES),
+          arrowTip,
+          new THREE.Vector3(arrowBase.x - perpX * arrowSpread, arrowBase.y - perpY * arrowSpread, Z_PURPLE_OUTLINES),
+        ]);
+        outlineGroup.add(new THREE.Line(arrowGeo, purpleMat));
+
+        // Angle text label
+        const labelText = `${angleDeg.toFixed(1)}°`;
+        const labelCanvas = document.createElement('canvas');
+        labelCanvas.width = 128; labelCanvas.height = 64;
+        const ctx = labelCanvas.getContext('2d');
+        ctx.fillStyle = '#9933ff';
+        ctx.font = 'bold 36px -apple-system, sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(labelText, 64, 32);
+        const labelTex = new THREE.CanvasTexture(labelCanvas);
+        const labelMat = new THREE.SpriteMaterial({ map: labelTex, transparent: true, depthWrite: false });
+        const labelSprite = new THREE.Sprite(labelMat);
+        // Position at midpoint of arc
+        const midA = startAngle + sweep * 0.5;
+        labelSprite.position.set(
+          origin.x + (arcRadius + 6) * Math.cos(midA),
+          origin.y + (arcRadius + 6) * Math.sin(midA),
+          Z_PURPLE_OUTLINES
+        );
+        labelSprite.scale.set(12, 6, 1);
+        outlineGroup.add(labelSprite);
+
+        console.log(`render3d R18: inner-thumb angle = ${angleDeg.toFixed(1)}° (inner dir=${(innerCol.angleDeg).toFixed(1)}°, thumb dir=${(thumbCol.angleDeg).toFixed(1)}°)`);
+      }
+    }
+  } else {
+    console.warn('render3d R17: no stage1Keys in config — purple outlines not drawn');
+  }
+  boardGroup.add(outlineGroup);
+
   // ── nice!nano MCU ──
   function createNiceNano(posX, posY, usbFacingRight) {
     const grp = new THREE.Group();

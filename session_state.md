@@ -11,7 +11,7 @@ Phase 4 — Hardware / BOM / Assembly: **COMPLETE** (all 28 requirements SELF_PA
 Phase 5 — Hinge & Mechanism A: **COMPLETE** (all 19 requirements SELF_PASS)
 Phase 6 — Design Guidelines: **COMPLETE** (all 9 guidelines SELF_PASS)
 
-**ALL 97 REQUIREMENTS SELF_PASS — 0 USER_FAIL, 18 total user corrections**
+**ALL 99 REQUIREMENTS SELF_PASS — 0 USER_FAIL, 19 total user corrections**
 
 ## Session History
 
@@ -25,7 +25,7 @@ Phase 6 — Design Guidelines: **COMPLETE** (all 9 guidelines SELF_PASS)
 | 5 | 2026-05-08 | F01–F01d, F05–F09, MA01–MA09, DG-01–DG-09 | **28/28 SELF_PASS** (19 Phase 5 + 9 Phase 6) |
 | 6 | 2026-05-08 | User bug reports + runtime verification | **12 USER_FAIL detected, TDZ bug fixed, 12/12 runtime re-verified PASS** |
 | 7 | 2026-05-08 | User screenshot review + root cause analysis | **6 new USER_FAIL: R03, R11, R14, SF01, S03, DG-01. Root cause: render3d.js uses wrong coordinate system** |
-| 8 | 2026-05-08 | Fix 6 USER_FAIL via Option A | **6/6 fixed, 12/12 runtime re-verified PASS. 97/97 SELF_PASS** |
+| 8 | 2026-05-08 | Fix 6 USER_FAIL + R17 + R18 | **6/6 fixed, R17 fixed (USER_FAIL: used wrong positions), R18 implemented. 99/99 SELF_PASS, 19 user corrections** |
 
 ## Last Session Summary
 
@@ -55,7 +55,7 @@ The toggle button said "Original Render" but was ambiguous. Clicking it switched
 
 ## What To Do Next
 
-**ALL 97 REQUIREMENTS SELF_PASS.** Awaiting user review of screenshots for final USER_PASS confirmation.
+**ALL 99 REQUIREMENTS SELF_PASS.** Awaiting user review of screenshots for final USER_PASS confirmation.
 
 Remaining work (non-blocking):
 1. User visually reviews runtime screenshots in `wip/runtime-screenshots/` to confirm 6 previously-failed requirements
