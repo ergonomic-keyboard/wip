@@ -61,8 +61,6 @@ header { display: flex; align-items: center; justify-content: space-between; pad
 #page2 .toolbar input[type=range] { width: 120px; }
 #page2 .toolbar input[type=checkbox] { accent-color: #4a8abf; }
 #page2 { position: relative; }
-#viewport { flex: 1; position: relative; background: #0a0a0a; }
-#viewport canvas { display: block; }
 #viewport-new { flex: 1; position: relative; background: #0a0a0a; }
 #viewport-new canvas { display: block; }
 #loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #888; font-size: 16px; }
@@ -163,13 +161,11 @@ header { display: flex; align-items: center; justify-content: space-between; pad
     <div style="width:1px;height:20px;background:#444;margin:0 4px;"></div>
     <label><input type="checkbox" id="show-exploded"> Exploded View</label>
     <label><input type="checkbox" id="show-labels"> Labels</label>
-    <div style="width:1px;height:20px;background:#444;margin:0 4px;"></div>
-    <button id="toggle-renderer" style="padding:2px 10px;font-size:12px;cursor:pointer;">New Render</button>
+    <!-- Toggle removed: single renderer (render3d.js) is now the only renderer -->
   </div>
-  <div id="viewport">
+  <div id="viewport-new">
     <div id="loading">Processing layout...</div>
   </div>
-  <div id="viewport-new" style="display:none;"></div>
 </div>
 
 <!-- ═══════════════ PAGE 3: BOM ═══════════════ -->
@@ -2125,8 +2121,7 @@ function initPage2() {
       ergogenResults = await ergogen.process(yamlStr, { debug: true, svg: true });
       window.ergogenResults = ergogenResults;
       loading.style.display = 'none';
-      build3DScene();
-      // Build new points-based renderer (no SVG parsing)
+      // Build points-based renderer (replaces old SVG-based build3DScene)
       try {
         const newContainer = document.getElementById('viewport-new');
         window._newSceneCtrl = window.buildNewScene(ergogenResults, generatedConfig, newContainer);
@@ -3285,23 +3280,7 @@ window.addEventListener('resize', () => {
 });
 
 
-// ── Toggle between original and new renderer ──
-let newRendererActive = false;
-document.getElementById('toggle-renderer').addEventListener('click', () => {
-  newRendererActive = !newRendererActive;
-  document.getElementById('viewport').style.display = newRendererActive ? 'none' : '';
-  document.getElementById('viewport-new').style.display = newRendererActive ? '' : 'none';
-  document.getElementById('toggle-renderer').textContent = newRendererActive ? 'Original Render' : 'New Render';
-  // Trigger resize on the newly visible renderer
-  if (newRendererActive && window._newSceneCtrl) {
-    const c = document.getElementById('viewport-new');
-    const ww = c.clientWidth, hh = c.clientHeight;
-    window._newSceneCtrl.camera.aspect = ww / hh;
-    window._newSceneCtrl.camera.updateProjectionMatrix();
-    window._newSceneCtrl.renderer.setSize(ww, hh);
-  }
-});
-// Forward toolbar events to new renderer
+// Forward toolbar events to renderer
 document.getElementById('fold-slider').addEventListener('input', () => {
   if (window._newSceneCtrl) window._newSceneCtrl.applyFold(+document.getElementById('fold-slider').value);
 });

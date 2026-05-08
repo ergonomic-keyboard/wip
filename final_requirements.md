@@ -218,6 +218,8 @@ Note: Half-to-half communication shall use Bluetooth (not wired USB-C between ha
 
 **REQ-R16** — The 3D render shall visually reflect REQ-S03: the thumb cluster shall appear connected to the main body in all views (not as a floating island).
 
+**REQ-R17** - You shall show the key switch outlines from the 1.Finger Positions as the highest layer in purple at 3 mm above the highest point of the board. (Don't edit them or anything, just a raw coordinate and rotational copy paste).
+
 ---
 
 ## 10. Stage Fidelity

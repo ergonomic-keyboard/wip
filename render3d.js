@@ -406,8 +406,10 @@ function buildNewScene(ergogenResults, config, container) {
   }
   for (const [name, pt] of ptEntries) {
     const isThumb = pt.meta?.zone?.name === 'thumb' || name.startsWith('thumb_');
-    const r = isThumb ? pt.r + THUMB_ROT_CORRECTION : pt.r;
-    const entry = { name, x: pt.x, y: pt.y, r, origR: pt.r, meta: pt.meta };
+    const rawR = isThumb ? pt.r + THUMB_ROT_CORRECTION : pt.r;
+    // Coordinate transform: ergogen is Y-up, Three.js scene is Y-down → negate Y.
+    // Rotation: ergogen CCW degrees, in Y-down space must negate.
+    const entry = { name, x: pt.x, y: -pt.y, r: -rawR, origR: pt.r, meta: pt.meta };
     // Use name prefix as fallback if meta.mirrored is unreliable
     const isMirrored = pt.meta?.mirrored === true || name.startsWith('mirror_');
     if (isMirrored) rightKeys.push(entry);
@@ -636,7 +638,7 @@ function buildNewScene(ergogenResults, config, container) {
   const keycapBaseMatrices = new Float32Array(nLeftKeys * 16);
   const dummy = new THREE.Object3D();
 
-  // Place keys directly at ergogen coordinates — no offset needed!
+  // Place keys at transformed coordinates (Y negated, rotation negated at entry construction)
   leftKeys.forEach((k, i) => {
     const sx = k.x, sy = k.y;
     const sr = k.r * Math.PI / 180;
@@ -834,8 +836,9 @@ function buildNewScene(ergogenResults, config, container) {
     const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false });
     const lm = new THREE.Mesh(labelGeo, mat);
     const pt2 = pts[k.name]; if (!pt2) return;
-    lm.position.set(pt2.x, pt2.y, labelZ);
-    lm.rotation.set(0, 0, pt2.r * Math.PI / 180);
+    // Apply same Y/rotation negation as entry construction
+    lm.position.set(pt2.x, -pt2.y, labelZ);
+    lm.rotation.set(0, 0, -pt2.r * Math.PI / 180);
     leftLabelGroup.add(lm);
   });
 
@@ -845,7 +848,8 @@ function buildNewScene(ergogenResults, config, container) {
     const leftMatch = keyMap.leftKeys.find(lk => lk.zone === k.zone && lk.colIdx === k.colIdx && lk.rowIdx === k.rowIdx);
     if (!leftMatch) return;
     const lpt = pts[leftMatch.name]; if (!lpt) return;
-    rightLabelData.push({ label, leftSx: lpt.x, leftSy: lpt.y, leftSr: lpt.r * Math.PI / 180 });
+    // Apply same Y/rotation negation as entry construction
+    rightLabelData.push({ label, leftSx: lpt.x, leftSy: -lpt.y, leftSr: -lpt.r * Math.PI / 180 });
   });
 
   leftHalf.add(leftLabelGroup);
