@@ -206,7 +206,7 @@ Note: Half-to-half communication shall use Bluetooth (not wired USB-C between ha
 
 ## 10. Stage Fidelity
 
-**REQ-SF01** — Key positions and orientations computed in stage 1 (finger position canvas) shall be reproduced in stage 2 (ergogen output / 3D render) within the tolerance defined in REQ-L03 (0.05 mm) for all keys (bottom, home, top) in each column including the thumb column. Per-row padding shall match stage 1's center-of-gravity-based asymmetric placement.
+**REQ-SF01** — Key positions and orientations computed in stage 1 (finger position (from pink to index, excluding thumb) canvas) shall be reproduced in stage 2 (ergogen output / 3D render) within the tolerance defined in REQ-L03 (0.05 mm) for all keys (bottom, home, top) in each column possibly excluding the thumb column. Per-row padding shall match stage 1's center-of-gravity-based asymmetric placement.
 
 **REQ-SF02** — Switch rectangles drawn on the page 1 canvas shall have their edges perpendicular to the column regression line. The rotation angle shall be `PI/2 + atan(slope)` applied via `ctx.rotate(-rad)` in canvas coordinates.
 
