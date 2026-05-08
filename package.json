@@ -1,0 +1,23 @@
+{
+  "name": "wip",
+  "version": "1.0.0",
+  "description": "A browser-based tool for designing custom split ergonomic keyboards. Tap your finger positions, preview in 3D, and get a complete bill of materials with purchase links.",
+  "main": "ergogen.js",
+  "directories": {
+    "example": "examples"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "hull.js": "^1.0.6",
+    "js-yaml": "^4.1.1",
+    "jszip": "^3.10.1",
+    "kle-serial-alt": "^0.1.0",
+    "makerjs": "^0.19.2",
+    "mathjs": "^15.2.0"
+  }
+}

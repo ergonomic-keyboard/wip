@@ -60,8 +60,11 @@ header { display: flex; align-items: center; justify-content: space-between; pad
 #page2 .toolbar label { font-size: 12px; color: #aaa; display: flex; align-items: center; gap: 4px; }
 #page2 .toolbar input[type=range] { width: 120px; }
 #page2 .toolbar input[type=checkbox] { accent-color: #4a8abf; }
+#page2 { position: relative; }
 #viewport { flex: 1; position: relative; background: #0a0a0a; }
 #viewport canvas { display: block; }
+#viewport-new { flex: 1; position: relative; background: #0a0a0a; }
+#viewport-new canvas { display: block; }
 #loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #888; font-size: 16px; }
 
 /* ── Page 3: BOM ── */
@@ -160,10 +163,13 @@ header { display: flex; align-items: center; justify-content: space-between; pad
     <div style="width:1px;height:20px;background:#444;margin:0 4px;"></div>
     <label><input type="checkbox" id="show-exploded"> Exploded View</label>
     <label><input type="checkbox" id="show-labels"> Labels</label>
+    <div style="width:1px;height:20px;background:#444;margin:0 4px;"></div>
+    <button id="toggle-renderer" style="padding:2px 10px;font-size:12px;cursor:pointer;">New Render</button>
   </div>
   <div id="viewport">
     <div id="loading">Processing layout...</div>
   </div>
+  <div id="viewport-new" style="display:none;"></div>
 </div>
 
 <!-- ═══════════════ PAGE 3: BOM ═══════════════ -->
@@ -306,6 +312,9 @@ window.jszip = window.JSZip;
 
 <!-- Ergogen UMD bundle -->
 <script src="ergogen.js"></script>
+
+<!-- Points-based 3D renderer (separate module, no SVG parsing) -->
+<script type="module" src="render3d.js"></script>
 
 <!-- ═══════════════ Main Application ═══════════════ -->
 <script type="module">
@@ -1989,6 +1998,11 @@ function initPage2() {
       window.ergogenResults = ergogenResults;
       loading.style.display = 'none';
       build3DScene();
+      // Build new points-based renderer (no SVG parsing)
+      try {
+        const newContainer = document.getElementById('viewport-new');
+        window._newSceneCtrl = window.buildNewScene(ergogenResults, generatedConfig, newContainer);
+      } catch(e2) { console.error('render3d error:', e2); }
     } catch(e) {
       loading.textContent = 'Error: ' + e.message;
       console.error(e);
@@ -2910,13 +2924,7 @@ function build3DScene() {
   });
   scene.add(cablesGroup);
 
-  // ── Ground plane (subtle reflective surface) ──
-  const groundGeo = new THREE.PlaneGeometry(2000, 2000);
-  const groundMat2 = new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: 0.85, metalness: 0.1 });
-  groundPlane = new THREE.Mesh(groundGeo, groundMat2);
-  groundPlane.position.set(hingeX, center.y, Z_BOTTOM - 0.5);
-  groundPlane.receiveShadow = true;
-  scene.add(groundPlane);
+  // Ground plane removed — keyboard floats in space
 
   // ── Labels (sprite text) ──
   labelSprites = [];
@@ -3148,6 +3156,42 @@ window.addEventListener('resize', () => {
   renderer.setSize(w, h);
 });
 
+
+// ── Toggle between original and new renderer ──
+let newRendererActive = false;
+document.getElementById('toggle-renderer').addEventListener('click', () => {
+  newRendererActive = !newRendererActive;
+  document.getElementById('viewport').style.display = newRendererActive ? 'none' : '';
+  document.getElementById('viewport-new').style.display = newRendererActive ? '' : 'none';
+  document.getElementById('toggle-renderer').textContent = newRendererActive ? 'Original Render' : 'New Render';
+  // Trigger resize on the newly visible renderer
+  if (newRendererActive && window._newSceneCtrl) {
+    const c = document.getElementById('viewport-new');
+    const ww = c.clientWidth, hh = c.clientHeight;
+    window._newSceneCtrl.camera.aspect = ww / hh;
+    window._newSceneCtrl.camera.updateProjectionMatrix();
+    window._newSceneCtrl.renderer.setSize(ww, hh);
+  }
+});
+// Forward toolbar events to new renderer
+document.getElementById('fold-slider').addEventListener('input', () => {
+  if (window._newSceneCtrl) window._newSceneCtrl.applyFold(+document.getElementById('fold-slider').value);
+});
+document.getElementById('show-cables').addEventListener('change', () => {
+  if (window._newSceneCtrl) window._newSceneCtrl.setCablesVisible(document.getElementById('show-cables').checked && +document.getElementById('fold-slider').value === 0);
+});
+document.getElementById('show-hinge').addEventListener('change', () => {
+  if (window._newSceneCtrl) window._newSceneCtrl.setHingeVisible(document.getElementById('show-hinge').checked);
+});
+document.getElementById('show-battery').addEventListener('change', () => {
+  if (window._newSceneCtrl) window._newSceneCtrl.setBatteryVisible(document.getElementById('show-battery').checked);
+});
+document.getElementById('show-exploded').addEventListener('change', () => {
+  if (window._newSceneCtrl) window._newSceneCtrl.applyExplodedView(document.getElementById('show-exploded').checked);
+});
+document.getElementById('show-labels').addEventListener('change', () => {
+  if (window._newSceneCtrl) window._newSceneCtrl.setLabelsVisible(document.getElementById('show-labels').checked);
+});
 
 // ══════════════════════════════════════════════════════════════════
 // PAGE 3: BOM
@@ -3402,6 +3446,12 @@ function initPage4() {
 // INIT
 // ══════════════════════════════════════════════════════════════════
 updateToolbar();
+
+// Expose functions on window for testability / browser control
+window.goToPage = goToPage;
+window.computeErgogenPreview = computeErgogenPreview;
+window.drawCanvas = drawCanvas;
+window.updateToolbar = updateToolbar;
 </script>
 </body>
 </html>
