@@ -12,7 +12,7 @@ All requirements use **shall** language and are deterministic and verifiable unl
 
 **REQ-L03** — The ergogen-generated layout shall match the passhutk JSON in switch absolute positions (within 0.05 mm), relative positions (within 0.05 mm), orientations/rotations, and switch-edge-size.
 
-**REQ-L04** — Each finger column (pinky, ring, middle, index, inner and thumb) shall require at least 3 key taps to define the column line. Additional taps beyond 3 are permitted.
+**REQ-L04** — Each column (pinky, ring, middle, index, inner, and thumb) shall have exactly 3 keys. The user shall provide at least 3 finger taps per column; additional taps beyond 3 are permitted and encouraged as they are used by the passhutk layout tool to determine the key switch positions.
 
 **REQ-L06** — Within a single finger column, all key rectangles shall be projected onto the column axis (fitted line) and rotated so their edges are perpendicular to that line. Keys within a column shall not rotate relative to each other.
 
@@ -32,7 +32,7 @@ All requirements use **shall** language and are deterministic and verifiable unl
 
 ## 2. Validation
 
-**REQ-V01** — For each key, the distance between the tapped switch position and the ergogen-computed position shall be less than 0.05mm. If exceeded, the system shall flag the specific key with its position delta and throw an error.
+**REQ-V01** — For each key, the distance between the tapped switch position and the ergogen-computed position shall be less than the tolerance defined in REQ-L03 (0.05 mm). If exceeded, the system shall flag the specific key with its position delta and throw an error.
 
 **REQ-V02** — The relative arrangement of keys (center-to-center distances and directions between adjacent keys) shall be preserved between tapped input and ergogen output. The system shall detect if ergogen reorders, collapses, or distorts spatial relationships.
 
@@ -52,7 +52,7 @@ All requirements use **shall** language and are deterministic and verifiable unl
 
 **REQ-H02** — Soldering shall not be required for keyboard assembly. All electrical connections shall use solderless methods (hot-swap sockets, press-fit, or similar).
 
-**REQ-H03** — Each keycap in the 3D render and final product shall display the selected keyboard layout, e.g. QWERTY or dovarak letter or symbol (Space, Tab, Backspace, Enter, etc.). A keycap legend set or sticker overlay sheet shall be included in the BOM.
+**REQ-H03** — Each keycap in the 3D render and final product shall display the selected keyboard layout, e.g. QWERTY or Dvorak letter or symbol (Space, Tab, Backspace, Enter, etc.). A keycap legend set or sticker overlay sheet shall be included in the BOM.
 ---
 
 ## 4. Hardware — Structure
@@ -69,11 +69,11 @@ All requirements use **shall** language and are deterministic and verifiable unl
 
 **REQ-S03** — The board outline, switch plate, and wooden frame shall extend to cover all thumb keys. The thumb cluster shall not be a floating island; it shall be structurally connected to the main matrix area.
 
-**REQ-S04** — The frame shall be 2 mm bamboo plywood, two-part milled construction (bottom backbone + top bezel).
+**REQ-S04** — The frame material shall be 2 mm thick bamboo plywood (Z-axis material thickness). The frame shall be two-part milled construction (bottom backbone + top bezel).
 
-**REQ-S05** — The frame wall width shall be at least 4 mm. ## Question does this conflict with S04?
+**REQ-S05** — The frame wall width (XY-plane border around the PCB/plate) shall be at least 4 mm.
 
-**REQ-S06** — Fasteners shall be M2 heat-set brass threaded inserts (pressed into the frame from the bottom) paired with M2 countersunk flat-head bolts from the top. bolts heads shall sit flush with the surface.
+**REQ-S06** — Fasteners shall be M2 heat-set brass threaded inserts (pressed into the frame from the bottom) paired with M2 countersunk flat-head bolts from the top. Bolt heads shall sit flush with the surface.
 
 **REQ-S07** — Each half shall have at least 7 mounting points, including near the thumb bridge, center of the middle column, and inner-bottom area.
 
@@ -92,14 +92,18 @@ All requirements use **shall** language and are deterministic and verifiable unl
 
 ## 5. Hardware — Hinge & Folding
 
+**REQ-F01** — The folding mechanism shall connect the two halves at the center (approximately between the R and T key positions). It shall be made of metal and shall weigh at most 50 grams total.
 
-**REQ-F02** — The keyboard shall fold closed with the keycap surfaces facing each other (keys together, inward fold).
+**REQ-F01a** — The mechanism shall support two independent rotation axes:
+  (a) **Fold axis** (horizontal, from user belly to screen): The two halves shall fold from flat on the table (0 degrees) to fully tented (at most 90 degrees). Around that axis it, ideally should also be foldable to be closed. 
+**REQ-F01b** — If a single mechanism (e.g., ball joint) cannot provide both axes with the required range, the two connecting poles to the hinge mechanism shall be disconnectable (e.g., via magnetic breakaway or quick-release) so the halves can be separated to fold flat. 1 or 2 magnetic connectors may be used in the hinge poles for this purpose. In that case the 2 keyboard halves fold close against eachother and stay in place with 2 or 3 magnets embedded in the keyboard wood frame.
+The keycap surfaces shall face each other when folded (inward fold).
+  (b) **Butterfly axis** (vertical, perpendicular to the table surface): When flat on the table, the two halves shall rotate forward and backward like wings (toward/away from the screen) up to approximately 45 degrees from the centerline.
 
-**REQ-F03** — The hinge shall provide at least 140 degrees of fold range (up to 160 degrees preferred). If a single ball joint cannot achieve the full required range (180 degrees closed-to-flat + ~90 degrees flat-to-tented = 270 degrees), 1 or 2 magnetic connectors may be used in the hinge poles. 
+**REQ-F01b** — The butterfly rotation range (up to ~45 degrees) may be limited due to geometric constraints (e.g. the thumb pads bumping into eachother) at various fold angles from 0 to 90 degrees.
 
-**REQ-F04** — The hinge shall allow rotation when flat on the table, where the two halves can rotate around the hingepoint axis sticking out of the table forward and backward like wings (toward/away from the screen).
 
-**REQ-F01** — If a lockable ball-bearing hinge shall connect can the two halves at the center (approximately between the R and T key positions) can be used to satisfy the requirements F02 to F04 it will be used. The folding mechanism shall be made of metal. It shall weigh at most 50 grams. The ball bearing shall be lockable/fixable at a chosen tenting angle (determined by the cable turnbuckle settings).
+**REQ-F01d** — The hinge shall be lockable/fixable at a chosen tenting angle. The tenting angle shall be determined by the cable turnbuckle settings (REQ-F09).
 
 **REQ-F05** — Two horizontal cables shall connect the two halves of the keyboard on the bottom plate of the keyboard: one across the top row (approximately Q to P), one across the bottom row (approximately Z to M). These cables shall prevent the keyboard from collapsing under gravity/key press force.
 
@@ -107,11 +111,9 @@ All requirements use **shall** language and are deterministic and verifiable unl
 
 **REQ-F07** — The quick-release clevis pins with spring-loaded ball detent shall be positioned such that when the keyboard is folded closed, it will be on a flat surface on the backside of the board, and not at the edge of the keyboard. 
 
-**REQ-F08** — 2 elastic bands shall be used to wrap the cables around the closed keyboard regardless of the turnbuckle position such that the user does not have to adjust the turnbuckle position each time the keyboard is folded close.
+**REQ-F08** — When detached, the cables shall wrap around the closed keyboard to keep it shut (like a rope around a diary). Two elastic bands shall secure the cables around the closed keyboard regardless of turnbuckle position, so the user does not need to adjust turnbuckle length each time the keyboard is folded.
 
-**REQ-F09** — The cables shall include turnbuckles for adjustable tension/length, which also controls the tenting angle and together the rotation of the butterfly wings around the axis sticking out of the table.
-
-**REQ-F10** — When detached, the cables shall fold around the closed keyboard to keep it shut (like a rope around a diary).
+**REQ-F09** — The cables shall include turnbuckles for adjustable tension/length, which controls the tenting angle and the butterfly wing rotation around the vertical axis.
 
 ---
 
@@ -122,9 +124,10 @@ All requirements use **shall** language and are deterministic and verifiable unl
 **REQ-E02** — The keyboard shall support the following connectivity modes:
   (a) One half connected to the other via USB-C, the other to a laptop.
   (b) Both halves connected directly to a laptop via USB-C.
-  (d) Fully wireless operation over bluetooth, if bluetooth option is selected to be available on the chip.
-  (e) In wired modues bluetooth can be disabled completely.
-  (f) an option without wireless (neither wifi nor bluetooth) module shall be available.
+  (c) Fully wireless operation over Bluetooth, if the Bluetooth option is enabled on the chip.
+  (d) In wired modes, Bluetooth shall be completely disableable via firmware configuration.
+
+Note: A non-wireless MCU option (without Bluetooth/Wi-Fi module) is out of scope for this project.
 
 **REQ-E03** — Each half shall have one USB-C port for charging and/or data.
 
@@ -140,7 +143,7 @@ All requirements use **shall** language and are deterministic and verifiable unl
 
 **REQ-B02** — Each BOM item shall include a link to an online supplier and the price per element.
 
-**REQ-B03** — The BOM shall include: cork gasket sheets, bamboo plywood sheets, M2 heat-set brass inserts, M2 countersunk flat-head screws, quick-release clevis pins, turnbuckle cable assemblies, ball-joint hinge, Cherry ULP switches, keycaps (with legends or sticker sheet), nice!nano MCUs, 301230 LiPo batteries, and USB-C connectors.
+**REQ-B03** — The BOM shall include: cork gasket sheets, bamboo plywood sheets, M2 heat-set brass inserts, M2 countersunk flat-head bolts, quick-release clevis pins, turnbuckle cable assemblies, elastic bands, ball-joint hinge mechanism, Cherry ULP switches, keycaps (with legends or sticker sheet), nice!nano MCUs, 301230 LiPo batteries, and USB-C connectors.
 
 ---
 
@@ -168,31 +171,31 @@ All requirements use **shall** language and are deterministic and verifiable unl
 
 **REQ-R06** — The center joint/hinge shall visually articulate when the fold angle changes. Each component (barrel, ball, rod stubs, mounting flanges, thumb nut) shall rotate/translate to match the fold angle.
 
-**REQ-07** - The butterfly wing rotation slider will be available and its range will be restricted by: Not allowing overlap/collision between any components (of the 2 sides, nor folding mechanims) depeinding on the fold slider setting. The fold sliding setting will allways have full range, if a range is selected at which the butterfly wing rotation slider constraints are violated, the butterfly wing rotation slider shall return back to the a valid constrained (maximum) setting/angle in degrees.
+**REQ-R07** — The butterfly wing rotation slider shall be available and its range shall be restricted by not allowing overlap/collision between any components (of the 2 sides, nor folding mechanism) depending on the fold slider setting. The fold slider shall always have full range. If a fold angle is selected at which the butterfly wing rotation slider constraints are violated, the butterfly wing rotation slider shall return to the nearest valid constrained (maximum) angle in degrees.
 
-**REQ-R08** — When the fold slider is adjusted, both halves shall remain fully visible and correctly positioned at all angles from 0 to 270 degrees. No half shall disappear, clip through the ground plane, or produce visual artifacts. The pivot point shall be the hinge center axis. 
+**REQ-R08** — When the fold slider is adjusted, both halves shall remain fully visible and correctly positioned at all fold angles (0 to 270 degrees) and all butterfly angles (0 to ~45 degrees). No half shall disappear, clip through the ground plane, or produce visual artifacts. The pivot point shall be the hinge center axis.
 
-**REQ-R08** — Cables shall visually connect to their keyboard edge attachment points. When folding, cables shall animate their release at the quick-release clevis pins and wrap around the other side.
+**REQ-R09** — Cables shall visually connect to their keyboard edge attachment points. When folding, cables shall animate their release at the quick-release clevis pins and wrap around the other side.
 
-**REQ-R09** — The nice!nano USB-C ports shall be rendered as chrome/metallic connectors with a dark opening, identifiable as USB-C at a glance.
+**REQ-R10** — The nice!nano USB-C ports shall be rendered as chrome/metallic connectors with a dark opening, identifiable as USB-C at a glance.
 
-**REQ-R10** — Keycap and switch positions in the 3D render shall be exactly aligned with switch plate cutouts. The coordinate offset shall be computed from the config.yaml directly, not from any generated svgs.
+**REQ-R11** — Keycap and switch positions in the 3D render shall be exactly aligned with switch plate cutouts. The coordinate offset shall be computed from the config.yaml directly, not from any generated svgs.
 
-**REQ-R11** — Key legends shall be rendered as flat plane meshes on top of keycaps using canvas textures, with correct rotation matching key orientation.
+**REQ-R12** — Key legends shall be rendered as flat plane meshes on top of keycaps using canvas textures, with correct rotation matching key orientation.
 
-**REQ-R12** — The bamboo/wood material shall use a pronounced normal map for surface relief and appropriate roughness/metalness PBR values. Visible grain lines, growth rings, node bands, tonal variation, and fiber detail shall be present.
+**REQ-R13** — The bamboo/wood material shall use a pronounced normal map for surface relief and appropriate roughness/metalness PBR values. Visible grain lines, growth rings, node bands, tonal variation, and fiber detail shall be present.
 
-**REQ-R13** — Fold direction shall be inward (keycap surfaces face each other when folded).
+**REQ-R14** — Fold direction in the 3D render shall match REQ-F01a (inward fold, keycap surfaces face each other when folded).
 
-**REQ-R14** — No render clipping shall occur during fold at any angle. Clipping planes shall rotate with their respective halves.
+**REQ-R15** — No render clipping shall occur during fold at any angle. Clipping planes shall rotate with their respective halves.
 
-**REQ-R15** — The thumb cluster shall appear connected to the main body in all views (not as a floating island).
+**REQ-R16** — The 3D render shall visually reflect REQ-S03: the thumb cluster shall appear connected to the main body in all views (not as a floating island).
 
 ---
 
 ## 10. Stage Fidelity
 
-**REQ-SF01** — Key positions and orientations computed in stage 1 (finger position canvas) shall be reproduced in stage 2 (ergogen output / 3D render) within 0.05 mm for all keys (bottom, home, top) in each column except possibly for the thumb column. Per-row padding shall match stage 1's center-of-gravity-based asymmetric placement.
+**REQ-SF01** — Key positions and orientations computed in stage 1 (finger position canvas) shall be reproduced in stage 2 (ergogen output / 3D render) within the tolerance defined in REQ-L03 (0.05 mm) for all keys (bottom, home, top) in each column including the thumb column. Per-row padding shall match stage 1's center-of-gravity-based asymmetric placement.
 
 **REQ-SF02** — Switch rectangles drawn on the page 1 canvas shall have their edges perpendicular to the column regression line. The rotation angle shall be `PI/2 + atan(slope)` applied via `ctx.rotate(-rad)` in canvas coordinates.
 
@@ -202,7 +205,7 @@ All requirements use **shall** language and are deterministic and verifiable unl
 
 ## Design Guidelines (Subjective / Non-Verifiable)
 
-These are aesthetic and experiential goals that guide design decisions but are not pass/fail verifiable. They may be taken into consideration after all other requirements are met, and taken into account where it does not lead to increadible challenges during the process of generating requirement compliance.
+These are aesthetic and experiential goals that guide design decisions but are not pass/fail verifiable. They may be taken into consideration after all other requirements are met, and taken into account where it does not lead to incredible challenges during the process of generating requirement compliance.
 
 **DG-01** — The board outline should feel like a single deliberate shape, not an artifact of the layout tool.
 
@@ -210,16 +213,14 @@ These are aesthetic and experiential goals that guide design decisions but are n
 
 **DG-03** — The bamboo material should be recognizable as bamboo/wood at a glance, not bland plastic.
 
-**DG-04** — The USB-C ports should be identifiable as USB-C at a glance from any reasonable camera angle.
+**DG-04** — After all functional requirements are met, a design pass should refine the overall shape: smooth every edge, add intentional asymmetry where it serves ergonomics, and ensure the silhouette reads as a single coherent form.
 
-**DG-05** — After all functional requirements are met, a design pass should refine the overall shape: smooth every edge, add intentional asymmetry where it serves ergonomics, and ensure the silhouette reads as a single coherent form.
+**DG-05** — The overall thickness should be kept as thin as possible while meeting structural and acoustic requirements.
 
-**DG-06** — The overall thickness should be kept as thin as possible while meeting structural and acoustic requirements.
+**DG-06** — The cable quick-release mechanism should require zero thought to operate in daily use.
 
-**DG-07** — The cable quick-release mechanism should require zero thought to operate in daily use.
+**DG-07** — The keyboard when folded should form a compact, non-colliding package.
 
-**DG-08** — The keyboard when folded should form a compact, non-colliding package.
+**DG-08** — The typing acoustics should be dampened and pleasant, not hollow or rattling.
 
-**DG-09** — The typing acoustics should be dampened and pleasant, not hollow or rattling.
-
-**DG-10** — The frame should look like a natural material (bamboo), not like a plastic imitation.
+**DG-09** — The frame should look like a natural material (bamboo), not like a plastic imitation.
