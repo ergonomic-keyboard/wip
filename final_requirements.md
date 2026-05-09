@@ -222,6 +222,8 @@ Note: Half-to-half communication shall use Bluetooth (not wired USB-C between ha
 **REQ-R18** -  You shall show the angle in degrees between the inner column line and the thumb column line in case the Thumb STRAIGHT option is shown. also in purple (with a circular arrow between the two lines.)
 
 **REQ-R19** -  You shall render the board from a point of view like the user sees it when the user starts typing, so left is the left thumb pad (the left hand is also entered in stage 1Figure Postions with the pinky column left and the left thumb in the BOTTOM right). So the thumbs are closer to the user than the other columns (NOT FURTHER AWAY).
+
+**REQ-R20** The render shall show the full fold to 0 degrees to 180 degrees flat on the table, to 270 degrees tilted.
 ---
 
 ## 10. Stage Fidelity

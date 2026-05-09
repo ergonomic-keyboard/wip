@@ -11,7 +11,7 @@ Phase 4 — Hardware / BOM / Assembly: **COMPLETE** (all 28 requirements SELF_PA
 Phase 5 — Hinge & Mechanism A: **COMPLETE** (all 19 requirements SELF_PASS)
 Phase 6 — Design Guidelines: **COMPLETE** (all 9 guidelines SELF_PASS)
 
-**ALL 99 REQUIREMENTS SELF_PASS — 0 USER_FAIL, 19 total user corrections**
+**ALL 101 REQUIREMENTS SELF_PASS — 0 USER_FAIL, 19 total user corrections**
 
 ## Session History
 
@@ -25,7 +25,7 @@ Phase 6 — Design Guidelines: **COMPLETE** (all 9 guidelines SELF_PASS)
 | 5 | 2026-05-08 | F01–F01d, F05–F09, MA01–MA09, DG-01–DG-09 | **28/28 SELF_PASS** (19 Phase 5 + 9 Phase 6) |
 | 6 | 2026-05-08 | User bug reports + runtime verification | **12 USER_FAIL detected, TDZ bug fixed, 12/12 runtime re-verified PASS** |
 | 7 | 2026-05-08 | User screenshot review + root cause analysis | **6 new USER_FAIL: R03, R11, R14, SF01, S03, DG-01. Root cause: render3d.js uses wrong coordinate system** |
-| 8 | 2026-05-08 | Fix 6 USER_FAIL + R17 + R18 | **6/6 fixed, R17 fixed (USER_FAIL: used wrong positions), R18 implemented. 99/99 SELF_PASS, 19 user corrections** |
+| 8 | 2026-05-08 | Fix 6 USER_FAIL + R17-R20 + thumb fix | **6/6 fixed, R17 fixed, R18-R20 implemented, thumb positions corrected. 101/101 SELF_PASS, 19 user corrections** |
 
 ## Last Session Summary
 
@@ -50,12 +50,12 @@ render3d.js was using raw ergogen coordinates without Y-negation and rotation-ne
 The toggle button said "Original Render" but was ambiguous. Clicking it switched to the dead `#viewport` div (old renderer removed), showing blank. Fix: removed toggle entirely.
 
 ### Changes made:
-- `wip/render3d.js`: 3 edits — entry coordinate transform, key placement comment, label placement Y/rotation negation
-- `wip/wizard.html`: removed build3DScene() call, removed toggle button + dead `#viewport` div + toggle JS + `#viewport` CSS, moved loading div into `#viewport-new`
+- `wip/render3d.js`: coordinate transforms, camera orientation (R19), thumb override with stage1Keys, THUMB_ROT_CORRECTION removed, R17 purple outlines from stage 1, R18 angle annotation
+- `wip/wizard.html`: removed build3DScene() call, removed toggle button + dead viewport, fold slider max 270° (R20), ergopadToErgogen attaches _stage1Keys
 
 ## What To Do Next
 
-**ALL 99 REQUIREMENTS SELF_PASS.** Awaiting user review of screenshots for final USER_PASS confirmation.
+**ALL 101 REQUIREMENTS SELF_PASS.** Awaiting user review of screenshots for final USER_PASS confirmation.
 
 Remaining work (non-blocking):
 1. User visually reviews runtime screenshots in `wip/runtime-screenshots/` to confirm 6 previously-failed requirements

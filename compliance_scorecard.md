@@ -58,7 +58,7 @@
 | R08 | SELF_PASS | 1 | 0 | 0 | Fold slider 0–160° (req 180), applyFold with pivot at hinge center, both halves always visible, no localClippingEnabled |
 | R09 | SELF_PASS | 2 | 0 | 1 | Static: cable geometry in code. USER_FAIL: cables invisible at fold=0. Runtime re-verify: 6 cables visible at fold=0° (cablesGroup.visible=true) |
 | R10 | SELF_PASS | 1 | 0 | 0 | Chrome material (metalness 0.98, roughness 0.15) on USB body, dark inner opening (0x050505), correct USB-C dimensions |
-| R11 | SELF_PASS | 3 | 1 | 1 | Keys at ergogen coords, cutouts from same array. Self-fail 1: ergopadToErgogen wrapper. USER_FAIL: key positions wrong — raw ergogen coords without Y/rotation negation. Fix: entry construction now applies y=-pt.y, r=-rawR. Runtime re-verify: keys at correct positions, 145 meshes |
+| R11 | SELF_PASS | 4 | 1 | 1 | Keys at ergogen coords, cutouts from same array. Self-fail 1: ergopadToErgogen wrapper. USER_FAIL: key positions wrong — raw ergogen coords without Y/rotation negation. Fix: entry construction applies y=-pt.y, r=-rawR. Thumb positions overridden with stage 1 data (config._stage1Keys) to match purple outlines. THUMB_ROT_CORRECTION removed (was -90°, now 0°). Runtime re-verify: keys at correct positions |
 | R12 | SELF_PASS | 2 | 0 | 1 | Static: CanvasTexture label code present. USER_FAIL: labels invisible. Runtime re-verify: 36 key label planes with canvas textures found (all 36 total) |
 | R13 | SELF_PASS | 1 | 0 | 0 | generateWoodTexture with normalMap + roughnessMap, roughness=0.4 metalness=0, grain lines, growth rings, nodes, fiber |
 | R14 | SELF_PASS | 3 | 0 | 2 | Runtime pass: fold normals correct at 160°. USER_FAIL #2: thumbs face screen — raw ergogen coords without Y negation. Fix: Y negation applied at entry construction. Runtime re-verify: fold direction INWARD at 160°, dot=-0.94 |
@@ -66,6 +66,8 @@
 | R16 | SELF_PASS | 1 | 0 | 0 | Convex hull from ALL leftKeys (matrix+thumb) ensures single connected polygon. No floating island |
 | R17 | SELF_PASS | 2 | 0 | 1 | USER_FAIL #1: used ergogen-processed positions (wrong — thumb angle ~34° not ~90°). Fix: now uses raw stage 1 positions from config._stage1Keys (ergoKeys in ergopadToErgogen). 18 purple outlines per half at Z_KEYCAP+4.6mm (3mm above keycap top). Thumb angle preserved at ~86° matching Finger Positions canvas |
 | R18 | SELF_PASS | 1 | 0 | 0 | Angle annotation between inner column and thumb column directions. Purple direction lines + circular arc + arrowhead + degree label sprite. With new0.json shows 86.0°. Only rendered when stage1Keys has both index_far and thumb columns |
+| R19 | SELF_PASS | 1 | 0 | 0 | Camera positioned at high Y (thumb/typist side) looking toward board center. Thumbs appear closer to viewer, pinky row farther away — matches typist POV. Camera: `center.y + maxDim * 0.6` |
+| R20 | SELF_PASS | 1 | 0 | 0 | Fold slider range 0–270°. 0°=flat open, 180°=folded closed (halves face each other), 270°=inverted V tent mode. applyFold() handles full range, fold direction remains inward |
 
 ## Phase 4 — Hardware / BOM / Assembly
 
@@ -142,8 +144,8 @@
 
 | Metric | Count |
 |--------|-------|
-| Total requirements | 99 |
-| Self-verified PASS | 99 |
+| Total requirements | 101 |
+| Self-verified PASS | 101 |
 | User-confirmed PASS | 0 |
 | User corrections (I was wrong) | 19 |
 | Runtime re-verified (after fix) | 15 |

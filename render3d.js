@@ -388,10 +388,9 @@ function buildNewScene(ergogenResults, config, container) {
   console.log(`render3d: kx=${kx}, ky=${ky}, px=${px}, py=${py}, board pad=${px + 4}x${py + 4}, frame pad=${px + 8}x${py + 8}`);
 
   // ── Extract left/right keys ──
-  // Apply -90° rotation correction to thumb keys: the ergogen config generates
-  // thumb splay from stage 1 column direction, but physical thumb keys are
-  // oriented 90° CCW from the computed angle.
-  const THUMB_ROT_CORRECTION = -90; // degrees
+  // No thumb rotation correction — stage 1 purple outlines (R17) are the truth source.
+  // Previously had THUMB_ROT_CORRECTION = -90 which was wrong.
+  const THUMB_ROT_CORRECTION = 0; // degrees — no correction
   const leftKeys = [], rightKeys = [];
   // Debug: log raw meta for first few points to understand mirrored flag
   const ptEntries = Object.entries(pts);
@@ -416,6 +415,32 @@ function buildNewScene(ergogenResults, config, container) {
     else leftKeys.push(entry);
   }
   console.log(`render3d: ${leftKeys.length} left keys, ${rightKeys.length} right keys`);
+
+  // ── Override thumb positions with stage 1 data (R17/R19 fix) ──
+  // Ergogen's thumb zone placement differs from the stage 1 fitted-line algorithm.
+  // The purple outlines (stage 1) show the correct positions; override ergogen's.
+  const stage1KeysForThumb = config._stage1Keys;
+  if (stage1KeysForThumb && stage1KeysForThumb['thumb']) {
+    const thumbS1 = stage1KeysForThumb['thumb'];
+    // Stage 1 thumb: 3 keys [bottom, home, top] in ergogen mm space (Y-up)
+    const s1Positions = [thumbS1.bottom, thumbS1.home, thumbS1.top];
+    const s1RotDeg = -thumbS1.angleDeg; // ergogen CCW → scene (Y-down) negate
+    const thumbKeysLeft = leftKeys.filter(k => k.meta?.zone?.name === 'thumb' || k.name.startsWith('thumb_'));
+    if (thumbKeysLeft.length === s1Positions.length) {
+      // Sort both by Y to align bottom→top
+      const sortedThumb = [...thumbKeysLeft].sort((a, b) => a.y - b.y);
+      const sortedS1 = [...s1Positions].sort((a, b) => (-a.y) - (-b.y)); // scene Y = -ergoY, sort ascending
+      sortedThumb.forEach((tk, i) => {
+        const s1 = sortedS1[i];
+        tk.x = s1.x;
+        tk.y = -s1.y; // ergogen Y-up → scene Y-down
+        tk.r = s1RotDeg;
+        console.log(`  Thumb override [${i}] ${tk.name}: → (${tk.x.toFixed(1)}, ${tk.y.toFixed(1)}) r=${tk.r.toFixed(1)}°`);
+      });
+    } else {
+      console.warn(`render3d: thumb key count mismatch: ergogen=${thumbKeysLeft.length}, stage1=3`);
+    }
+  }
 
   // ── Diagnostic logging ──
   console.group('render3d diagnostics');
@@ -1108,14 +1133,13 @@ function buildNewScene(ergogenResults, config, container) {
   addLabel('Ball Joint Hinge', hingeX, hy + 20, hz + 8);
   addLabel('LiPo Battery', hingeX - 35, bbox.min.y - 8, Z_CORK_LOWER + 3);
 
-  // ── Camera position (from HUMAN side) ──
-  // In ergogen Y-up coordinates: top row has higher Y (far from human),
-  // bottom row + thumbs have lower Y (near human).
-  // Camera goes at low Y (near human), looking toward higher Y.
+  // ── Camera position (from HUMAN/typist side — R19) ──
+  // After Y-negation: thumbs have high Y (positive), top row has low Y (negative).
+  // Camera goes at high Y (thumb side, near human), looking toward center.
   const fullWidth = rightEdgeX - bbox.min.x;
   const fullHeight = bbox.max.y - bbox.min.y;
   const maxDim = Math.max(fullWidth, fullHeight);
-  camera.position.set(hingeX, center.y - maxDim * 0.6, maxDim * 0.7);
+  camera.position.set(hingeX, center.y + maxDim * 0.6, maxDim * 0.7);
   controls.target.set(hingeX, center.y, Z_SWITCH_PLATE_TOP / 2);
   console.log(`render3d camera: pos=(${camera.position.x.toFixed(0)}, ${camera.position.y.toFixed(0)}, ${camera.position.z.toFixed(0)}) target=(${hingeX.toFixed(0)}, ${center.y.toFixed(0)}, ${(Z_SWITCH_PLATE_TOP / 2).toFixed(1)})`);
   controls.update();
