@@ -154,7 +154,7 @@ header { display: flex; align-items: center; justify-content: space-between; pad
 <!-- ═══════════════ PAGE 2: 3D Preview ═══════════════ -->
 <div id="page2" class="page">
   <div class="toolbar">
-    <label>Fold: <input type="range" id="fold-slider" min="0" max="270" step="5" value="0"> <span id="fold-val">0</span>&deg;</label>
+    <label>Fold: <input type="range" id="fold-slider" min="0" max="270" step="5" value="180"> <span id="fold-val">180</span>&deg;</label>
     <label><input type="checkbox" id="show-cables" checked> Cables</label>
     <label><input type="checkbox" id="show-hinge" checked> Hinge</label>
     <label><input type="checkbox" id="show-battery" checked> Battery</label>
@@ -3093,8 +3093,8 @@ function build3DScene() {
   controls.target.set(hingeX, center.y, Z_SWITCH_PLATE_TOP / 2);
   controls.update();
 
-  document.getElementById('fold-slider').value = 0;
-  document.getElementById('fold-val').textContent = '0';
+  document.getElementById('fold-slider').value = 180;
+  document.getElementById('fold-val').textContent = '180';
 
   // ── Interactions ──
   renderer.domElement.addEventListener('pointerdown', onKeyPress);
@@ -3228,7 +3228,7 @@ document.getElementById('fold-slider').addEventListener('input', e => {
   applyFold(v);
 });
 document.getElementById('show-cables').addEventListener('change', e => {
-  if (cablesGroup) cablesGroup.visible = e.target.checked && +document.getElementById('fold-slider').value === 0;
+  if (cablesGroup) cablesGroup.visible = e.target.checked && +document.getElementById('fold-slider').value === 180;
 });
 document.getElementById('show-hinge').addEventListener('change', e => {
   if (hingeGroup) hingeGroup.visible = e.target.checked;
@@ -3291,7 +3291,7 @@ document.getElementById('fold-slider').addEventListener('input', () => {
   if (window._newSceneCtrl) window._newSceneCtrl.applyFold(+document.getElementById('fold-slider').value);
 });
 document.getElementById('show-cables').addEventListener('change', () => {
-  if (window._newSceneCtrl) window._newSceneCtrl.setCablesVisible(document.getElementById('show-cables').checked && +document.getElementById('fold-slider').value === 0);
+  if (window._newSceneCtrl) window._newSceneCtrl.setCablesVisible(document.getElementById('show-cables').checked && +document.getElementById('fold-slider').value === 180);
 });
 document.getElementById('show-hinge').addEventListener('change', () => {
   if (window._newSceneCtrl) window._newSceneCtrl.setHingeVisible(document.getElementById('show-hinge').checked);

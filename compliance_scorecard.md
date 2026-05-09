@@ -66,8 +66,8 @@
 | R16 | SELF_PASS | 1 | 0 | 0 | Convex hull from ALL leftKeys (matrix+thumb) ensures single connected polygon. No floating island |
 | R17 | SELF_PASS | 2 | 0 | 1 | USER_FAIL #1: used ergogen-processed positions (wrong — thumb angle ~34° not ~90°). Fix: now uses raw stage 1 positions from config._stage1Keys (ergoKeys in ergopadToErgogen). 18 purple outlines per half at Z_KEYCAP+4.6mm (3mm above keycap top). Thumb angle preserved at ~86° matching Finger Positions canvas |
 | R18 | SELF_PASS | 1 | 0 | 0 | Angle annotation between inner column and thumb column directions. Purple direction lines + circular arc + arrowhead + degree label sprite. With new0.json shows 86.0°. Only rendered when stage1Keys has both index_far and thumb columns |
-| R19 | SELF_PASS | 1 | 0 | 0 | Camera positioned at high Y (thumb/typist side) looking toward board center. Thumbs appear closer to viewer, pinky row farther away — matches typist POV. Camera: `center.y + maxDim * 0.6` |
-| R20 | SELF_PASS | 1 | 0 | 0 | Fold slider range 0–270°. 0°=flat open, 180°=folded closed (halves face each other), 270°=inverted V tent mode. applyFold() handles full range, fold direction remains inward |
+| R19 | SELF_PASS | 2 | 0 | 1 | USER_FAIL #1: camera-only fix insufficient — board not rotated, thumbs still on wrong side. Fix: wrapped all board geometry in `boardRoot` group with `rotation.z = Math.PI` (180° around Z axis). Camera repositioned to world-space thumb side. Thumbs now closest to user, furthest from screen |
+| R20 | SELF_PASS | 2 | 0 | 1 | USER_FAIL #1: fold semantics inverted — 0°=flat caused halves to push through each other at higher angles. Fix: remapped slider so 180°=flat/open, 0°=closed, 270°=tented. `applyFold(sliderDeg)` converts to `internalDeg = 180 - sliderDeg`. Slider default now 180° |
 
 ## Phase 4 — Hardware / BOM / Assembly
 

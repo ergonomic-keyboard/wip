@@ -1056,8 +1056,14 @@ function buildNewScene(ergogenResults, config, container) {
   });
   rightHalf.add(rightLabelGroup);
 
-  scene.add(leftHalf);
-  scene.add(rightHalf);
+  // ── R19: Wrap all board geometry in a root group rotated 180° around Z ──
+  // This flips the board so thumbs face the user (closest to camera).
+  const boardRoot = new THREE.Group();
+  boardRoot.rotation.z = Math.PI;  // 180° around Z axis (axis sticking out of table)
+  scene.add(boardRoot);
+
+  boardRoot.add(leftHalf);
+  boardRoot.add(rightHalf);
 
   // ── Hinge ──
   const hingeGroup = new THREE.Group();
@@ -1082,7 +1088,7 @@ function buildNewScene(ergogenResults, config, container) {
   const tnutGeo = new THREE.CylinderGeometry(5, 5, 3, 6);
   const tnut = new THREE.Mesh(tnutGeo, brassMat.clone()); tnut.position.set(hingeX, hy - 8, hz); tnut.rotation.x = Math.PI / 2; tnut.castShadow = true;
   hingeGroup.add(tnut);
-  scene.add(hingeGroup);
+  boardRoot.add(hingeGroup);
 
   // ── Cables ──
   const cablesGroup = new THREE.Group();
@@ -1108,7 +1114,7 @@ function buildNewScene(ergogenResults, config, container) {
       const pin = new THREE.Mesh(pinGeo, chromeMat.clone()); pin.position.set(ppx, cy, cableZ2); pin.castShadow = true; cablesGroup.add(pin);
     });
   });
-  scene.add(cablesGroup);
+  boardRoot.add(cablesGroup);
 
   // ── Layer labels ──
   const labelSprites = [];
@@ -1122,7 +1128,7 @@ function buildNewScene(ergogenResults, config, container) {
     const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0.85 });
     const sprite = new THREE.Sprite(spriteMat);
     sprite.position.set(x, y, z); sprite.scale.set(40, 10, 1); sprite.visible = false;
-    scene.add(sprite); labelSprites.push(sprite); return sprite;
+    boardRoot.add(sprite); labelSprites.push(sprite); return sprite;
   }
   addLabel('Bamboo Bottom Plate', hingeX, bbox.min.y - 8, Z_BOTTOM + T_BOTTOM_PLATE / 2);
   addLabel('Cork Gasket', hingeX, bbox.min.y - 8, Z_CORK_LOWER + T_CORK_LOWER / 2);
@@ -1134,26 +1140,34 @@ function buildNewScene(ergogenResults, config, container) {
   addLabel('LiPo Battery', hingeX - 35, bbox.min.y - 8, Z_CORK_LOWER + 3);
 
   // ── Camera position (from HUMAN/typist side — R19) ──
-  // After Y-negation: thumbs have high Y (positive), top row has low Y (negative).
-  // Camera goes at high Y (thumb side, near human), looking toward center.
+  // boardRoot is rotated 180° around Z, so world coords = (-local_x, -local_y, local_z).
+  // Thumbs (high local Y) are now at negative world Y.
+  // Camera goes at negative world Y (thumb side, near human), looking toward world center.
   const fullWidth = rightEdgeX - bbox.min.x;
   const fullHeight = bbox.max.y - bbox.min.y;
   const maxDim = Math.max(fullWidth, fullHeight);
-  camera.position.set(hingeX, center.y + maxDim * 0.6, maxDim * 0.7);
-  controls.target.set(hingeX, center.y, Z_SWITCH_PLATE_TOP / 2);
-  console.log(`render3d camera: pos=(${camera.position.x.toFixed(0)}, ${camera.position.y.toFixed(0)}, ${camera.position.z.toFixed(0)}) target=(${hingeX.toFixed(0)}, ${center.y.toFixed(0)}, ${(Z_SWITCH_PLATE_TOP / 2).toFixed(1)})`);
+  const worldHingeX = -hingeX;
+  const worldCenterY = -center.y;
+  camera.position.set(worldHingeX, worldCenterY - maxDim * 0.6, maxDim * 0.7);
+  controls.target.set(worldHingeX, worldCenterY, Z_SWITCH_PLATE_TOP / 2);
+  console.log(`render3d camera: pos=(${camera.position.x.toFixed(0)}, ${camera.position.y.toFixed(0)}, ${camera.position.z.toFixed(0)}) target=(${worldHingeX.toFixed(0)}, ${worldCenterY.toFixed(0)}, ${(Z_SWITCH_PLATE_TOP / 2).toFixed(1)})`);
   controls.update();
 
-  // ── Fold mechanism ──
-  function applyFold(angleDeg) {
-    const halfRad = (angleDeg * Math.PI / 180) / 2;
+  // ── Fold mechanism (R20) ──
+  // Slider semantics: 180° = flat/open, 0° = closed, 270° = tented
+  // Internal fold angle = 180 - sliderValue
+  // Positive internal = closing (keycaps face each other)
+  // Negative internal = tenting (keycaps face outward, keyboard tents up)
+  function applyFold(sliderDeg) {
+    const internalDeg = 180 - sliderDeg;
+    const halfRad = (internalDeg * Math.PI / 180) / 2;
     const yAxis = new THREE.Vector3(0, 1, 0);
 
-    // Keys fold TOGETHER (inward): left rotates +Y, right rotates -Y
-    // so keycap surfaces (Z+) face each other at 180°
+    // Keys fold TOGETHER (inward) for positive internal angles,
+    // or APART (tenting) for negative internal angles.
     leftHalf.position.set(0, 0, 0); leftHalf.quaternion.identity();
     rightHalf.position.set(0, 0, 0); rightHalf.quaternion.identity();
-    if (angleDeg > 0) {
+    if (internalDeg !== 0) {
       const offset = new THREE.Vector3(-hingeX, -hingeCenterY, -hingeZ);
       leftHalf.position.copy(offset.clone().applyAxisAngle(yAxis, halfRad).sub(offset));
       leftHalf.quaternion.setFromAxisAngle(yAxis, halfRad);
@@ -1167,7 +1181,7 @@ function buildNewScene(ergogenResults, config, container) {
       if (!child.userData._origPos) { child.userData._origPos = child.position.clone(); child.userData._origQuat = child.quaternion.clone(); }
       child.position.copy(child.userData._origPos); child.quaternion.copy(child.userData._origQuat);
     });
-    if (angleDeg > 0) {
+    if (internalDeg !== 0) {
       const pivot = new THREE.Vector3(hingeX, hingeCenterY, hingeZ);
       hingeGroup.children.forEach(child => {
         const origX = child.userData._origPos.x;
@@ -1180,7 +1194,7 @@ function buildNewScene(ergogenResults, config, container) {
         }
       });
     }
-    cablesGroup.visible = angleDeg === 0;
+    cablesGroup.visible = internalDeg === 0;
   }
 
   // ── Exploded view ──
