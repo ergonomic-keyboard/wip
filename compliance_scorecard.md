@@ -69,14 +69,22 @@
 | R19 | SELF_PASS | 2 | 0 | 1 | USER_FAIL #1: camera-only fix insufficient — board not rotated, thumbs still on wrong side. Fix: wrapped all board geometry in `boardRoot` group with `rotation.z = Math.PI` (180° around Z axis). Camera repositioned to world-space thumb side. Thumbs now closest to user, furthest from screen |
 | R20 | SELF_PASS | 2 | 0 | 1 | USER_FAIL #1: fold semantics inverted — 0°=flat caused halves to push through each other at higher angles. Fix: remapped slider so 180°=flat/open, 0°=closed, 270°=tented. `applyFold(sliderDeg)` converts to `internalDeg = 180 - sliderDeg`. Slider default now 180° |
 | R21 | SELF_PASS | 3 | 0 | 2 | USER_FAIL #1: butterfly rotated whole board around X axis (tilt) instead of each half around Z (Hirth). Fix: each half rotates independently around Z axis at hinge point. USER_FAIL #2: rotation compounded on each slider event (premultiply on existing quaternion) and pivoted around fold hinge center instead of Hirth disc. Fix: `applyButterfly` now recomputes full combined transform (fold+butterfly) from scratch each call. Combined quaternion = Q_fold * Q_butterfly, position = Q_combined * (-pivot) + pivot. No compounding possible |
-| R22 | SELF_PASS | 1 | 0 | 0 | MCU at halfCenterX/halfCenterY on Z_PCB_TOP+0.8 (PCB surface), within board outline. Mirrored to right half via boardGroup.clone |
-| R23 | SELF_PASS | 1 | 0 | 0 | Battery at halfCenterX, Z=Z_PCB-1.5 (between bottom plate and PCB). Bottom plate recess mesh (14x32mm, dark wood) added at battery location |
-| R24 | SELF_PASS | 1 | 0 | 0 | USB-C as separate createUsbCPort() at bbox.min.x+3.75 (outer edge), Z_PCB_TOP+1.63, rotated 90° so opening faces outward. Chrome + dark hole |
-| R25 | SELF_PASS | 1 | 0 | 0 | halfCenterX=(bbox.min.x+hingeX)/2, halfOuterEdgeX=bbox.min.x — all component positions derived from bbox, no hingeX-offset hardcoding |
+| R22 | SUPERSEDED | 1 | 0 | 0 | Superseded by R30. Original: MCU on PCB top surface at half center |
+| R23 | SUPERSEDED | 1 | 0 | 0 | Superseded by R33, R36. Original: battery between bottom plate and PCB with recess |
+| R24 | SUPERSEDED | 1 | 0 | 0 | Superseded by R32, R34. Original: USB-C as separate component at outer edge |
+| R25 | SUPERSEDED | 1 | 0 | 0 | Superseded by R30, R31, R32. Original: positions from bbox |
 | R26 | SELF_PASS | 1 | 0 | 0 | 6 layer groups (bottomPlate, corkLower, pcb, corkUpper, switchPlate, keycaps) with userData.layerId tags. setLayerVisible() toggles groups in both halves. 6 checkboxes in toolbar |
 | R27 | SELF_PASS | 1 | 0 | 0 | Layer toggles set group.visible independently of exploded view Z-offsets. Both controls compose — exploded moves Z, toggles hide/show |
 | R28 | SELF_PASS | 1 | 0 | 0 | Label sprites tagged with userData.layerId. setLayerVisible hides labels when layer hidden. setLabelsVisible respects layerVisibility state |
 | R29 | SELF_PASS | 1 | 0 | 0 | 6 labeled checkboxes (all checked by default) in toolbar after divider, with "Layers:" prefix. Each wired to setLayerVisible via change event |
+| R30 | NOT_STARTED | 0 | 0 | 0 | MCU on underside of PCB, components facing down into milled bottom plate pocket. B.Cu footprint via post-processing |
+| R31 | NOT_STARTED | 0 | 0 | 0 | MCU outer edge aligned with inside edge of pinky column (colIdx 0), body extends inward toward hinge |
+| R32 | NOT_STARTED | 0 | 0 | 0 | MCU Y position computed so USB-C falls into milled frame-edge slot. Slot visible in 3D render |
+| R33 | NOT_STARTED | 0 | 0 | 0 | Bottom plate milled pocket for MCU+USB-C depth. Cork lower matching cutout. Visible recess in render |
+| R34 | NOT_STARTED | 0 | 0 | 0 | USB-C as part of MCU mesh (not separate). Protrudes toward bbox.min.x through frame slot. Remove createUsbCPort() |
+| R35 | NOT_STARTED | 0 | 0 | 0 | Post-processing script in generate.sh to flip nice!nano footprint from F.Cu to B.Cu in .kicad_pcb |
+| R36 | NOT_STARTED | 0 | 0 | 0 | Battery adjacent to MCU in same under-PCB cavity, sharing bottom plate pocket. No overlap |
+| R37 | SELF_PASS | 1 | 0 | 0 | XYZ axis indicator at origin (red=X, green=Y, blue=Z), ticks at 10mm/100mm, orange anchor markers (bbox.min.x, hingeX, etc.), "Axes" checkbox (off by default), geometry.md created |
 
 ## Phase 4 — Hardware / BOM / Assembly
 
@@ -153,14 +161,15 @@
 
 | Metric | Count |
 |--------|-------|
-| Total requirements | 110 |
-| Self-verified PASS | 110 |
+| Total requirements | 118 |
+| Self-verified PASS | 107 |
+| Superseded | 4 |
 | User-confirmed PASS | 0 |
 | User corrections (I was wrong) | 28 |
 | Runtime re-verified (after fix) | 15 |
 | Currently USER_FAIL | 0 |
 | Blocked | 0 |
-| Not started | 0 |
+| Not started | 7 |
 
 ### USER_FAIL Summary
 

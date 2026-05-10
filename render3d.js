@@ -1188,6 +1188,112 @@ function buildNewScene(ergogenResults, config, container) {
   addLabel('Ball Joint Hinge', hingeX, hy + 20, hz + 8);
   addLabel('LiPo Battery', battX, bbox.min.y - 8, Z_CORK_LOWER + 3, 'corkLower');
 
+  // ── XYZ Axis Indicator + Named Anchors (geometry.md) ──
+  const axisGroup = new THREE.Group();
+  axisGroup.userData.layerId = 'axes';
+  const axisLen = 120; // mm
+  const axisColors = { x: 0xff3333, y: 0x33cc33, z: 0x3366ff };
+  const axisLabelsMap = { x: 'X', y: 'Y', z: 'Z' };
+  const axisDirections = {
+    x: [new THREE.Vector3(0, 0, 0), new THREE.Vector3(axisLen, 0, 0)],
+    y: [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, axisLen, 0)],
+    z: [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, axisLen)]
+  };
+  // Draw axis lines
+  Object.entries(axisDirections).forEach(([axis, [start, end]]) => {
+    const geo = new THREE.BufferGeometry().setFromPoints([start, end]);
+    const mat = new THREE.LineBasicMaterial({ color: axisColors[axis], linewidth: 2 });
+    axisGroup.add(new THREE.Line(geo, mat));
+  });
+  // Tick marks at 10mm and 100mm
+  function addTick(pos, color, size) {
+    const tickGeo = new THREE.SphereGeometry(size, 6, 6);
+    const tickMat = new THREE.MeshBasicMaterial({ color });
+    const tick = new THREE.Mesh(tickGeo, tickMat);
+    tick.position.copy(pos);
+    axisGroup.add(tick);
+  }
+  // Tick labels
+  function addAxisLabel(text, pos, color) {
+    const lc = document.createElement('canvas'); lc.width = 64; lc.height = 64;
+    const lg = lc.getContext('2d');
+    lg.clearRect(0, 0, 64, 64);
+    lg.font = 'bold 48px monospace'; lg.textAlign = 'center'; lg.textBaseline = 'middle';
+    lg.fillStyle = '#' + color.toString(16).padStart(6, '0');
+    lg.fillText(text, 32, 32);
+    const tex = new THREE.CanvasTexture(lc);
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+    const sprite = new THREE.Sprite(mat);
+    sprite.position.copy(pos);
+    sprite.scale.set(8, 8, 1);
+    axisGroup.add(sprite);
+  }
+  // X axis ticks
+  for (let d = 10; d <= axisLen; d += 10) {
+    const size = (d % 100 === 0) ? 1.2 : 0.5;
+    addTick(new THREE.Vector3(d, 0, 0), axisColors.x, size);
+    if (d === 10 || d === 100) addAxisLabel(d + '', new THREE.Vector3(d, -4, 0), axisColors.x);
+  }
+  // Y axis ticks
+  for (let d = 10; d <= axisLen; d += 10) {
+    const size = (d % 100 === 0) ? 1.2 : 0.5;
+    addTick(new THREE.Vector3(0, d, 0), axisColors.y, size);
+    if (d === 10 || d === 100) addAxisLabel(d + '', new THREE.Vector3(-4, d, 0), axisColors.y);
+  }
+  // Z axis ticks
+  for (let d = 10; d <= axisLen; d += 10) {
+    const size = (d % 100 === 0) ? 1.2 : 0.5;
+    addTick(new THREE.Vector3(0, 0, d), axisColors.z, size);
+    if (d === 10 || d === 100) addAxisLabel(d + '', new THREE.Vector3(-4, 0, d), axisColors.z);
+  }
+  // Axis endpoint labels (X, Y, Z)
+  addAxisLabel('X', new THREE.Vector3(axisLen + 5, 0, 0), axisColors.x);
+  addAxisLabel('Y', new THREE.Vector3(0, axisLen + 5, 0), axisColors.y);
+  addAxisLabel('Z', new THREE.Vector3(0, 0, axisLen + 5), axisColors.z);
+  // Origin marker
+  addTick(new THREE.Vector3(0, 0, 0), 0xffffff, 1.5);
+  addAxisLabel('O', new THREE.Vector3(-4, -4, 0), 0xffffff);
+
+  // ── Named Anchor Markers ──
+  const anchorColor = 0xffaa00; // orange
+  function addAnchorMarker(name, x, y, z) {
+    // Vertical line marker
+    const markerH = 15;
+    const geo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(x, y, z), new THREE.Vector3(x, y, z + markerH)
+    ]);
+    const mat = new THREE.LineBasicMaterial({ color: anchorColor, linewidth: 1 });
+    axisGroup.add(new THREE.Line(geo, mat));
+    // Diamond at base
+    const dGeo = new THREE.OctahedronGeometry(1.0, 0);
+    const dMat = new THREE.MeshBasicMaterial({ color: anchorColor });
+    const diamond = new THREE.Mesh(dGeo, dMat);
+    diamond.position.set(x, y, z); diamond.scale.set(1, 1, 0.5);
+    axisGroup.add(diamond);
+    // Label
+    const lc = document.createElement('canvas'); lc.width = 256; lc.height = 48;
+    const lg = lc.getContext('2d');
+    lg.clearRect(0, 0, 256, 48);
+    lg.font = '600 18px monospace'; lg.textAlign = 'center'; lg.textBaseline = 'middle';
+    lg.fillStyle = '#ffaa00'; lg.fillText(name, 128, 24);
+    const tex = new THREE.CanvasTexture(lc);
+    const sMat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+    const sprite = new THREE.Sprite(sMat);
+    sprite.position.set(x, y, z + markerH + 4);
+    sprite.scale.set(35, 7, 1);
+    axisGroup.add(sprite);
+  }
+  const anchorZ = Z_SWITCH_PLATE_TOP + 2; // markers hover above the board
+  addAnchorMarker('bbox.min.x', bbox.min.x, center.y, anchorZ);
+  addAnchorMarker('hingeX', hingeX, center.y, anchorZ);
+  addAnchorMarker('halfCenterX', halfCenterX, center.y, anchorZ);
+  addAnchorMarker('bbox.min.y', center.x, bbox.min.y, anchorZ);
+  addAnchorMarker('bbox.max.y', center.x, bbox.max.y, anchorZ);
+  addAnchorMarker('center', center.x, center.y, anchorZ);
+
+  axisGroup.visible = false; // hidden by default, toggled via UI checkbox
+  boardRoot.add(axisGroup);
+
   // ── Camera position (from HUMAN/typist side — R19) ──
   // boardRoot is rotated 180° around Z, so world coords = (-local_x, -local_y, local_z).
   // Thumbs (high local Y) are now at negative world Y.
@@ -1451,6 +1557,7 @@ function buildNewScene(ergogenResults, config, container) {
       if (v && s.userData.layerId && !layerVisibility[s.userData.layerId]) return;
       s.visible = v;
     }),
+    setAxesVisible: (v) => { axisGroup.visible = v; },
     setCablesVisible: (v) => { cablesGroup.visible = v; },
     setHingeVisible: (v) => { hingeGroup.visible = v; },
     setBatteryVisible: (v) => { batteryGroup.visible = v; },

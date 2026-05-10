@@ -3,6 +3,10 @@
 All requirements use **shall** language and are deterministic and verifiable unless placed in the **Design Guidelines** section at the end.
 
 ---
+Y runs positiveley along the columns (top to bottom of keyboard). Z is vertical (up from the table). ?X runs from left to right?
+ 
+
+
 
 ## 1. Layout & Input
 
@@ -227,13 +231,13 @@ Note: Half-to-half communication shall use Bluetooth (not wired USB-C between ha
 
 **REQ-R21** The render shall show the full fold to 0 degrees to 45 degrees butterfly as optional. You shall limit that degree based on the two halves bump into eachother constraint at any given integer folding angle. (The butter fly folds forwad, away from user, toward screen. (horizontal line/as it is now is the normal/0 degrees.)) In the gui clearly indicate the limitation based on the fold angle if there is any limitation.
 
-**REQ-R22** — The nice!nano MCU shall be rendered on the PCB surface, centered within each half's board outline (not at the hinge edge). Its Z position shall place it on top of the PCB layer. It shall be visually connected to the PCB (not floating).
+**REQ-R22** — ~~SUPERSEDED by REQ-R30.~~ *(Original: MCU on PCB top surface at half center.)*
 
-**REQ-R23** — The battery shall be rendered between the bottom plate and PCB (in the cork gasket cavity), within each half's board outline. The bottom plate shall show a visible recess/cutout at the battery location per REQ-S10.
+**REQ-R23** — ~~SUPERSEDED by REQ-R33, REQ-R36.~~ *(Original: Battery between bottom plate and PCB with recess.)*
 
-**REQ-R24** — The USB-C port on each half shall be rendered at the outer board edge (perimeter) of each half, oriented outward, at PCB height. It shall not be at the hinge edge.
+**REQ-R24** — ~~SUPERSEDED by REQ-R32, REQ-R34.~~ *(Original: USB-C at outer board edge as separate component.)*
 
-**REQ-R25** — In the 3D render, the MCU, battery, and USB-C port positions shall be computed from the board outline bounding box of each half (e.g., center-X of the half, offset from hinge edge) rather than hardcoded relative to `hingeX`/`center.y`.
+**REQ-R25** — ~~SUPERSEDED by REQ-R30, REQ-R31, REQ-R32.~~ *(Original: Positions computed from bbox.)*
 
 **REQ-R26** — The 3D render shall provide individual binary visibility toggles for each hardware layer. The toggleable layers shall be:
 
@@ -253,6 +257,22 @@ Each toggle shall independently show/hide that layer's meshes without affecting 
 **REQ-R28** — When a layer is toggled off, its exploded-view label (if any) shall also be hidden. Toggling the layer back on shall restore the label (if exploded view labels are enabled).
 
 **REQ-R29** — The layer toggle controls shall be rendered as a row of labeled checkboxes (all checked by default), positioned near the existing fold/butterfly sliders in the 3D view toolbar. Each checkbox shall be labeled with its layer name.
+
+**REQ-R30** — The nice!nano MCU shall be mounted on the underside of the PCB (components facing downward, toward the bottom plate). Its Z position shall place the MCU PCB flush against the underside of the main PCB at `Z_PCB`. The MCU's tallest component (USB-C connector, ~3.26mm) faces downward into a milled pocket in the bottom plate. The ergogen config shall include a back-side (`B.Cu`) footprint for the nice!nano, or the KiCad PCB file shall be post-processed to flip the MCU footprint to the back copper layer.
+
+**REQ-R31** — The nice!nano X position shall be computed so that its outer edge (the edge furthest from the hinge) aligns with the inside edge of the innermost pinky column key positions (colIdx 0). The MCU body extends from that edge inward (toward the hinge). This ensures the MCU does not overlap with optional structures that may be added to the board perimeter (rubber feet, edge bolts, fillet radius).
+
+**REQ-R32** — The nice!nano Y position shall be computed such that the USB-C port on the MCU falls precisely into a milled USB-C slot in the outer frame edge. The frame shall have a rectangular cutout at the USB-C port location, sized to allow cable insertion. The slot shall be visible in the 3D render.
+
+**REQ-R33** — The bottom plate shall have a milled pocket (recess) at the MCU location, deep enough to house the MCU body (1.6mm) plus its tallest downward-facing component (USB-C connector, ~3.26mm). The cork lower gasket shall have a matching cutout at the MCU location. The pocket shall be visible in the 3D render as a distinct recessed area in the bottom plate.
+
+**REQ-R34** — The USB-C connector shall remain physically part of the nice!nano MCU mesh (not a separate component). It shall protrude from the MCU's short edge toward the outer board edge (`bbox.min.x`), oriented so the USB-C opening is accessible from outside the keyboard through the frame slot (per REQ-R32). The separate `createUsbCPort()` function shall be removed.
+
+**REQ-R35** — The ergogen pipeline shall generate a post-processing script (in `generate.sh`) that flips the nice!nano footprint from `F.Cu` to `B.Cu` in the output `.kicad_pcb` file, preserving full automation of the PCB generation.
+
+**REQ-R36** — The battery shall be positioned adjacent to the nice!nano MCU in the same under-PCB cavity, sharing the bottom plate milled pocket. The battery and MCU shall not overlap. Both shall fit within the board outline.
+
+**REQ-R37** — The 3D render shall include a toggleable XYZ coordinate system indicator showing the model-space axes at the origin `(0,0,0)`. Red = X axis (toward hinge), Green = Y axis (along columns), Blue = Z axis (up from table). Tick marks shall be placed at 10mm intervals with larger ticks at 100mm. Named spatial anchors (`bbox.min.x`, `hingeX`, `halfCenterX`, `bbox.min.y`, `bbox.max.y`, `center`) shall be marked with orange diamond markers and labels at their positions on the board. The indicator shall be toggled via an "Axes" checkbox in the toolbar, unchecked by default. The coordinate system and named anchors shall be documented in `wip/geometry.md`.
 
 ---
 

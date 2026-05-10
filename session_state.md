@@ -11,7 +11,7 @@ Phase 4 — Hardware / BOM / Assembly: **COMPLETE** (all SELF_PASS — R03, R10,
 Phase 5 — Hinge & Mechanism A: **COMPLETE** (all 19 requirements SELF_PASS)
 Phase 6 — Design Guidelines: **COMPLETE** (all 9 guidelines SELF_PASS)
 
-**110 total requirements. 0 USER_FAIL, 0 NOT_STARTED. 28 total user corrections.**
+**118 total requirements. 0 USER_FAIL, 7 NOT_STARTED (R30-R36), 4 SUPERSEDED (R22-R25). 28 total user corrections.**
 
 ## Session History
 
@@ -60,10 +60,20 @@ Phase 6 — Design Guidelines: **COMPLETE** (all 9 guidelines SELF_PASS)
 
 ## What To Do Next
 
-**All 110 requirements are SELF_PASS. No USER_FAIL or NOT_STARTED remain.**
+**Priority: Implement R30-R36 (backside MCU, frame USB-C slot, battery placement)**
 
-Potential future work:
-- User visual verification of layer toggles in 3D render
+R22-R25 are superseded. The new MCU/battery/USB-C placement (R30-R36) requires:
+1. **R30**: Flip MCU to underside of PCB (Z_PCB, components facing down)
+2. **R31**: MCU X = inside edge of pinky column, extending inward
+3. **R32**: MCU Y = position USB-C port at frame edge, mill USB-C slot in frame
+4. **R33**: Bottom plate milled pocket for MCU + cork lower cutout
+5. **R34**: USB-C back as part of MCU mesh, remove createUsbCPort()
+6. **R35**: generate.sh post-processing to flip footprint to B.Cu
+7. **R36**: Battery adjacent to MCU in shared under-PCB cavity
+
+R37 (axes/anchors indicator) is already implemented and SELF_PASS.
+
+Other:
 - The ROTATED thumb mode algorithm is still a placeholder (defaults to STRAIGHT behavior)
 - Old `build3DScene()` dead code still in wizard.html (~1000 lines, no longer called)
 - `convert.py` and JS `ergopadToErgogen()` should be kept in sync
@@ -94,5 +104,6 @@ Potential future work:
 | `wip/fitting.js` | Standalone fitting algorithm module |
 | `wip/verify-runtime.js` | Runtime verification (Playwright, 12 checks) |
 | `wip/mechanisms/demo/index.html` | Interactive hinge mechanism visualization |
+| `wip/geometry.md` | Coordinate system & named anchors reference |
 | `claude.md` | Project directives |
 | `SKILL.md` | Persona/mode |

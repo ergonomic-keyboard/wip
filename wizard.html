@@ -162,6 +162,7 @@ header { display: flex; align-items: center; justify-content: space-between; pad
     <div style="width:1px;height:20px;background:#444;margin:0 4px;"></div>
     <label><input type="checkbox" id="show-exploded"> Exploded View</label>
     <label><input type="checkbox" id="show-labels"> Labels</label>
+    <label><input type="checkbox" id="show-axes"> Axes</label>
     <div style="width:1px;height:20px;background:#444;margin:0 4px;"></div>
     <span style="font-size:0.85em;color:#999;margin-right:4px;">Layers:</span>
     <label><input type="checkbox" id="layer-keycaps" checked> Keycaps</label>
@@ -3340,6 +3341,10 @@ document.getElementById('show-exploded').addEventListener('change', () => {
 });
 document.getElementById('show-labels').addEventListener('change', () => {
   if (window._newSceneCtrl) window._newSceneCtrl.setLabelsVisible(document.getElementById('show-labels').checked);
+});
+
+document.getElementById('show-axes').addEventListener('change', () => {
+  if (window._newSceneCtrl) window._newSceneCtrl.setAxesVisible(document.getElementById('show-axes').checked);
 });
 
 // R26-R29: Per-layer visibility toggles
