@@ -276,6 +276,8 @@ Each toggle shall independently show/hide that layer's meshes without affecting 
 
 **REQ-R38** — The axis indicator origin shall be positioned at the top key of the pinky column (colIdx 0, minimum Y in model space) at the switch plate surface (Z_SWITCH_PLATE_TOP). This places the origin at the top-left switch as seen on screen. The origin label shall display the model-space coordinates of this position.
 
+**REQ-R39** — The angle of the USB-C port (and thus the rotation of the nice!nano MCU) shall be determined by sampling the board outline at two points: the left edge and the right edge of the USB-C port opening. The angle is computed as `atan2(dy, dx)` between these two sampled points. This method works regardless of whether the local board edge is a straight line, a fillet arc, or any other curve — it produces the correct tangent angle at the USB-C port width scale. The MCU shall be rotated by this angle so the USB-C face is parallel to the local edge at those two points.
+
 ---
 
 ## 10. Stage Fidelity

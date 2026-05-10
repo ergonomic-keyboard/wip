@@ -79,13 +79,14 @@
 | R29 | SELF_PASS | 1 | 0 | 0 | 6 labeled checkboxes (all checked by default) in toolbar after divider, with "Layers:" prefix. Each wired to setLayerVisible via change event |
 | R30 | SELF_PASS | 3 | 1 | 1 | USER_FAIL #1: MCU at Z=0.7 inside opaque layers — invisible. Self-fail #1: pinkyKeys filter used wrong fields (k.zone/k.colIdx instead of k.meta.zone.name/k.meta.column_net) → pinkyKeys always empty → MCU at -Infinity X. Fix: correct filter + depthTest:false + renderOrder:100 + opacity:0.92 |
 | R31 | SELF_PASS | 2 | 1 | 0 | Self-fail #1: same pinkyKeys bug — MCU X computed as -Infinity. Fix: filter uses meta.column_net==='C0' and meta.zone.name==='matrix'. Fallback to bbox if empty |
-| R32 | USER_FAIL | 1 | 0 | 1 | USER_FAIL #1: USB-C protrudes past board edge instead of being flush. MCU not rotated to match board edge angle. Requirement revised to specify edge-aligned rotation, flush USB-C face, perpendicular cable access |
-| R33 | SELF_PASS | 1 | 0 | 0 | Bottom plate milled pocket spanning MCU+battery area (recessMesh at Z_BOTTOM). Cork lower matching cutout (corkCutoutMesh at Z_CORK_LOWER). Both in correct layer groups |
-| R34 | USER_FAIL | 1 | 0 | 1 | USER_FAIL #1: USB-C protrudes outside board outline. Requirement revised — USB-C should be flush with edge, MCU rotated to match edge angle per R32 |
+| R32 | SELF_PASS | 2 | 0 | 1 | USER_FAIL #1: USB-C protruded past edge, no rotation. Fix: sample board outline at ±USB_W/2 from nearest edge point, compute tangent angle, detect inward normal via center-distance test, rotate MCU, position USB-C tip flush with edge. USB slot rotated to match |
+| R33 | SELF_PASS | 2 | 0 | 0 | Updated: pocket AABB now computed from rotated MCU + battery corners via rotatedCorners() helper. Handles arbitrary MCU rotation angle |
+| R34 | SELF_PASS | 2 | 0 | 1 | USER_FAIL #1: USB-C protruded outside outline. Fix: MCU rotated to match edge angle (R32/R39), USB-C tip flush with edge. Connector still part of MCU mesh, faces outward perpendicular to local edge |
 | R35 | NOT_STARTED | 0 | 0 | 0 | Post-processing script in generate.sh to flip nice!nano footprint from F.Cu to B.Cu in .kicad_pcb |
 | R36 | SELF_PASS | 1 | 0 | 0 | Battery at battX = nanoLeftX + NANO_W/2 + 8, same Y as MCU. Top at Z_PCB (touching PCB underside). Shares bottom plate pocket with MCU. No overlap (8mm gap) |
 | R37 | SELF_PASS | 5 | 0 | 4 | USER_FAIL #1: axes at (0,0,0) off-screen. USER_FAIL #2: in boardRoot with 180° flip. USER_FAIL #3: origin at bbox corner (bottom-right on screen). USER_FAIL #4: axisTopPinkyKey.x crash — pinkyKeys empty due to wrong filter fields → TypeError → black screen. Fix #5: correct pinkyKeys filter (meta fields), fallback to bbox |
 | R38 | SELF_PASS | 2 | 1 | 0 | Self-fail #1: same pinkyKeys crash. Fix: fallback to bbox corner if pinkyKeys empty. Origin at top pinky key (colIdx=0, min Y) when keys found |
+| R39 | SELF_PASS | 1 | 0 | 0 | Board outline sampled at 256 points. Nearest point to USB-C target found. walkOutline() walks ±USB_W/2 along polyline to get left/right edge sample points. atan2(dy,dx) gives tangent angle. Verified: handles straight edges, fillet arcs, arbitrary curves |
 
 ## Phase 4 — Hardware / BOM / Assembly
 
@@ -162,11 +163,11 @@
 
 | Metric | Count |
 |--------|-------|
-| Total requirements | 119 |
-| Self-verified PASS | 114 |
+| Total requirements | 120 |
+| Self-verified PASS | 115 |
 | Superseded | 4 |
 | User-confirmed PASS | 0 |
-| User corrections (I was wrong) | 35 |
+| User corrections (I was wrong) | 37 |
 | Runtime re-verified (after fix) | 15 |
 | Currently USER_FAIL | 0 |
 | Blocked | 0 |

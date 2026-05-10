@@ -935,19 +935,98 @@ function buildNewScene(ergogenResults, config, container) {
   const NANO_W = 18, NANO_L = 33, NANO_PCB_T = 1.6;
   const USB_W = 8.94, USB_H = 7.5, USB_T = 3.26;
 
-  // R31: MCU outer edge aligns with pinky inner edge, body extends inward (toward hinge)
-  const nanoLeftX = pinkyInnerEdgeX + NANO_W / 2; // center X of MCU
-  // R32: MCU Y positioned so USB-C port (at MCU's -Y end) falls into frame edge slot
-  // USB-C is at the MCU's short edge. Position MCU so USB-C aligns with bbox.min.y edge (outer frame edge)
-  // The USB-C sits at MCU center_Y - NANO_L/2. We want this at bbox.min.y + frame_wall/2
+  // ── R31/R32/R34/R39: Compute MCU position and rotation from board edge ──
+  // The MCU is placed so its USB-C port is flush with the board outline edge.
+  // The rotation angle is determined by sampling the board outline at the left and
+  // right edges of the USB-C port (R39).
   const frameWall = 4; // S05: frame wall width
-  const nanoY = bbox.min.y + frameWall + USB_H / 2 + NANO_L / 2;
+
+  // Step 1: Get dense sample points along the board outline
+  const outlinePts = boardShape.getPoints(256);
+
+  // Step 2: Find the outline point nearest to the desired USB-C location.
+  // We want the USB-C near the bottom of the pinky column (min Y region, near pinky X).
+  // Target: near the bottom-left corner of the board (low X, low Y in model space).
+  const usbTargetX = pinkyInnerEdgeX; // near pinky inner edge
+  const usbTargetY = pinkyYMin - ky / 2; // below the bottom pinky key
+  let nearestIdx = 0, nearestDist = Infinity;
+  outlinePts.forEach((p, i) => {
+    const d = Math.sqrt((p.x - usbTargetX) ** 2 + (p.y - usbTargetY) ** 2);
+    if (d < nearestDist) { nearestDist = d; nearestIdx = i; }
+  });
+  const usbCenterOnEdge = outlinePts[nearestIdx];
+
+  // Step 3 (R39): Sample outline at ±USB_W/2 from the nearest point to get the edge angle.
+  // Walk along the outline polyline from nearestIdx to find points at ±USB_W/2 arc distance.
+  function walkOutline(pts, startIdx, dist) {
+    // Walk forward (positive dist) or backward (negative dist) along the polyline
+    const n = pts.length;
+    let remaining = Math.abs(dist);
+    let dir = dist >= 0 ? 1 : -1;
+    let idx = startIdx;
+    while (remaining > 0) {
+      const nextIdx = (idx + dir + n) % n;
+      const dx = pts[nextIdx].x - pts[idx].x;
+      const dy = pts[nextIdx].y - pts[idx].y;
+      const segLen = Math.sqrt(dx * dx + dy * dy);
+      if (segLen >= remaining) {
+        // Interpolate within this segment
+        const t = remaining / segLen;
+        return { x: pts[idx].x + dx * t, y: pts[idx].y + dy * t };
+      }
+      remaining -= segLen;
+      idx = nextIdx;
+    }
+    return pts[idx]; // shouldn't reach here
+  }
+  const usbHalfW = USB_W / 2;
+  const edgePtLeft = walkOutline(outlinePts, nearestIdx, -usbHalfW);
+  const edgePtRight = walkOutline(outlinePts, nearestIdx, usbHalfW);
+
+  // Edge tangent angle (in model-space XY plane)
+  const edgeAngle = Math.atan2(edgePtRight.y - edgePtLeft.y, edgePtRight.x - edgePtLeft.x);
+  console.log(`render3d MCU: edge angle at USB-C = ${(edgeAngle * 180 / Math.PI).toFixed(1)}°`);
+  console.log(`  USB-C edge center: (${usbCenterOnEdge.x.toFixed(1)}, ${usbCenterOnEdge.y.toFixed(1)})`);
+  console.log(`  Edge sample L: (${edgePtLeft.x.toFixed(1)}, ${edgePtLeft.y.toFixed(1)})`);
+  console.log(`  Edge sample R: (${edgePtRight.x.toFixed(1)}, ${edgePtRight.y.toFixed(1)})`);
+
+  // Step 4: Compute the inward normal direction (pointing into the board interior).
+  // The edge tangent is edgeAngle. The outward normal is edgeAngle - PI/2 (for a CCW outline).
+  // The inward normal is edgeAngle + PI/2.
+  // But convex hull winding could be CW or CCW. Check by testing which side the board center is on.
+  const testNormalA = edgeAngle + Math.PI / 2;
+  const testPtA = {
+    x: usbCenterOnEdge.x + Math.cos(testNormalA) * 5,
+    y: usbCenterOnEdge.y + Math.sin(testNormalA) * 5
+  };
+  // The board center should be on the inward side
+  const distToCenter = Math.sqrt((center.x - usbCenterOnEdge.x) ** 2 + (center.y - usbCenterOnEdge.y) ** 2);
+  const distTestToCenter = Math.sqrt((center.x - testPtA.x) ** 2 + (center.y - testPtA.y) ** 2);
+  const inwardAngle = distTestToCenter < distToCenter ? testNormalA : (edgeAngle - Math.PI / 2);
+  console.log(`  Inward normal angle: ${(inwardAngle * 180 / Math.PI).toFixed(1)}°`);
+
+  // Step 5: Position MCU.
+  // USB-C tip (outer face) flush with the board edge point. MCU body extends inward.
+  // USB-C box extends USB_H/2 from its center. USB-C center is at local (0, -NANO_L/2 - USB_H/2).
+  // USB-C tip (outermost face) is at local (0, -NANO_L/2 - USB_H).
+  // So MCU center = usbCenterOnEdge + inwardDirection * (NANO_L/2 + USB_H)
+  const mcuOffsetFromEdge = NANO_L / 2 + USB_H;
+  const nanoCenterX = usbCenterOnEdge.x + Math.cos(inwardAngle) * mcuOffsetFromEdge;
+  const nanoCenterY = usbCenterOnEdge.y + Math.sin(inwardAngle) * mcuOffsetFromEdge;
+
+  // MCU rotation: the MCU's local -Y axis should point along the outward normal (toward the edge).
+  // Local -Y = outward direction means local +Y = inward direction.
+  // MCU local +Y is "up" along the body. We want it to point inward.
+  // The MCU's Z rotation = inwardAngle - PI/2 (because local +Y at rotation=0 points along +Y axis,
+  // and we want it to point along inwardAngle).
+  const nanoRotZ = inwardAngle - Math.PI / 2;
+  console.log(`  MCU center: (${nanoCenterX.toFixed(1)}, ${nanoCenterY.toFixed(1)}), rot: ${(nanoRotZ * 180 / Math.PI).toFixed(1)}°`);
 
   // ── nice!nano MCU (R30: on PCB UNDERSIDE, components facing down) ──
   // The MCU sits below the main PCB (Z_PCB - NANO_PCB_T/2 ≈ 0.7mm), which is inside the
   // bottom plate and cork lower layers. To keep it visible from the default camera angle,
   // all MCU meshes use depthTest:false + renderOrder so they render through occluding layers.
-  function createNiceNano(posX, posY) {
+  function createNiceNano(posX, posY, rotZ) {
     const grp = new THREE.Group();
     // Helper: make material render on top of occluding geometry
     function mcuMat(baseMat) {
@@ -976,7 +1055,7 @@ function buildNewScene(ergogenResults, config, container) {
     const btnGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.4, 8); btnGeo.rotateX(Math.PI / 2);
     const btn = new THREE.Mesh(btnGeo, mcuMat(new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.5, metalness: 0.5 })));
     btn.position.set(5, -12, -1.1); btn.renderOrder = mcuRenderOrder; grp.add(btn);
-    // R34: USB-C connector as part of MCU mesh, at the short edge facing outward (bbox.min.y)
+    // R34: USB-C connector as part of MCU mesh, at the short edge facing outward
     const usbBody = new THREE.Mesh(new THREE.BoxGeometry(USB_W, USB_H, USB_T), mcuMat(chromeMat));
     usbBody.renderOrder = mcuRenderOrder; usbBody.castShadow = true;
     const usbHole = new THREE.Mesh(new THREE.BoxGeometry(7.0, 2.0, 2.0),
@@ -985,28 +1064,34 @@ function buildNewScene(ergogenResults, config, container) {
     usbBody.position.set(0, -NANO_L / 2 - USB_H / 2, -USB_T / 2 + NANO_PCB_T / 2);
     grp.add(usbBody);
     // R30: Z position — MCU PCB top (solder side) flush against main PCB underside
-    // MCU hangs below the main PCB: center Z = Z_PCB - NANO_PCB_T/2
     grp.position.set(posX, posY, Z_PCB - NANO_PCB_T / 2);
+    grp.rotation.z = rotZ; // R32/R39: rotate to match board edge angle
     return grp;
   }
-  layerPCB.add(createNiceNano(nanoLeftX, nanoY));
+  layerPCB.add(createNiceNano(nanoCenterX, nanoCenterY, nanoRotZ));
+
+  // For downstream references (battery, pocket, labels, USB slot)
+  const nanoLeftX = nanoCenterX;
+  const nanoY = nanoCenterY;
 
   // R32: Milled USB-C slot in outer frame edge (visible cutout)
+  // The slot is at the board edge, rotated to match the edge angle
   const usbSlotW = USB_W + 2; // slightly wider than USB-C for cable clearance
   const usbSlotH = USB_T + 1; // height clearance
   const usbSlotMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9, metalness: 0.0 });
   const usbSlotMesh = new THREE.Mesh(
     new THREE.BoxGeometry(usbSlotW, frameWall + 2, usbSlotH), usbSlotMat
   );
-  // Position at the frame edge where USB-C protrudes
-  const usbSlotY = nanoY - NANO_L / 2 - USB_H / 2;
-  usbSlotMesh.position.set(nanoLeftX, bbox.min.y - 1, Z_PCB - USB_T / 2);
+  // Position at the USB-C edge point, rotated to match edge
+  usbSlotMesh.position.set(usbCenterOnEdge.x, usbCenterOnEdge.y, Z_PCB - USB_T / 2);
+  usbSlotMesh.rotation.z = nanoRotZ; // align with edge angle
   layerBottomPlate.add(usbSlotMesh);
 
   // ── Battery (R36: adjacent to MCU in shared under-PCB cavity) ──
+  // Battery placed adjacent to MCU along the edge tangent direction (perpendicular to inward normal)
   const batteryGroup = new THREE.Group();
   const battThickness = 3.0; // 301230 LiPo: 12 × 30 × 3mm
-  function addBattery(bx, by) {
+  function addBattery(bx, by, rotZ) {
     const bg = new THREE.Group();
     const battBody = new THREE.Mesh(new THREE.BoxGeometry(12, 30, battThickness), battMat);
     battBody.castShadow = true; bg.add(battBody);
@@ -1016,23 +1101,37 @@ function buildNewScene(ergogenResults, config, container) {
       const curve = new THREE.CatmullRomCurve3(wpts);
       bg.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 8, wireRad, 6), ww.color));
     });
-    // Battery top at Z_PCB (touching PCB underside), extends into bottom plate recess
     bg.position.set(bx, by, Z_PCB - battThickness / 2);
+    bg.rotation.z = rotZ;
     return bg;
   }
-  // R36: Battery adjacent to MCU — offset in X (next to MCU, toward hinge)
-  const battX = nanoLeftX + NANO_W / 2 + 8; // 8mm gap from MCU edge
-  const battY = nanoY; // same Y as MCU
-  batteryGroup.add(addBattery(battX, battY));
+  // R36: Battery adjacent to MCU — offset along edge tangent (perpendicular to inward normal)
+  // Edge tangent direction is edgeAngle; offset along it to place battery next to MCU
+  const battOffset = NANO_W / 2 + 8; // half MCU width + 8mm gap
+  const battX = nanoCenterX + Math.cos(edgeAngle) * battOffset;
+  const battY = nanoCenterY + Math.sin(edgeAngle) * battOffset;
+  batteryGroup.add(addBattery(battX, battY, nanoRotZ));
   layerCorkLower.add(batteryGroup);
 
   // ── R33: Bottom plate milled pocket for MCU + battery + cork cutout ──
+  // The pocket is an axis-aligned bounding box around the rotated MCU + battery footprints.
   const recessMat = new THREE.MeshStandardMaterial({ color: 0x3d2b1f, roughness: 0.8, metalness: 0.0 });
-  // Pocket spans MCU + battery area
-  const pocketMinX = nanoLeftX - NANO_W / 2 - 1;
-  const pocketMaxX = battX + 7; // battery half-width + margin
-  const pocketMinY = nanoY - NANO_L / 2 - USB_H - 1;
-  const pocketMaxY = Math.max(nanoY + NANO_L / 2, battY + 16) + 1;
+  // Compute rotated corners of MCU and battery to find the AABB
+  function rotatedCorners(cx, cy, w, h, angle) {
+    const cos = Math.cos(angle), sin = Math.sin(angle);
+    const hw = w / 2, hh = h / 2;
+    return [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]].map(([dx, dy]) => ({
+      x: cx + dx * cos - dy * sin,
+      y: cy + dx * sin + dy * cos
+    }));
+  }
+  const mcuCorners = rotatedCorners(nanoCenterX, nanoCenterY, NANO_W, NANO_L + USB_H, nanoRotZ);
+  const battCorners = rotatedCorners(battX, battY, 12, 30, nanoRotZ);
+  const allCorners = [...mcuCorners, ...battCorners];
+  const pocketMinX = Math.min(...allCorners.map(c => c.x)) - 1;
+  const pocketMaxX = Math.max(...allCorners.map(c => c.x)) + 1;
+  const pocketMinY = Math.min(...allCorners.map(c => c.y)) - 1;
+  const pocketMaxY = Math.max(...allCorners.map(c => c.y)) + 1;
   const pocketW = pocketMaxX - pocketMinX;
   const pocketH = pocketMaxY - pocketMinY;
   const pocketCx = (pocketMinX + pocketMaxX) / 2;
