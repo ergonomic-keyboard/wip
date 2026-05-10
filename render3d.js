@@ -1155,24 +1155,12 @@ function buildNewScene(ergogenResults, config, container) {
   // Positive internal = closing (keycaps face each other)
   // Negative internal = tenting (keycaps face outward, keyboard tents up)
   function applyFold(sliderDeg) {
+    currentFoldSliderDeg = sliderDeg;
     const internalDeg = 180 - sliderDeg;
+
+    // Articulate hinge hardware
     const halfRad = (internalDeg * Math.PI / 180) / 2;
     const yAxis = new THREE.Vector3(0, 1, 0);
-
-    // Keys fold TOGETHER (inward) for positive internal angles,
-    // or APART (tenting) for negative internal angles.
-    leftHalf.position.set(0, 0, 0); leftHalf.quaternion.identity();
-    rightHalf.position.set(0, 0, 0); rightHalf.quaternion.identity();
-    if (internalDeg !== 0) {
-      const offset = new THREE.Vector3(-hingeX, -hingeCenterY, -hingeZ);
-      leftHalf.position.copy(offset.clone().applyAxisAngle(yAxis, halfRad).sub(offset));
-      leftHalf.quaternion.setFromAxisAngle(yAxis, halfRad);
-      const offset2 = new THREE.Vector3(-hingeX, -hingeCenterY, -hingeZ);
-      rightHalf.position.copy(offset2.clone().applyAxisAngle(yAxis, -halfRad).sub(offset2));
-      rightHalf.quaternion.setFromAxisAngle(yAxis, -halfRad);
-    }
-
-    // Articulate hinge
     hingeGroup.children.forEach(child => {
       if (!child.userData._origPos) { child.userData._origPos = child.position.clone(); child.userData._origQuat = child.quaternion.clone(); }
       child.position.copy(child.userData._origPos); child.quaternion.copy(child.userData._origQuat);
@@ -1191,9 +1179,9 @@ function buildNewScene(ergogenResults, config, container) {
       });
     }
     cablesGroup.visible = internalDeg === 0;
-    currentFoldSliderDeg = sliderDeg;
-    // Re-apply butterfly on top of the new fold position
-    if (currentButterflyDeg > 0) applyButterfly(currentButterflyDeg);
+
+    // Apply combined fold + butterfly to halves
+    applyButterfly(currentButterflyDeg);
   }
 
   // ── R21: Butterfly tilt mechanism (Hirth joint) ──
@@ -1249,36 +1237,36 @@ function buildNewScene(ergogenResults, config, container) {
     currentButterflyDeg = butterflyDeg;
     const betaRad = butterflyDeg * Math.PI / 180;
 
-    // Reset both halves' butterfly rotation (applied on top of fold)
-    // Butterfly is applied by rotating each half around the Z axis at the hinge point.
-    // Left half: clockwise from top = negative Z rotation
-    // Right half: counter-clockwise from top = positive Z rotation
-    // But we're inside boardRoot which is rotated 180° around Z, so the directions
-    // appear inverted in world space. In local space:
-    // Left half rotates +Z (CCW in local = CW in world after 180° flip)
-    // Right half rotates -Z (CW in local = CCW in world after 180° flip)
-
-    // We don't use butterflyRoot for this anymore — apply directly to leftHalf/rightHalf.
-    // The fold has already set leftHalf/rightHalf positions and quaternions.
-    // We add the butterfly rotation on top of the fold rotation.
-
-    if (betaRad === 0) return;
-
-    // Butterfly pivot is the hinge line at (hingeX, hingeCenterY, hingeZ)
+    // Always start from identity and recompute fold + butterfly combined.
+    // The butterfly is a Z rotation at the hinge pivot, applied BEFORE the fold Y rotation.
+    // Combined transform for each half:
+    //   1. Translate so pivot is at origin
+    //   2. Apply butterfly Z rotation
+    //   3. Apply fold Y rotation
+    //   4. Translate back
+    const pivot = new THREE.Vector3(hingeX, hingeCenterY, hingeZ);
+    const offset = new THREE.Vector3(-hingeX, -hingeCenterY, -hingeZ);
+    const yAxis = new THREE.Vector3(0, 1, 0);
     const zAxis = new THREE.Vector3(0, 0, 1);
 
-    // Left half: rotate +beta around Z at hinge point
-    const leftPivot = new THREE.Vector3(hingeX, hingeCenterY, hingeZ);
-    const leftOffset = leftHalf.position.clone().sub(leftPivot);
-    leftOffset.applyAxisAngle(zAxis, betaRad);
-    leftHalf.position.copy(leftOffset.add(leftPivot));
-    leftHalf.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(zAxis, betaRad));
+    const internalDeg = 180 - currentFoldSliderDeg;
+    const foldHalfRad = (internalDeg * Math.PI / 180) / 2;
 
-    // Right half: rotate -beta around Z at hinge point
-    const rightOffset = rightHalf.position.clone().sub(leftPivot);
-    rightOffset.applyAxisAngle(zAxis, -betaRad);
-    rightHalf.position.copy(rightOffset.add(leftPivot));
-    rightHalf.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(zAxis, -betaRad));
+    // Left half: butterfly +beta around Z, then fold +halfFold around Y
+    const leftButterflyQ = new THREE.Quaternion().setFromAxisAngle(zAxis, betaRad);
+    const leftFoldQ = new THREE.Quaternion().setFromAxisAngle(yAxis, foldHalfRad);
+    const leftCombinedQ = leftFoldQ.clone().multiply(leftButterflyQ);
+    const leftPos = offset.clone().applyQuaternion(leftCombinedQ).sub(offset);
+    leftHalf.position.copy(leftPos);
+    leftHalf.quaternion.copy(leftCombinedQ);
+
+    // Right half: butterfly -beta around Z, then fold -halfFold around Y
+    const rightButterflyQ = new THREE.Quaternion().setFromAxisAngle(zAxis, -betaRad);
+    const rightFoldQ = new THREE.Quaternion().setFromAxisAngle(yAxis, -foldHalfRad);
+    const rightCombinedQ = rightFoldQ.clone().multiply(rightButterflyQ);
+    const rightPos = offset.clone().applyQuaternion(rightCombinedQ).sub(offset);
+    rightHalf.position.copy(rightPos);
+    rightHalf.quaternion.copy(rightCombinedQ);
   }
 
   // ── Exploded view ──
