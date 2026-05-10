@@ -75,6 +75,8 @@
 
   .req-top { display: flex; align-items: flex-start; gap: 8px; padding: 6px 10px; }
   .req-id { font-weight: bold; font-size: 0.85em; color: #8af; white-space: nowrap; min-width: 50px; padding-top: 2px; }
+  .req.sub-req { margin-left: 24px; border-color: #1a1a1a; }
+  .req.sub-req .req-id { color: #6a8abf; font-size: 0.8em; }
   .req-text { flex: 1; font-size: 0.85em; color: #ccc; line-height: 1.45; cursor: text; white-space: pre-wrap; }
   .req-text[contenteditable="true"]:focus { outline: 1px solid #5a9ae0; border-radius: 2px; padding: 2px 4px; margin: -2px -4px; }
   .req-btns { display: flex; gap: 3px; flex-shrink: 0; padding-top: 1px; }
@@ -169,7 +171,7 @@ function parseMd(md) {
     const line = lines[i];
     const secMatch = line.match(/^## (.+)/);
     if (secMatch) { items.push({ type: 'section', title: secMatch[1] }); i++; continue; }
-    const reqMatch = line.match(/^\*\*(?:REQ-)?([A-Z0-9a-z_-]+)\*\*\s*[—–-]\s*(.*)/);
+    const reqMatch = line.match(/^\*\*(?:REQ-)?([A-Z0-9a-z_.-]+)\*\*\s*[—–-]\s*(.*)/);
     if (reqMatch) {
       const id = reqMatch[1];
       let text = reqMatch[2];
@@ -252,8 +254,9 @@ function render() {
     const isSup = item.text.startsWith('~~SUPERSEDED');
     const commentOpen = openComments[item.id];
     const isDeleted = pendingDeletes[item.id];
+    const isSub = item.id.includes('.');
 
-    html += `<div class="req ${s ? 'mark-'+s : ''} ${isSup ? 'superseded' : ''} ${isDeleted ? 'mark-deleted' : ''}" data-id="${item.id}">`;
+    html += `<div class="req ${s ? 'mark-'+s : ''} ${isSup ? 'superseded' : ''} ${isDeleted ? 'mark-deleted' : ''} ${isSub ? 'sub-req' : ''}" data-id="${item.id}">`;
     html += `<div class="req-top">`;
     html += `<span class="req-id">${esc(item.id)}</span>`;
     html += `<span class="req-text" contenteditable="${isDeleted ? 'false' : 'true'}" data-id="${item.id}" spellcheck="false">${esc(item.text)}</span>`;

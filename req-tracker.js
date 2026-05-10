@@ -146,8 +146,9 @@ const server = http.createServer(async (req, res) => {
       const { id, newText } = JSON.parse(body);
       if (!id || !newText) throw new Error('id and newText required');
       let md = fs.readFileSync(REQUIREMENTS_FILE, 'utf8');
+      const eid = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       // Match single-line or multiline requirement (up to next ** or ## or ---)
-      const re = new RegExp(`(\\*\\*(?:REQ-)?${id}\\*\\*\\s*[—–-]\\s*)([\\s\\S]*?)(?=\\n\\*\\*|\\n##|\\n---|$)`, 'g');
+      const re = new RegExp(`(\\*\\*(?:REQ-)?${eid}\\*\\*\\s*[—–-]\\s*)([\\s\\S]*?)(?=\\n\\*\\*|\\n##|\\n---|$)`, 'g');
       const match = re.exec(md);
       if (!match) throw new Error(`${id} not found in requirements`);
       md = md.slice(0, match.index) + match[1] + newText + md.slice(match.index + match[0].length);
@@ -168,8 +169,9 @@ const server = http.createServer(async (req, res) => {
       const { id } = JSON.parse(body);
       if (!id) throw new Error('id required');
       let md = fs.readFileSync(REQUIREMENTS_FILE, 'utf8');
+      const eid = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       // Match the full requirement block including leading newlines
-      const re = new RegExp(`\\n*\\*\\*(?:REQ-)?${id}\\*\\*\\s*[—–-]\\s*[\\s\\S]*?(?=\\n\\*\\*|\\n##|\\n---|$)`, 'g');
+      const re = new RegExp(`\\n*\\*\\*(?:REQ-)?${eid}\\*\\*\\s*[—–-]\\s*[\\s\\S]*?(?=\\n\\*\\*|\\n##|\\n---|$)`, 'g');
       const match = re.exec(md);
       if (!match) throw new Error(`${id} not found`);
       md = md.slice(0, match.index) + md.slice(match.index + match[0].length);
