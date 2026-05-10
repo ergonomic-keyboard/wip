@@ -72,6 +72,75 @@ export function buildPianoHinge(dims, mats, boardSpan) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// CONCEALED BARREL HINGE
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Build concealed barrel hinges (e.g. SOSS) spaced along the Y axis at x=0, z=0.
+ * Each hinge = two brass barrels (drilled into each half) connected by a steel pin.
+ * @param {object} dims — { barrelDia, barrelLen, pinDia, pinLen, totalLen, mortiseDepth, hingeCount }
+ * @param {object} mats — { brass, steel, chrome }
+ * @param {number} boardSpan — total Y-extent of the board (mm)
+ * @returns {{ group }}
+ */
+export function buildBarrelHinge(dims, mats, boardSpan) {
+  const group = new THREE.Group();
+  group.userData.hwType = 'hinge';
+
+  const { barrelDia, barrelLen, pinDia, pinLen, hingeCount } = dims;
+  const barrelR = barrelDia / 2;
+  const pinR = pinDia / 2;
+
+  // Space hinges evenly along the board span
+  const spacing = boardSpan / (hingeCount + 1);
+
+  for (let i = 0; i < hingeCount; i++) {
+    const hy = -boardSpan / 2 + spacing * (i + 1);
+
+    // Left barrel (drilled into left half, extends in -X)
+    const lBarrelGeo = new THREE.CylinderGeometry(barrelR, barrelR, barrelLen, 16);
+    lBarrelGeo.rotateZ(Math.PI / 2); // orient along X axis
+    const lBarrel = new THREE.Mesh(lBarrelGeo, mats.brass.clone());
+    lBarrel.position.set(-barrelLen / 2 - pinLen / 2, hy, 0);
+    lBarrel.castShadow = true;
+    lBarrel.userData._hingeLeaf = 'left';
+    group.add(lBarrel);
+
+    // Right barrel (drilled into right half, extends in +X)
+    const rBarrelGeo = new THREE.CylinderGeometry(barrelR, barrelR, barrelLen, 16);
+    rBarrelGeo.rotateZ(Math.PI / 2);
+    const rBarrel = new THREE.Mesh(rBarrelGeo, mats.brass.clone());
+    rBarrel.position.set(barrelLen / 2 + pinLen / 2, hy, 0);
+    rBarrel.castShadow = true;
+    rBarrel.userData._hingeLeaf = 'right';
+    group.add(rBarrel);
+
+    // Connecting pin (exposed between barrels)
+    const pinGeo = new THREE.CylinderGeometry(pinR, pinR, pinLen + barrelLen * 2, 8);
+    pinGeo.rotateZ(Math.PI / 2);
+    const pin = new THREE.Mesh(pinGeo, mats.steel.clone());
+    pin.position.set(0, hy, 0);
+    pin.castShadow = true;
+    pin.userData._hingePin = true;
+    group.add(pin);
+
+    // Annular grooves (decorative rings on each barrel for glue grip)
+    [-1, 1].forEach(dir => {
+      const grooveR = barrelR + 0.2;
+      const grooveGeo = new THREE.TorusGeometry(barrelR - 0.3, 0.3, 6, 16);
+      grooveGeo.rotateZ(Math.PI / 2); // orient around X axis
+      const groove = new THREE.Mesh(grooveGeo, mats.brass.clone());
+      const bx = dir * (barrelLen / 2 + pinLen / 2);
+      groove.position.set(bx, hy, 0);
+      groove.userData._hingeLeaf = dir < 0 ? 'left' : 'right';
+      group.add(groove);
+    });
+  }
+
+  return { group };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // BALL JOINT HINGE (legacy)
 // ═══════════════════════════════════════════════════════════════
 
@@ -349,12 +418,12 @@ export function buildHardwareAssembly(catalog, selection, mats, geo) {
   const hingeDef = catalog.hinges[selection.hinge];
   let hingeResult;
 
-  if (hingeDef.foldType === 'piano') {
+  if (hingeDef.foldType === 'barrel') {
+    hingeResult = buildBarrelHinge(hingeDef.dims, mats, boardSpan);
+    hingeResult.group.position.set(hingeX, hingeCenterY, hingeZ);
+  } else if (hingeDef.foldType === 'piano') {
     hingeResult = buildPianoHinge(hingeDef.dims, mats, boardSpan);
     hingeResult.group.position.set(hingeX, hingeCenterY, hingeZ);
-    // Rotate the whole hinge so leaves lie flat (Z-plane) when fold=0
-    // Piano hinge leaves should be in XY plane at hingeZ
-    // The knuckles and pin run along Y, which is already correct
   } else {
     const halfBoardW = hingeX - bbox.min.x;
     hingeResult = buildBallJointHinge(hingeDef.dims, mats, boardSpan, halfBoardW);
@@ -377,12 +446,19 @@ export function buildHardwareAssembly(catalog, selection, mats, geo) {
   const pinDims = pinDef.dims;
   const cableDims = cableDef.dims;
 
-  // Cable layout per cable:
-  // Left half:  eyeNut (at board edge) → cable → turnbuckle (midway) → cable → clevis bracket (near hinge on left side)
-  // Right half: clevis bracket (near hinge on right side) → cable → eyeNut (at board edge)
-  // The clevis pins are where the two halves disengage during fold.
-  // Position clevis pins at ~15mm from hinge line (enough room for the pin mechanism)
-  const clevisOffset = pinDims.shaftDia / 2 + 8; // shaft radius + some bracket clearance
+  // Cable layout: each cable is a single run from left eye nut to right bracket.
+  // Anchored at left eye nut (on left half). Free end has a ball lock pin.
+  // When connected, pin inserts into bracket on right half.
+  // When disconnected, cable hangs with catenary (gravity sag).
+  //
+  // Components per cable:
+  //   Left half (fixed): eye nut → short cable → turnbuckle → cable → free end (ball lock pin)
+  //   Right half (fixed): bracket receptor only
+  //
+  // The cable is owned by the left half. The right bracket is owned by the right half.
+  // Connection state determines whether the free end is at the bracket or dangling.
+
+  const CABLE_SEGMENTS = 24; // subdivision for catenary curve
 
   const cableConfigs = [
     { cy: nearCableY, leftX: nearLeftX, rightX: nearRightX, label: 'near' },
@@ -390,96 +466,87 @@ export function buildHardwareAssembly(catalog, selection, mats, geo) {
   ];
 
   cableConfigs.forEach(({ cy, leftX, rightX, label }) => {
-    const clevisLeftX = hingeX - clevisOffset;
-    const clevisRightX = hingeX + clevisOffset;
+    // Bracket position on right half: mirror of left attachment point
+    const bracketX = rightX;
 
-    // Turnbuckle position: midway between eye nut and clevis on left side
-    const tbX = (leftX + clevisLeftX) / 2;
+    // Turnbuckle position: between eye nut and midpoint
+    const midX = (leftX + bracketX) / 2;
+    const tbX = (leftX + midX) / 2;
     const halfTbLen = tbDims.eyeToEye / 2;
 
-    // ── LEFT SEGMENT ── (stays with left half during fold)
-    const leftSegGroup = new THREE.Group();
-    leftSegGroup.userData._cableSide = 'left';
+    // Total cable length from eye nut to bracket (straight line + slack)
+    const straightDist = bracketX - leftX;
+    const cableLength = straightDist * 1.05; // 5% slack for catenary
 
-    // Eye nut at left attachment point
-    const eyeNutL = buildEyeNut(eyeDims, mats);
-    eyeNutL.group.position.set(leftX, cy, cableZ);
-    leftSegGroup.add(eyeNutL.group);
+    // ── LEFT GROUP (anchored hardware: eye nut + turnbuckle) ──
+    const leftGroup = new THREE.Group();
+    leftGroup.userData._cableSide = 'left';
 
-    // Cable from eye nut to turnbuckle left eye
-    const cableL1 = buildCableRun([
-      new THREE.Vector3(leftX + eyeDims.ringOuter / 2, cy, cableZ),
-      new THREE.Vector3(tbX - halfTbLen, cy, cableZ),
-    ], cableDims, mats);
-    leftSegGroup.add(cableL1.group);
+    // Eye nut at left attachment
+    const eyeNut = buildEyeNut(eyeDims, mats);
+    eyeNut.group.position.set(leftX, cy, cableZ);
+    leftGroup.add(eyeNut.group);
 
     // Turnbuckle
     const tb = buildTurnbuckle(tbDims, mats);
     tb.group.position.set(tbX, cy, cableZ);
-    leftSegGroup.add(tb.group);
+    leftGroup.add(tb.group);
 
-    // Cable from turnbuckle right eye to clevis
-    const cableL2 = buildCableRun([
-      new THREE.Vector3(tbX + halfTbLen, cy, cableZ),
-      new THREE.Vector3(clevisLeftX, cy, cableZ),
-    ], cableDims, mats);
-    leftSegGroup.add(cableL2.group);
+    // Ball lock pin at the cable free end (initially at bracket position = connected)
+    const pin = buildClevisPin(pinDims, mats);
+    pin.group.scale.set(0.6, 0.6, 0.6);
+    pin.group.rotation.y = Math.PI / 2; // shaft along +X
+    pin.group.position.set(bracketX, cy, cableZ);
+    pin.group.userData._isCableEnd = true;
+    pin.group.userData._cableLabel = label;
+    leftGroup.add(pin.group);
 
-    // Clevis bracket on left side (small plate the pin goes through)
+    cablesGroup.add(leftGroup);
+
+    // ── RIGHT GROUP (bracket receptor only) ──
+    const rightGroup = new THREE.Group();
+    rightGroup.userData._cableSide = 'right';
+
     const bracketGeo = new THREE.BoxGeometry(4, 6, layers.T_FRAME);
-    const bracketL = new THREE.Mesh(bracketGeo, mats.steel.clone());
-    bracketL.position.set(clevisLeftX, cy, cableZ + layers.T_FRAME / 2);
-    bracketL.castShadow = true;
-    leftSegGroup.add(bracketL);
+    const bracket = new THREE.Mesh(bracketGeo, mats.steel.clone());
+    bracket.position.set(bracketX, cy, cableZ + layers.T_FRAME / 2);
+    bracket.castShadow = true;
+    bracket.userData._isBracket = true;
+    bracket.userData._cableLabel = label;
+    rightGroup.add(bracket);
 
-    cablesGroup.add(leftSegGroup);
+    cablesGroup.add(rightGroup);
 
-    // ── RIGHT SEGMENT ── (stays with right half during fold)
-    const rightSegGroup = new THREE.Group();
-    rightSegGroup.userData._cableSide = 'right';
-
-    // Clevis bracket on right side
-    const bracketR = new THREE.Mesh(bracketGeo.clone(), mats.steel.clone());
-    bracketR.position.set(clevisRightX, cy, cableZ + layers.T_FRAME / 2);
-    bracketR.castShadow = true;
-    rightSegGroup.add(bracketR);
-
-    // Cable from clevis to right eye nut
-    const cableR = buildCableRun([
-      new THREE.Vector3(clevisRightX, cy, cableZ),
-      new THREE.Vector3(rightX - eyeDims.ringOuter / 2, cy, cableZ),
-    ], cableDims, mats);
-    rightSegGroup.add(cableR.group);
-
-    // Eye nut at right attachment point
-    const eyeNutR = buildEyeNut(eyeDims, mats);
-    eyeNutR.group.position.set(rightX, cy, cableZ);
-    rightSegGroup.add(eyeNutR.group);
-
-    cablesGroup.add(rightSegGroup);
-
-    // ── BALL LOCK PINS (connecting left and right at the clevis point) ──
-    // These are positioned between the two brackets, shared until fold disconnects them
-    // Left pin (attached to left segment, inserts into right bracket)
-    const pinL = buildClevisPin(pinDims, mats);
-    pinL.group.position.set(clevisLeftX, cy, cableZ);
-    // Rotate so shaft points along X toward hinge (horizontal)
-    pinL.group.rotation.y = Math.PI / 2; // shaft along +X
-    pinL.group.scale.set(0.6, 0.6, 0.6); // scale down — these are relative to the board
-    leftSegGroup.add(pinL.group);
-
-    // Right pin
-    const pinR = buildClevisPin(pinDims, mats);
-    pinR.group.position.set(clevisRightX, cy, cableZ);
-    pinR.group.rotation.y = -Math.PI / 2; // shaft along -X
-    pinR.group.scale.set(0.6, 0.6, 0.6);
-    rightSegGroup.add(pinR.group);
+    // ── CABLE MESH (catenary tube updated dynamically) ──
+    // Initial state: connected (straight line from eye nut to bracket)
+    const cablePts = [];
+    for (let i = 0; i <= CABLE_SEGMENTS; i++) {
+      const t = i / CABLE_SEGMENTS;
+      cablePts.push(new THREE.Vector3(
+        leftX + t * (bracketX - leftX),
+        cy,
+        cableZ
+      ));
+    }
+    const cableCurve = new THREE.CatmullRomCurve3(cablePts);
+    const cableTubeGeo = new THREE.TubeGeometry(cableCurve, CABLE_SEGMENTS, cableDims.diameter / 2, 8, false);
+    const cableTube = new THREE.Mesh(cableTubeGeo, mats.cable.clone());
+    cableTube.castShadow = true;
+    cableTube.userData._cableTube = true;
+    cableTube.userData._cableLabel = label;
+    cablesGroup.add(cableTube);
 
     cableSegments.push({
-      leftGroup: leftSegGroup,
-      rightGroup: rightSegGroup,
-      clevisLeftX, clevisRightX, cy,
+      leftGroup, rightGroup, cy, label,
       turnbuckleX: tbX,
+      pinGroup: pin.group,
+      bracketMesh: bracket,
+      cableTube,
+      anchorX: leftX,       // fixed anchor point X
+      bracketX: bracketX,   // target bracket X on right half
+      cableLength,
+      connected: true,       // whether free end is connected to bracket
+      freeEndPos: new THREE.Vector3(bracketX, cy, cableZ), // current free end world position
     });
   });
 
@@ -492,8 +559,9 @@ export function buildHardwareAssembly(catalog, selection, mats, geo) {
     const pivot = new THREE.Vector3(hingeX, hingeCenterY, hingeZ);
 
     // --- Hinge articulation ---
-    if (hingeDef.foldType === 'piano') {
-      // Piano hinge: rotate each leaf around the pin axis
+    if (hingeDef.foldType === 'barrel' || hingeDef.foldType === 'piano') {
+      // Barrel/piano hinge: left parts rotate with left half, right parts with right half
+      // Pins stay at center
       hingeResult.group.children.forEach(child => {
         if (!child.userData._origPos) {
           child.userData._origPos = child.position.clone();
@@ -505,9 +573,7 @@ export function buildHardwareAssembly(catalog, selection, mats, geo) {
         if (internalDeg !== 0) {
           const leaf = child.userData._hingeLeaf;
           if (leaf === 'left') {
-            // Left leaf rotates with left half
             child.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(yAxis, halfRad));
-            // Offset position for leaf rotation around the pin (x=0 in hinge-local space)
             const p = child.position.clone();
             p.applyAxisAngle(yAxis, halfRad);
             child.position.copy(p);
@@ -551,6 +617,7 @@ export function buildHardwareAssembly(catalog, selection, mats, geo) {
     // --- Cable segments follow their respective halves ---
     cablesGroup.visible = true;
     cableSegments.forEach(seg => {
+      // Reset hardware groups to original positions
       [seg.leftGroup, seg.rightGroup].forEach(grp => {
         grp.children.forEach(child => {
           if (!child.userData._cableOrigPos) {
@@ -563,14 +630,15 @@ export function buildHardwareAssembly(catalog, selection, mats, geo) {
       });
 
       if (internalDeg !== 0) {
-        // Left cable segment follows left half fold (rotate around pivot)
+        // Left hardware (eye nut, turnbuckle) follows left half fold
         seg.leftGroup.children.forEach(child => {
+          if (child.userData._isCableEnd) return; // pin is handled separately
           const p = child.position.clone().sub(pivot);
           p.applyAxisAngle(yAxis, halfRad);
           child.position.copy(p.add(pivot));
           child.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(yAxis, halfRad));
         });
-        // Right cable segment follows right half fold
+        // Right hardware (bracket) follows right half fold
         seg.rightGroup.children.forEach(child => {
           const p = child.position.clone().sub(pivot);
           p.applyAxisAngle(yAxis, -halfRad);
@@ -578,8 +646,115 @@ export function buildHardwareAssembly(catalog, selection, mats, geo) {
           child.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(yAxis, -halfRad));
         });
       }
+
+      // Compute current world positions of anchor and bracket after fold
+      const anchorOrig = new THREE.Vector3(seg.anchorX, seg.cy, cableZ);
+      const bracketOrig = new THREE.Vector3(seg.bracketX, seg.cy, cableZ);
+      let anchorWorld, bracketWorld;
+
+      if (internalDeg !== 0) {
+        const pa = anchorOrig.clone().sub(pivot);
+        pa.applyAxisAngle(yAxis, halfRad);
+        anchorWorld = pa.add(pivot);
+        const pb = bracketOrig.clone().sub(pivot);
+        pb.applyAxisAngle(yAxis, -halfRad);
+        bracketWorld = pb.add(pivot);
+      } else {
+        anchorWorld = anchorOrig.clone();
+        bracketWorld = bracketOrig.clone();
+      }
+
+      // Update cable tube geometry with catenary
+      const dist = anchorWorld.distanceTo(bracketWorld);
+
+      if (seg.connected && dist <= seg.cableLength) {
+        // Connected: cable runs from anchor to bracket with slight sag
+        const sag = Math.max(2, (seg.cableLength - dist) * 0.5);
+        updateCableCatenary(seg.cableTube, anchorWorld, bracketWorld, sag, CABLE_SEGMENTS, cableDims);
+        // Pin at bracket position
+        seg.pinGroup.position.copy(bracketWorld);
+        if (internalDeg !== 0) {
+          seg.pinGroup.quaternion.copy(seg.pinGroup.userData._cableOrigQuat || new THREE.Quaternion());
+          seg.pinGroup.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(yAxis, -halfRad));
+        }
+      } else {
+        // Disconnected: cable hangs from anchor under gravity
+        seg.connected = false;
+        const hangLen = Math.min(seg.cableLength * 0.6, 40); // how far the cable hangs down
+        const freeEnd = anchorWorld.clone();
+        freeEnd.z -= hangLen;
+        freeEnd.x += 5; // slight X offset so it's visible
+        seg.freeEndPos.copy(freeEnd);
+        updateCableCatenary(seg.cableTube, anchorWorld, freeEnd, hangLen * 0.3, CABLE_SEGMENTS, cableDims);
+        // Pin dangles at free end
+        seg.pinGroup.position.copy(freeEnd);
+        seg.pinGroup.quaternion.identity(); // hangs vertically
+      }
     });
   }
 
-  return { group, hingeResult, cablesGroup, cableSegments, applyFold };
+  /**
+   * Update a cable tube mesh with a catenary-shaped curve.
+   * @param {THREE.Mesh} tubeMesh — the existing tube mesh to update
+   * @param {THREE.Vector3} start — start point
+   * @param {THREE.Vector3} end — end point
+   * @param {number} sag — maximum sag below the straight line (mm)
+   * @param {number} segments — number of curve subdivisions
+   * @param {object} cableDims — { diameter }
+   */
+  function updateCableCatenary(tubeMesh, start, end, sag, segments, cblDims) {
+    const pts = [];
+    for (let i = 0; i <= segments; i++) {
+      const t = i / segments;
+      // Parabolic sag: maximum at t=0.5, zero at t=0 and t=1
+      const sagAmount = -sag * 4 * t * (1 - t);
+      pts.push(new THREE.Vector3(
+        start.x + t * (end.x - start.x),
+        start.y + t * (end.y - start.y),
+        start.z + t * (end.z - start.z) + sagAmount
+      ));
+    }
+    const curve = new THREE.CatmullRomCurve3(pts);
+    const newGeo = new THREE.TubeGeometry(curve, segments, cblDims.diameter / 2, 8, false);
+    tubeMesh.geometry.dispose();
+    tubeMesh.geometry = newGeo;
+  }
+
+  /**
+   * Try to connect a cable's free end to its bracket.
+   * @param {number} cableIdx — index into cableSegments
+   * @returns {boolean} — true if connected successfully
+   */
+  function connectCable(cableIdx) {
+    const seg = cableSegments[cableIdx];
+    if (!seg || seg.connected) return false;
+    seg.connected = true;
+    return true;
+  }
+
+  /**
+   * Disconnect a cable from its bracket.
+   * @param {number} cableIdx — index into cableSegments
+   */
+  function disconnectCable(cableIdx) {
+    const seg = cableSegments[cableIdx];
+    if (!seg || !seg.connected) return;
+    seg.connected = false;
+  }
+
+  /**
+   * Set the free end position of a disconnected cable (for mouse dragging).
+   * @param {number} cableIdx
+   * @param {THREE.Vector3} worldPos
+   */
+  function setCableFreeEnd(cableIdx, worldPos) {
+    const seg = cableSegments[cableIdx];
+    if (!seg || seg.connected) return;
+    seg.freeEndPos.copy(worldPos);
+  }
+
+  return {
+    group, hingeResult, cablesGroup, cableSegments, applyFold,
+    connectCable, disconnectCable, setCableFreeEnd,
+  };
 }

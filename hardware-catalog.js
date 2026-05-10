@@ -3,6 +3,34 @@
 
 export const HARDWARE_CATALOG = {
   hinges: {
+    'barrel-8mm': {
+      name: '8mm Concealed Barrel Hinge (SOSS)',
+      dims: {
+        barrelDia: 8,        // mm barrel outer diameter
+        barrelLen: 11.5,     // mm each half-barrel length (mortise depth ~9.6mm + exposed)
+        pinDia: 2,           // mm internal pivot pin diameter
+        pinLen: 5,           // mm pin exposed gap between barrels
+        totalLen: 23,        // mm assembled length (both barrels + gap)
+        mortiseDepth: 9.6,   // mm drill depth into each board half
+        hingeCount: 3,       // number of barrel hinges along the board
+      },
+      foldType: 'barrel',
+      bom: [{ item: 'SOSS 8mm Concealed Brass Barrel Hinge', qty: 3, spec: '8mm dia, 180° opening' }],
+    },
+    'barrel-5mm': {
+      name: '5mm Mini Barrel Hinge',
+      dims: {
+        barrelDia: 5,        // mm barrel outer diameter
+        barrelLen: 8.5,      // mm each half-barrel length
+        pinDia: 1.5,         // mm internal pivot pin diameter
+        pinLen: 3,           // mm pin exposed gap between barrels
+        totalLen: 17,        // mm assembled length
+        mortiseDepth: 7,     // mm drill depth
+        hingeCount: 4,       // number of barrel hinges along the board
+      },
+      foldType: 'barrel',
+      bom: [{ item: '5mm Solid Brass Miniature Barrel Hinge', qty: 4, spec: '5mm dia, concealed' }],
+    },
     'piano-12mm': {
       name: '12mm Stainless Piano Hinge',
       dims: {
@@ -94,7 +122,7 @@ export const HARDWARE_CATALOG = {
 };
 
 export const DEFAULT_SELECTION = {
-  hinge: 'piano-12mm',
+  hinge: 'barrel-8mm',
   turnbuckle: 'tekno-tkr6250-m3',
   eyeNut: 'm3-304ss-eye-nut',
   clevisPin: '5mm-ball-lock',

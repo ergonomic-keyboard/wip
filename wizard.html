@@ -173,6 +173,7 @@ header { display: flex; align-items: center; justify-content: space-between; pad
       <label><input type="checkbox" class="label-group-toggle" data-group="cables" checked> Cables</label>
     </span>
     <label><input type="checkbox" id="show-axes"> Axes</label>
+    <label><input type="checkbox" id="show-outlines"> Outlines</label>
     <div style="width:1px;height:20px;background:#444;margin:0 4px;"></div>
     <span style="font-size:0.85em;color:#999;margin-right:4px;">Hardware:</span>
     <label style="font-size:11px;color:#aaa;">Hinge: <select id="hw-hinge" style="font-size:11px;background:#333;color:#ccc;border:1px solid #555;border-radius:3px;"></select></label>
@@ -3375,6 +3376,9 @@ document.querySelectorAll('.label-group-toggle').forEach(cb => {
 
 document.getElementById('show-axes').addEventListener('change', () => {
   if (window._newSceneCtrl) window._newSceneCtrl.setAxesVisible(document.getElementById('show-axes').checked);
+});
+document.getElementById('show-outlines').addEventListener('change', () => {
+  if (window._newSceneCtrl) window._newSceneCtrl.setOutlinesVisible(document.getElementById('show-outlines').checked);
 });
 
 // R26-R29: Per-layer visibility toggles

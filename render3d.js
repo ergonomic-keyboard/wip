@@ -911,6 +911,7 @@ function buildNewScene(ergogenResults, config, container) {
   } else {
     console.warn('render3d R17: no stage1Keys in config — purple outlines not drawn');
   }
+  outlineGroup.visible = false; // hidden by default (R17 stage 1 debug overlays)
   boardGroup.add(outlineGroup);
 
   // ── R30-R36: Compute MCU/battery/USB-C positions from pinky column ──
@@ -1875,6 +1876,109 @@ function buildNewScene(ergogenResults, config, container) {
   renderer.domElement.addEventListener('pointerdown', onKeyPress);
   renderer.domElement.addEventListener('pointermove', onHover);
 
+  // ── Cable drag interaction ──
+  let dragCableIdx = -1;
+  const dragPlane = new THREE.Plane();
+  const dragIntersect = new THREE.Vector3();
+  const SNAP_DIST = 15; // mm distance to snap-connect cable to bracket
+
+  function getCableTargets() {
+    const targets = [];
+    hwAssembly.cableSegments.forEach((seg, i) => {
+      // Pin end
+      seg.pinGroup.traverse(obj => { if (obj.isMesh) { obj.userData._cableIdx = i; obj.userData._pinEnd = true; targets.push(obj); } });
+      // Bracket
+      if (seg.bracketMesh) { seg.bracketMesh.userData._cableIdx = i; targets.push(seg.bracketMesh); }
+    });
+    return targets;
+  }
+
+  function onCablePointerDown(event) {
+    if (event.button !== 0) return; // left click only
+    const rect = renderer.domElement.getBoundingClientRect();
+    pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    raycaster.setFromCamera(pointer, camera);
+
+    const targets = getCableTargets();
+    const hits = raycaster.intersectObjects(targets);
+    if (!hits.length) return;
+
+    const hit = hits[0];
+    const idx = hit.object.userData._cableIdx;
+    if (idx === undefined) return;
+
+    const seg = hwAssembly.cableSegments[idx];
+    if (!seg) return;
+
+    if (hit.object.userData._pinEnd) {
+      // Grab the cable end — start dragging
+      event.stopPropagation();
+      dragCableIdx = idx;
+      hwAssembly.disconnectCable(idx);
+      controls.enabled = false;
+
+      // Set up drag plane perpendicular to camera at the pin position
+      const camDir = camera.getWorldDirection(new THREE.Vector3());
+      dragPlane.setFromNormalAndCoplanarPoint(camDir, seg.pinGroup.position);
+
+      renderer.domElement.style.cursor = 'grabbing';
+    } else if (hit.object.userData._isBracket && !seg.connected) {
+      // Click on bracket while cable is dangling nearby — connect
+      const pinPos = seg.pinGroup.position;
+      const bracketPos = hit.object.position.clone();
+      if (pinPos.distanceTo(bracketPos) < SNAP_DIST * 2) {
+        hwAssembly.connectCable(idx);
+        // Reapply fold to update cable geometry
+        hwAssembly.applyFold(180 - currentFoldSliderDeg);
+      }
+    }
+  }
+
+  function onCablePointerMove(event) {
+    if (dragCableIdx < 0) return;
+    const rect = renderer.domElement.getBoundingClientRect();
+    pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    raycaster.setFromCamera(pointer, camera);
+
+    if (raycaster.ray.intersectPlane(dragPlane, dragIntersect)) {
+      // Transform from world space to boardRoot local space
+      const localPos = boardRoot.worldToLocal(dragIntersect.clone());
+      hwAssembly.setCableFreeEnd(dragCableIdx, localPos);
+      // Update cable geometry
+      hwAssembly.applyFold(180 - currentFoldSliderDeg);
+    }
+  }
+
+  function onCablePointerUp(event) {
+    if (dragCableIdx < 0) return;
+    const seg = hwAssembly.cableSegments[dragCableIdx];
+
+    // Check if pin is near the bracket — snap connect
+    if (seg && !seg.connected) {
+      // Get bracket world position
+      const bracketMesh = seg.bracketMesh;
+      const bracketWorldPos = new THREE.Vector3();
+      bracketMesh.getWorldPosition(bracketWorldPos);
+      const bracketLocal = boardRoot.worldToLocal(bracketWorldPos.clone());
+
+      const pinPos = seg.pinGroup.position;
+      if (pinPos.distanceTo(bracketLocal) < SNAP_DIST) {
+        hwAssembly.connectCable(dragCableIdx);
+      }
+      hwAssembly.applyFold(180 - currentFoldSliderDeg);
+    }
+
+    dragCableIdx = -1;
+    controls.enabled = true;
+    renderer.domElement.style.cursor = '';
+  }
+
+  renderer.domElement.addEventListener('pointerdown', onCablePointerDown);
+  renderer.domElement.addEventListener('pointermove', onCablePointerMove);
+  renderer.domElement.addEventListener('pointerup', onCablePointerUp);
+
   // ── Animation loop ──
   function animate() {
     requestAnimationFrame(animate);
@@ -1912,6 +2016,7 @@ function buildNewScene(ergogenResults, config, container) {
     getLabelGroups: () => Object.keys(labelGroupVisibility),
     labelGroupVisibility,
     setAxesVisible: (v) => { axisGroup.visible = v; },
+    setOutlinesVisible: (v) => { outlineGroup.visible = v; },
     setCablesVisible: (v) => { hwAssembly.cablesGroup.visible = v; },
     setHingeVisible: (v) => { hwAssembly.hingeResult.group.visible = v; },
     rebuildHardware,
