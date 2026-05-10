@@ -1,83 +1,83 @@
 {
-  "timestamp": "2026-05-08T21:35:17.004Z",
+  "timestamp": "2026-05-10T23:23:49.883Z",
   "example": "examples/extended/finger-positions (another copy).json",
   "summary": {
     "total": 12,
-    "pass": 12,
-    "fail": 0
+    "pass": 8,
+    "fail": 4
   },
   "results": {
     "L01": {
       "status": "PASS",
-      "details": "Canvas click registered — tap count=1, toolbar has 6 column buttons, no fatal JS errors",
+      "details": "Canvas click registered — tap count=8, toolbar has 6 column buttons, no fatal JS errors",
       "method": "AUTO",
-      "timestamp": "2026-05-08T21:34:24.024Z"
+      "timestamp": "2026-05-10T23:23:24.519Z"
     },
     "L06": {
       "status": "PASS",
       "details": "Load button present: \"Load\", visible, file inputs: 0",
       "method": "AUTO",
-      "timestamp": "2026-05-08T21:34:24.036Z"
+      "timestamp": "2026-05-10T23:23:24.532Z"
     },
     "L10": {
       "status": "PASS",
       "details": "Export button present: \"Export\", visible",
       "method": "AUTO",
-      "timestamp": "2026-05-08T21:34:24.045Z"
+      "timestamp": "2026-05-10T23:23:24.540Z"
     },
     "R03": {
       "status": "PASS",
-      "details": "All layers present: bottom(8), cork_low(2), pcb(17), cork_up(2), switchPlate(54), keycaps(72). Total: 145 meshes, 80507 vertices",
+      "details": "All layers present: bottom(34), cork_low(56), pcb(2), cork_up(2), switchPlate(57), keycaps(72). Total: 277 meshes, 96106 vertices",
       "method": "AUTO",
-      "timestamp": "2026-05-08T21:34:45.190Z"
+      "timestamp": "2026-05-10T23:23:41.944Z"
     },
     "R04": {
-      "status": "PASS",
-      "details": "Exploded view: 5.8x Z-separation, 10 labels, 7 material bands, 23 distinct colors",
+      "status": "FAIL",
+      "details": "exploded Z-extent ratio only 1.0x (expected ≥3x)",
       "method": "AUTO",
-      "timestamp": "2026-05-08T21:34:46.685Z"
+      "timestamp": "2026-05-10T23:23:42.859Z"
     },
     "S08": {
       "status": "PASS",
-      "details": "All 5 layers found: bottomPlate, corkLower, pcb, corkUpper, switchPlate. 12 distinct Z levels in stack region",
+      "details": "All 5 layers found: bottomPlate, corkLower, pcb, corkUpper, switchPlate. 14 distinct Z levels in stack region",
       "method": "AUTO",
-      "timestamp": "2026-05-08T21:34:48.166Z"
+      "timestamp": "2026-05-10T23:23:43.711Z"
     },
     "S09": {
       "status": "PASS",
-      "details": "Multi-layer stack: 11 distinct Z-levels spanning 5.1mm (Z: 0.0 to 5.1). 101 board meshes. Levels: [0.0, 1.0, 1.5, 2.4, 2.8, 3.1, 3.6, 3.9, 4.7, 5.0, 5.1]",
+      "details": "Multi-layer stack: 14 distinct Z-levels spanning 5.5mm (Z: -0.5 to 5.0). 182 board meshes. Levels: [-0.5, -0.4, -0.1, 0.0, 0.1, 0.7, 1.0, 1.3, 1.4, 1.5, 3.1, 3.6, 4.8, 5.0]",
       "method": "AUTO",
-      "timestamp": "2026-05-08T21:34:49.640Z"
+      "timestamp": "2026-05-10T23:23:44.601Z"
     },
     "R06": {
-      "status": "PASS",
-      "details": "Hinge articulates: 4/13 components moved, max delta=18.4mm, halves articulated=true",
+      "status": "FAIL",
+      "details": "keyboard halves did not move between fold=0° and fold=45°; no hinge sub-components changed position between fold=0° and fold=45°",
       "method": "AUTO",
-      "timestamp": "2026-05-08T21:34:51.180Z"
+      "timestamp": "2026-05-10T23:23:45.605Z"
     },
     "R09": {
       "status": "PASS",
-      "details": "6 cables visible at fold=0° (cablesGroup.visible=true)",
+      "details": "10 cables visible at fold=0° (cablesGroup.visible=true)",
       "method": "AUTO",
-      "timestamp": "2026-05-08T21:34:52.665Z"
+      "timestamp": "2026-05-10T23:23:45.877Z"
     },
     "R12": {
       "status": "PASS",
-      "details": "36 key label planes with canvas textures found (of 36 total planes). Sprites: 10",
+      "details": "36 key label planes with canvas textures found (of 36 total planes). Sprites: 18",
       "method": "AUTO",
-      "timestamp": "2026-05-08T21:34:54.149Z"
+      "timestamp": "2026-05-10T23:23:46.097Z"
     },
     "R14": {
-      "status": "PASS",
-      "details": "Fold direction is INWARD at 160°. Left normal X=0.98 (→right), right normal X=-0.98 (→left). Dot=-0.94",
+      "status": "FAIL",
+      "details": "Found 1 halves. Scene children: [{\"index\":0,\"type\":\"HemisphereLight\",\"childCount\":0,\"position\":{\"x\":0,\"y\":1,\"z\":0},\"quat\":{\"x\":0,\"y\":0,\"z\":0,\"w\":1}},{\"index\":1,\"type\":\"DirectionalLight\",\"childCount\":0,\"position\":{\"x\":120,\"y\":-80,\"z\":250},\"quat\":{\"x\":0,\"y\":0,\"z\":0,\"w\":1}},{\"index\":2,\"type\":\"DirectionalLight\",\"childCount\":0,\"position\":{\"x\":-100,\"y\":60,\"z\":120},\"quat\":{\"x\":0,\"y\":0,\"z\":0,\"w\":1}},{\"index\":3,\"type\":\"DirectionalLight\",\"childCount\":0,\"position\":{\"x\":0,\"y\":120,\"z\":-80},\"quat\":{\"x\":0,\"y\":0,\"z\":0,\"w\":1}},{\"index\":4,\"type\":\"PointLight\",\"childCount\":0,\"position\":{\"x\":0,\"y\":0,\"z\":-30},\"quat\":{\"x\":0,\"y\":0,\"z\":0,\"w\":1}},{\"index\":5,\"type\":\"Group\",\"isGroup\":true,\"childCount\":3,\"position\":{\"x\":0,\"y\":0,\"z\":0},\"quat\":{\"x\":0,\"y\":0,\"z\":1,\"w\":0}},{\"index\":6,\"type\":\"Group\",\"isGroup\":true,\"childCount\":53,\"position\":{\"x\":0,\"y\":0,\"z\":0},\"quat\":{\"x\":0,\"y\":0,\"z\":0,\"w\":1}}]",
       "method": "AUTO",
-      "timestamp": "2026-05-08T21:34:55.679Z"
+      "timestamp": "2026-05-10T23:23:46.319Z"
     },
     "DG-01": {
-      "status": "PASS",
-      "details": "12 outline meshes, 60960 vertices (smooth). [AI] Screenshot saved for human review: /home/a/git/git/keyboard/wip/runtime-screenshots/dg01-board-outline.png",
+      "status": "FAIL",
+      "details": "Only 0 ExtrudeGeometry meshes at board level. Expected ≥2 (bottom plate + frame). [AI] Screenshot saved: /home/a/git/git/keyboard/wip/runtime-screenshots/dg01-board-outline.png",
       "method": "AI",
-      "timestamp": "2026-05-08T21:35:07.829Z"
+      "timestamp": "2026-05-10T23:23:48.728Z"
     }
   },
   "consoleErrorCount": 0,

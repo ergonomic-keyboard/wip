@@ -174,6 +174,10 @@ header { display: flex; align-items: center; justify-content: space-between; pad
     </span>
     <label><input type="checkbox" id="show-axes"> Axes</label>
     <div style="width:1px;height:20px;background:#444;margin:0 4px;"></div>
+    <span style="font-size:0.85em;color:#999;margin-right:4px;">Hardware:</span>
+    <label style="font-size:11px;color:#aaa;">Hinge: <select id="hw-hinge" style="font-size:11px;background:#333;color:#ccc;border:1px solid #555;border-radius:3px;"></select></label>
+    <label style="font-size:11px;color:#aaa;">Turnbuckle: <select id="hw-turnbuckle" style="font-size:11px;background:#333;color:#ccc;border:1px solid #555;border-radius:3px;"></select></label>
+    <div style="width:1px;height:20px;background:#444;margin:0 4px;"></div>
     <span style="font-size:0.85em;color:#999;margin-right:4px;">Layers:</span>
     <label><input type="checkbox" id="layer-keycaps" checked> Keycaps</label>
     <label><input type="checkbox" id="layer-switchPlate" checked> Switch Plate</label>
@@ -2158,6 +2162,7 @@ function initPage2() {
       try {
         const newContainer = document.getElementById('viewport-new');
         window._newSceneCtrl = window.buildNewScene(ergogenResults, generatedConfig, newContainer);
+        if (typeof populateHardwareDropdowns === 'function') populateHardwareDropdowns();
       } catch(e2) { console.error('render3d error:', e2); }
     } catch(e) {
       loading.textContent = 'Error: ' + e.message;
@@ -3377,6 +3382,51 @@ document.getElementById('show-axes').addEventListener('change', () => {
   document.getElementById('layer-' + layerId).addEventListener('change', (e) => {
     if (window._newSceneCtrl) window._newSceneCtrl.setLayerVisible(layerId, e.target.checked);
   });
+});
+
+// Hardware selection dropdowns — populated from HARDWARE_CATALOG exposed by render3d.js
+function populateHardwareDropdowns() {
+  const ctrl = window._newSceneCtrl;
+  if (!ctrl || !ctrl.HARDWARE_CATALOG) return;
+  const cat = ctrl.HARDWARE_CATALOG;
+  const sel = ctrl.getHardwareSelection();
+
+  // Populate hinge dropdown
+  const hingeSelect = document.getElementById('hw-hinge');
+  hingeSelect.innerHTML = '';
+  Object.entries(cat.hinges).forEach(([id, entry]) => {
+    const opt = document.createElement('option');
+    opt.value = id; opt.textContent = entry.name;
+    if (id === sel.hinge) opt.selected = true;
+    hingeSelect.appendChild(opt);
+  });
+
+  // Populate turnbuckle dropdown
+  const tbSelect = document.getElementById('hw-turnbuckle');
+  tbSelect.innerHTML = '';
+  Object.entries(cat.turnbuckles).forEach(([id, entry]) => {
+    const opt = document.createElement('option');
+    opt.value = id; opt.textContent = entry.name;
+    if (id === sel.turnbuckle) opt.selected = true;
+    tbSelect.appendChild(opt);
+  });
+}
+
+document.getElementById('hw-hinge').addEventListener('change', () => {
+  if (!window._newSceneCtrl) return;
+  const sel = window._newSceneCtrl.getHardwareSelection();
+  sel.hinge = document.getElementById('hw-hinge').value;
+  window._newSceneCtrl.rebuildHardware(sel);
+  // Reapply current fold/butterfly
+  window._newSceneCtrl.applyFold(+document.getElementById('fold-slider').value);
+});
+
+document.getElementById('hw-turnbuckle').addEventListener('change', () => {
+  if (!window._newSceneCtrl) return;
+  const sel = window._newSceneCtrl.getHardwareSelection();
+  sel.turnbuckle = document.getElementById('hw-turnbuckle').value;
+  window._newSceneCtrl.rebuildHardware(sel);
+  window._newSceneCtrl.applyFold(+document.getElementById('fold-slider').value);
 });
 
 // ══════════════════════════════════════════════════════════════════

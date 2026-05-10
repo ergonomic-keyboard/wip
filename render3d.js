@@ -5,6 +5,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { HARDWARE_CATALOG, DEFAULT_SELECTION } from './hardware-catalog.js';
+import { buildHardwareAssembly } from './hardware-builders.js';
 
 // ══════════════════════════════════════════════════════════════════
 // 2D GEOMETRY: CONVEX HULL + FILLET
@@ -1271,212 +1273,60 @@ function buildNewScene(ergogenResults, config, container) {
   boardRoot.add(leftHalf);
   boardRoot.add(rightHalf);
 
-  // ── Hinge ──
-  const hingeGroup = new THREE.Group();
+  // ── Hinge + Cables: Modular Hardware Assembly ──
   const hy = center.y, hz = center.z;
-  const halfBoardW = (bbox.max.x - bbox.min.x) / 2;
-  const rodLen = Math.max(15, halfBoardW * 0.35);
-  const rodOffset = rodLen / 2 + 5;
-  const flangeOffset = rodOffset + rodLen / 2 + 3;
-  const barrelLen = Math.max(20, rodOffset * 0.6);
-
-  const barrelGeo = new THREE.CylinderGeometry(4, 4, barrelLen, 32); barrelGeo.rotateZ(Math.PI / 2);
-  const barrel = new THREE.Mesh(barrelGeo, chromeMat.clone()); barrel.position.set(hingeX, hy, hz); barrel.castShadow = true;
-  hingeGroup.add(barrel);
-  const ball = new THREE.Mesh(new THREE.SphereGeometry(3.5, 32, 32), copperMat);
-  ball.position.set(hingeX, hy, hz); hingeGroup.add(ball);
-  const rodGeo2 = new THREE.CylinderGeometry(2.5, 2.5, rodLen, 12); rodGeo2.rotateZ(Math.PI / 2);
-  const rodL = new THREE.Mesh(rodGeo2, steelMat.clone()); rodL.position.set(hingeX - rodOffset, hy, hz); rodL.castShadow = true; hingeGroup.add(rodL);
-  const rodR = new THREE.Mesh(rodGeo2, steelMat.clone()); rodR.position.set(hingeX + rodOffset, hy, hz); rodR.castShadow = true; hingeGroup.add(rodR);
-  const flangeGeo = new THREE.BoxGeometry(6, 12, T_FRAME);
-  const flangeL = new THREE.Mesh(flangeGeo, steelMat.clone()); flangeL.position.set(hingeX - flangeOffset, hy, hz); flangeL.castShadow = true; hingeGroup.add(flangeL);
-  const flangeR = new THREE.Mesh(flangeGeo, steelMat.clone()); flangeR.position.set(hingeX + flangeOffset, hy, hz); flangeR.castShadow = true; hingeGroup.add(flangeR);
-  const tnutGeo = new THREE.CylinderGeometry(5, 5, 3, 6);
-  const tnut = new THREE.Mesh(tnutGeo, brassMat.clone()); tnut.position.set(hingeX, hy - 8, hz); tnut.rotation.x = Math.PI / 2; tnut.castShadow = true;
-  hingeGroup.add(tnut);
-  boardRoot.add(hingeGroup);
-
-  // ── Cables (F05, F05.2-F05.7, F06, F09, R09, R09.1) ──
-  // Cables on the BOTTOM plate connecting halves.
-  // Cable Z: below the bottom plate (underside).
-  const cablesGroup = new THREE.Group();
   const cableZ = Z_BOTTOM - 1; // underside of bottom plate
   const rightEdgeX = 2 * hingeX - bbox.min.x;
 
   // F05.2-F05.5: Cable Y-positions from actual switch coordinates.
-  // Near-user cable: N (right, row2 col0) and Z (left, row2 col0)
-  // Far-user cable: Y (right, row0 col0) and Q (left, row0 col0)
-  // Use buildKeyPositionMap data to find these keys.
   const cableKeyMap = buildKeyPositionMap(pts);
   const HALF_SWITCH = 6.9; // half of 13.8mm switch footprint
 
-  // Helper: find a matrix key by row/col/side, return scene coords {x, y}
   function findKeyScenePos(keys, rowIdx, colIdx) {
     const k = keys.find(kk => kk.zone === 'matrix' && kk.rowIdx === rowIdx && kk.colIdx === colIdx);
     if (!k) return null;
-    return { x: k.x, y: -k.y }; // ergogen Y-up → scene Y-down
+    return { x: k.x, y: -k.y };
   }
 
-  // N = right half, row 2, col 0 — "bottom right corner" → x + half, y + half
   const nPos = findKeyScenePos(cableKeyMap.rightKeys, 2, 0);
-  // Z = left half, row 2, col 0 — "bottom left corner" → x - half, y + half
   const zPos = findKeyScenePos(cableKeyMap.leftKeys, 2, 0);
-  // Y = right half, row 0, col 0 — "bottom right corner" → x + half, y + half
   const yPos = findKeyScenePos(cableKeyMap.rightKeys, 0, 0);
-  // Q = left half, row 0, col 0 — "bottom left corner" → x - half, y + half
   const qPos = findKeyScenePos(cableKeyMap.leftKeys, 0, 0);
 
-  // Near-user cable Y: average of N and Z switch Y coords (bottom row)
-  // Far-user cable Y: average of Y and Q switch Y coords (top row)
   const nearCableY = (nPos && zPos) ? (nPos.y + zPos.y) / 2 : bbox.min.y + (bbox.max.y - bbox.min.y) * 0.8;
   const farCableY = (yPos && qPos) ? (yPos.y + qPos.y) / 2 : bbox.min.y + (bbox.max.y - bbox.min.y) * 0.2;
 
-  // Left attachment X: at the key's edge (F05.2: "bottom right corner of N" on left half)
-  // The left half outer edge is bbox.min.x. Attachment is inset from edge.
   const nearLeftX = zPos ? zPos.x + HALF_SWITCH : bbox.min.x + 10;
   const nearRightX = nPos ? (2 * hingeX - nPos.x) - HALF_SWITCH : rightEdgeX - 10;
   const farLeftX = qPos ? qPos.x - HALF_SWITCH : bbox.min.x + 10;
   const farRightX = yPos ? (2 * hingeX - yPos.x) + HALF_SWITCH : rightEdgeX - 10;
 
-  // Clevis pin positions: near the hinge line on each side
-  // Left cable goes: ring eye nut (left edge) → turnbuckle (midway) → clevis pin (near hinge)
-  // Right cable goes: clevis pin (near hinge) → right edge attachment
-  const clevisOffsetX = 12; // distance from hinge line to clevis pin
+  // Current hardware selection (mutable for UI swapping)
+  let hwSelection = { ...DEFAULT_SELECTION };
+  const hwMats = { steel: steelMat, brass: brassMat, chrome: chromeMat, copper: copperMat, cable: cableMat };
+  const hwGeo = {
+    hingeX, hingeCenterY: center.y, hingeZ,
+    bbox, boardSpan: bbox.max.y - bbox.min.y,
+    cableAttachPoints: { nearLeftX, nearRightX, farLeftX, farRightX, nearCableY, farCableY },
+    cableZ,
+    layers: { Z_BOTTOM, T_BOTTOM_PLATE, T_CORK_LOWER, T_FRAME },
+  };
 
-  // Store cable data for fold animation (R09.1)
-  const cableSegments = []; // {leftGroup, rightGroup, clevisLeftX, clevisRightX, cy, turnbuckleX}
+  let hwAssembly = buildHardwareAssembly(HARDWARE_CATALOG, hwSelection, hwMats, hwGeo);
+  boardRoot.add(hwAssembly.group);
 
-  [{cy: nearCableY, leftX: nearLeftX, rightX: nearRightX, label: 'near'},
-   {cy: farCableY, leftX: farLeftX, rightX: farRightX, label: 'far'}].forEach(({cy, leftX, rightX, label}) => {
-    const clevisLeftX = hingeX - clevisOffsetX;
-    const clevisRightX = hingeX + clevisOffsetX;
-    const turnbuckleX = (leftX + clevisLeftX) / 2;
+  // Aliases for compatibility with rest of code
+  const hingeGroup = hwAssembly.hingeResult.group;
+  const cablesGroup = hwAssembly.cablesGroup;
+  const cableSegments = hwAssembly.cableSegments;
 
-    // ── Left segment: ring eye nut → turnbuckle → clevis pin ──
-    const leftSegGroup = new THREE.Group();
-    leftSegGroup.userData._cableSide = 'left';
-
-    // Cable tube: left attachment to clevis
-    const leftPts = [
-      new THREE.Vector3(leftX, cy, cableZ),
-      new THREE.Vector3((leftX + turnbuckleX) / 2, cy, cableZ - 1),
-      new THREE.Vector3(turnbuckleX, cy, cableZ - 1.5),
-      new THREE.Vector3((turnbuckleX + clevisLeftX) / 2, cy, cableZ - 1),
-      new THREE.Vector3(clevisLeftX, cy, cableZ),
-    ];
-    const leftCurve = new THREE.CatmullRomCurve3(leftPts);
-    const leftTube = new THREE.Mesh(new THREE.TubeGeometry(leftCurve, 32, 0.6, 8, false), cableMat);
-    leftTube.castShadow = true;
-    leftSegGroup.add(leftTube);
-
-    // F05.6: Ring eye nut at left attachment point
-    // Torus (ring) through which cable passes
-    const ringRadius = 3, ringTube = 0.8;
-    const ringGeo = new THREE.TorusGeometry(ringRadius, ringTube, 12, 24);
-    ringGeo.rotateY(Math.PI / 2); // orient ring perpendicular to cable direction (X axis)
-    const ringEye = new THREE.Mesh(ringGeo, brassMat.clone());
-    ringEye.position.set(leftX, cy, cableZ);
-    ringEye.castShadow = true;
-    leftSegGroup.add(ringEye);
-
-    // Bolt sunk into cork/wood (vertical cylinder going up into bottom plate)
-    const boltLen = T_BOTTOM_PLATE + T_CORK_LOWER + 1;
-    const boltGeo = new THREE.CylinderGeometry(1.2, 1.2, boltLen, 8);
-    const bolt = new THREE.Mesh(boltGeo, steelMat.clone());
-    bolt.position.set(leftX, cy, cableZ + boltLen / 2);
-    bolt.castShadow = true;
-    leftSegGroup.add(bolt);
-
-    // Nut base (hex nut connecting ring to bolt)
-    const nutGeo = new THREE.CylinderGeometry(2.5, 2.5, 2, 6);
-    const nut = new THREE.Mesh(nutGeo, brassMat.clone());
-    nut.position.set(leftX, cy, cableZ + 0.5);
-    nut.castShadow = true;
-    leftSegGroup.add(nut);
-
-    // F09: Turnbuckle for adjustable tension
-    // Central hex body
-    const tbBodyLen = 10;
-    const tbBodyGeo = new THREE.CylinderGeometry(2.2, 2.2, tbBodyLen, 6);
-    tbBodyGeo.rotateZ(Math.PI / 2); // along X axis
-    const tbBody = new THREE.Mesh(tbBodyGeo, chromeMat.clone());
-    tbBody.position.set(turnbuckleX, cy, cableZ - 1.5);
-    tbBody.castShadow = true;
-    leftSegGroup.add(tbBody);
-
-    // Turnbuckle eye ends (small torus at each end)
-    [-1, 1].forEach(dir => {
-      const eyeGeo = new THREE.TorusGeometry(1.5, 0.4, 8, 16);
-      eyeGeo.rotateY(Math.PI / 2);
-      const eye = new THREE.Mesh(eyeGeo, steelMat.clone());
-      eye.position.set(turnbuckleX + dir * (tbBodyLen / 2 + 1), cy, cableZ - 1.5);
-      eye.castShadow = true;
-      leftSegGroup.add(eye);
-    });
-
-    cablesGroup.add(leftSegGroup);
-
-    // ── Right segment: clevis pin → right attachment ──
-    const rightSegGroup = new THREE.Group();
-    rightSegGroup.userData._cableSide = 'right';
-
-    const rightPts = [
-      new THREE.Vector3(clevisRightX, cy, cableZ),
-      new THREE.Vector3((clevisRightX + rightX) / 2, cy, cableZ - 1),
-      new THREE.Vector3(rightX, cy, cableZ),
-    ];
-    const rightCurve = new THREE.CatmullRomCurve3(rightPts);
-    const rightTube = new THREE.Mesh(new THREE.TubeGeometry(rightCurve, 24, 0.6, 8, false), cableMat);
-    rightTube.castShadow = true;
-    rightSegGroup.add(rightTube);
-
-    // Right side attachment (magnetic/clevis bracket)
-    const bracketGeo = new THREE.BoxGeometry(3, 4, 3);
-    const bracket = new THREE.Mesh(bracketGeo, steelMat.clone());
-    bracket.position.set(rightX, cy, cableZ);
-    bracket.castShadow = true;
-    rightSegGroup.add(bracket);
-
-    cablesGroup.add(rightSegGroup);
-
-    // ── F05.7/F06: Clevis pins at the connection point (near hinge) ──
-    // Left clevis pin
-    const clevisPinGeo = new THREE.CylinderGeometry(1.5, 1.5, 5, 12);
-    const clevisPinL = new THREE.Mesh(clevisPinGeo, chromeMat.clone());
-    clevisPinL.position.set(clevisLeftX, cy, cableZ);
-    clevisPinL.castShadow = true;
-    leftSegGroup.add(clevisPinL);
-
-    // Clevis bracket (U-shape approximated with a box with a notch)
-    const clevisBracketGeo = new THREE.BoxGeometry(4, 6, 4);
-    const clevisBracketL = new THREE.Mesh(clevisBracketGeo, steelMat.clone());
-    clevisBracketL.position.set(clevisLeftX, cy, cableZ + 3);
-    clevisBracketL.castShadow = true;
-    leftSegGroup.add(clevisBracketL);
-
-    // Right clevis pin (matches left)
-    const clevisPinR = new THREE.Mesh(clevisPinGeo.clone(), chromeMat.clone());
-    clevisPinR.position.set(clevisRightX, cy, cableZ);
-    clevisPinR.castShadow = true;
-    rightSegGroup.add(clevisPinR);
-
-    const clevisBracketR = new THREE.Mesh(clevisBracketGeo.clone(), steelMat.clone());
-    clevisBracketR.position.set(clevisRightX, cy, cableZ + 3);
-    clevisBracketR.castShadow = true;
-    rightSegGroup.add(clevisBracketR);
-
-    // Spring ball detent (small sphere at each clevis pin)
-    const detentGeo = new THREE.SphereGeometry(0.8, 8, 8);
-    [clevisLeftX, clevisRightX].forEach((cx, i) => {
-      const detent = new THREE.Mesh(detentGeo, chromeMat.clone());
-      detent.position.set(cx, cy, cableZ - 2);
-      (i === 0 ? leftSegGroup : rightSegGroup).add(detent);
-    });
-
-    cableSegments.push({ leftGroup: leftSegGroup, rightGroup: rightSegGroup, clevisLeftX, clevisRightX, cy, turnbuckleX });
-  });
-
-  boardRoot.add(cablesGroup);
+  /** Rebuild hardware when selection changes (called from UI dropdown). */
+  function rebuildHardware(newSelection) {
+    boardRoot.remove(hwAssembly.group);
+    hwSelection = { ...newSelection };
+    hwAssembly = buildHardwareAssembly(HARDWARE_CATALOG, hwSelection, hwMats, hwGeo);
+    boardRoot.add(hwAssembly.group);
+  }
 
   // ── R01.3: Component labels with leader lines and group toggling ──
   // 2D overlay canvas for labels with diagonal-then-horizontal leader lines.
@@ -1510,7 +1360,7 @@ function buildNewScene(ergogenResults, config, container) {
   addLeaderLabel('Cherry MX ULP', hingeX, center.y, Z_KEYCAP, 'layers', 'keycaps');
   addLeaderLabel('nice!nano v2', nanoLeftX, center.y, Z_PCB - 4, 'electronics', 'pcb');
   addLeaderLabel('USB-C Port', nanoLeftX, bbox.min.y + 5, Z_PCB - 4, 'electronics', 'pcb');
-  addLeaderLabel('Ball Joint Hinge', hingeX, hy, hz, 'hardware');
+  addLeaderLabel(HARDWARE_CATALOG.hinges[hwSelection.hinge]?.name || 'Hinge', hingeX, hy, hz, 'hardware');
   addLeaderLabel('LiPo Battery', battX, center.y, Z_CORK_LOWER + 3, 'electronics', 'corkLower');
 
   // Screw labels (one per screw position, group = 'screws')
@@ -1787,61 +1637,8 @@ function buildNewScene(ergogenResults, config, container) {
     currentFoldSliderDeg = sliderDeg;
     const internalDeg = 180 - sliderDeg;
 
-    // Articulate hinge hardware
-    const halfRad = (internalDeg * Math.PI / 180) / 2;
-    const yAxis = new THREE.Vector3(0, 1, 0);
-    hingeGroup.children.forEach(child => {
-      if (!child.userData._origPos) { child.userData._origPos = child.position.clone(); child.userData._origQuat = child.quaternion.clone(); }
-      child.position.copy(child.userData._origPos); child.quaternion.copy(child.userData._origQuat);
-    });
-    if (internalDeg !== 0) {
-      const pivot = new THREE.Vector3(hingeX, hingeCenterY, hingeZ);
-      hingeGroup.children.forEach(child => {
-        const origX = child.userData._origPos.x;
-        if (origX < hingeX - 2) {
-          const p = child.position.clone().sub(pivot); p.applyAxisAngle(yAxis, halfRad); child.position.copy(p.add(pivot));
-          child.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(yAxis, halfRad));
-        } else if (origX > hingeX + 2) {
-          const p = child.position.clone().sub(pivot); p.applyAxisAngle(yAxis, -halfRad); child.position.copy(p.add(pivot));
-          child.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(yAxis, -halfRad));
-        }
-      });
-    }
-    // R09.1: Cable fold animation — disengage at clevis pins, each segment follows its half.
-    // When flat (internalDeg === 0), both segments are visible and connected.
-    // When folding, left segments rotate with left half, right segments rotate with right half.
-    // The clevis pins separate as the halves fold apart.
-    cablesGroup.visible = true; // always visible
-    const cablePivot = new THREE.Vector3(hingeX, hingeCenterY, hingeZ);
-    cableSegments.forEach(seg => {
-      // Reset all children to original positions
-      [seg.leftGroup, seg.rightGroup].forEach(grp => {
-        grp.children.forEach(child => {
-          if (!child.userData._cableOrigPos) {
-            child.userData._cableOrigPos = child.position.clone();
-            child.userData._cableOrigQuat = child.quaternion.clone();
-          }
-          child.position.copy(child.userData._cableOrigPos);
-          child.quaternion.copy(child.userData._cableOrigQuat);
-        });
-      });
-      if (internalDeg !== 0) {
-        // Left cable segment follows left half fold
-        seg.leftGroup.children.forEach(child => {
-          const p = child.position.clone().sub(cablePivot);
-          p.applyAxisAngle(yAxis, halfRad);
-          child.position.copy(p.add(cablePivot));
-          child.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(yAxis, halfRad));
-        });
-        // Right cable segment follows right half fold
-        seg.rightGroup.children.forEach(child => {
-          const p = child.position.clone().sub(cablePivot);
-          p.applyAxisAngle(yAxis, -halfRad);
-          child.position.copy(p.add(cablePivot));
-          child.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(yAxis, -halfRad));
-        });
-      }
-    });
+    // Delegate hinge + cable fold animation to the hardware assembly
+    hwAssembly.applyFold(internalDeg);
 
     // Apply combined fold + butterfly to halves
     applyButterfly(currentButterflyDeg);
@@ -2115,8 +1912,11 @@ function buildNewScene(ergogenResults, config, container) {
     getLabelGroups: () => Object.keys(labelGroupVisibility),
     labelGroupVisibility,
     setAxesVisible: (v) => { axisGroup.visible = v; },
-    setCablesVisible: (v) => { cablesGroup.visible = v; },
-    setHingeVisible: (v) => { hingeGroup.visible = v; },
+    setCablesVisible: (v) => { hwAssembly.cablesGroup.visible = v; },
+    setHingeVisible: (v) => { hwAssembly.hingeResult.group.visible = v; },
+    rebuildHardware,
+    getHardwareSelection: () => ({ ...hwSelection }),
+    HARDWARE_CATALOG,
     setBatteryVisible: (v) => { batteryGroup.visible = v; },
     renderer, scene, camera,
     // Diagnostic: call from browser console as window._newSceneCtrl.diagnose()
