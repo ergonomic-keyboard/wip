@@ -78,6 +78,8 @@
   .req.mark-FAIL { border-left: 3px solid #a33; }
   .req.mark-deleted { border-left: 3px solid #a33; opacity: 0.3; }
   .req.superseded { opacity: 0.35; }
+  .req.ai-changed .req-text { color: #e8a030; }
+  .req.ai-changed .req-id::after { content: ' (AI)'; color: #e8a030; font-weight: normal; font-size: 0.85em; }
 
   .req-top { display: flex; align-items: flex-start; gap: 8px; padding: 6px 10px; }
   .req-id { font-weight: bold; font-size: 0.85em; color: #8af; white-space: nowrap; min-width: 50px; padding-top: 2px; }
@@ -182,6 +184,7 @@ let pendingDeletes = {};  // { reqId: true } — marked for delete but not yet c
 
 function getStatus(id) { return userStatus[id]?.status || ''; }
 function getComment(id) { return userStatus[id]?.comment || ''; }
+function isAiChanged(id) { return !!userStatus[id]?.changedByAI; }
 
 function migrateStatus(raw) {
   const r = {};
@@ -192,6 +195,7 @@ function migrateStatus(raw) {
     else continue;
     if (status === 'SKIP') status = 'FAIL';
     r[k] = { status, comment };
+    if (v && typeof v === 'object' && v.changedByAI) r[k].changedByAI = true;
   }
   return r;
 }
@@ -329,7 +333,8 @@ function render() {
     const isDeleted = pendingDeletes[item.id];
     const isSub = item.id.includes('.');
 
-    html += `<div class="req ${s ? 'mark-'+s : ''} ${isSup ? 'superseded' : ''} ${isDeleted ? 'mark-deleted' : ''} ${isSub ? 'sub-req' : ''}" data-id="${item.id}">`;
+    const aiFlag = isAiChanged(item.id) ? 'ai-changed' : '';
+    html += `<div class="req ${s ? 'mark-'+s : ''} ${isSup ? 'superseded' : ''} ${isDeleted ? 'mark-deleted' : ''} ${isSub ? 'sub-req' : ''} ${aiFlag}" data-id="${item.id}">`;
     html += `<div class="req-top">`;
     html += `<span class="req-id">${esc(item.id)}</span>`;
     html += `<span class="req-text" contenteditable="${!staticMode && !isDeleted ? 'true' : 'false'}" data-id="${item.id}" spellcheck="false">${esc(item.text)}</span>`;

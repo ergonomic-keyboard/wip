@@ -165,6 +165,13 @@ header { display: flex; align-items: center; justify-content: space-between; pad
     <div style="width:1px;height:20px;background:#444;margin:0 4px;"></div>
     <label><input type="checkbox" id="show-exploded"> Exploded View</label>
     <label><input type="checkbox" id="show-labels"> Labels</label>
+    <span id="label-groups" style="display:none;font-size:0.8em;color:#888;margin-left:2px;">
+      <label><input type="checkbox" class="label-group-toggle" data-group="layers" checked> Layers</label>
+      <label><input type="checkbox" class="label-group-toggle" data-group="electronics" checked> Electronics</label>
+      <label><input type="checkbox" class="label-group-toggle" data-group="hardware" checked> Hardware</label>
+      <label><input type="checkbox" class="label-group-toggle" data-group="screws" checked> Screws</label>
+      <label><input type="checkbox" class="label-group-toggle" data-group="cables" checked> Cables</label>
+    </span>
     <label><input type="checkbox" id="show-axes"> Axes</label>
     <div style="width:1px;height:20px;background:#444;margin:0 4px;"></div>
     <span style="font-size:0.85em;color:#999;margin-right:4px;">Layers:</span>
@@ -176,8 +183,15 @@ header { display: flex; align-items: center; justify-content: space-between; pad
     <label><input type="checkbox" id="layer-bottomPlate" checked> Bottom Plate</label>
     <!-- Toggle removed: single renderer (render3d.js) is now the only renderer -->
   </div>
-  <div id="viewport-new">
+  <div id="viewport-new" style="position:relative;">
     <div id="loading">Processing layout...</div>
+    <!-- R01.2: Navigation legend -->
+    <div id="nav-legend" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.65);border:1px solid #444;border-radius:4px;padding:6px 10px;font-size:11px;color:#bbb;line-height:1.6;pointer-events:none;z-index:5;">
+      <div style="color:#ddd;font-weight:600;margin-bottom:2px;">Controls</div>
+      <div><kbd style="background:#333;padding:1px 4px;border-radius:2px;font-size:10px;">LMB</kbd> + drag &mdash; Orbit</div>
+      <div><kbd style="background:#333;padding:1px 4px;border-radius:2px;font-size:10px;">RMB</kbd> + drag &mdash; Pan</div>
+      <div><kbd style="background:#333;padding:1px 4px;border-radius:2px;font-size:10px;">Scroll</kbd> &mdash; Zoom</div>
+    </div>
   </div>
 </div>
 
@@ -3343,7 +3357,15 @@ document.getElementById('show-exploded').addEventListener('change', () => {
   if (window._newSceneCtrl) window._newSceneCtrl.applyExplodedView(document.getElementById('show-exploded').checked);
 });
 document.getElementById('show-labels').addEventListener('change', () => {
-  if (window._newSceneCtrl) window._newSceneCtrl.setLabelsVisible(document.getElementById('show-labels').checked);
+  const checked = document.getElementById('show-labels').checked;
+  if (window._newSceneCtrl) window._newSceneCtrl.setLabelsVisible(checked);
+  document.getElementById('label-groups').style.display = checked ? 'inline' : 'none';
+});
+// R01.3: Label group toggles
+document.querySelectorAll('.label-group-toggle').forEach(cb => {
+  cb.addEventListener('change', () => {
+    if (window._newSceneCtrl) window._newSceneCtrl.setLabelGroupVisible(cb.dataset.group, cb.checked);
+  });
 });
 
 document.getElementById('show-axes').addEventListener('change', () => {

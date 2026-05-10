@@ -1158,6 +1158,7 @@ function buildNewScene(ergogenResults, config, container) {
   const nScrews = screwPositions.length;
   const screwHeadInst = new THREE.InstancedMesh(screwHeadGeo, chromeMat.clone(), nScrews); screwHeadInst.castShadow = true;
   const screwShaftInst = new THREE.InstancedMesh(screwShaftGeo, steelMat.clone(), nScrews);
+  screwShaftInst.userData._screwShaft = true;
   const insertInst = new THREE.InstancedMesh(insertGeo, brassMat, nScrews);
   screwPositions.forEach((sp, i) => {
     dummy.position.set(sp.x, sp.y, Z_SWITCH_PLATE_TOP + 0.5); dummy.rotation.set(0, 0, 0); dummy.scale.set(1, 1, 1);
@@ -1295,57 +1296,341 @@ function buildNewScene(ergogenResults, config, container) {
   hingeGroup.add(tnut);
   boardRoot.add(hingeGroup);
 
-  // ── Cables ──
+  // ── Cables (F05, F05.2-F05.7, F06, F09, R09, R09.1) ──
+  // Cables on the BOTTOM plate connecting halves.
+  // Cable Z: below the bottom plate (underside).
   const cablesGroup = new THREE.Group();
-  const cableZ2 = Z_SWITCH_PLATE_TOP + 1;
-  const cYtop = bbox.min.y + (bbox.max.y - bbox.min.y) * 0.2;
-  const cYbot = bbox.min.y + (bbox.max.y - bbox.min.y) * 0.8;
+  const cableZ = Z_BOTTOM - 1; // underside of bottom plate
   const rightEdgeX = 2 * hingeX - bbox.min.x;
-  [cYtop, cYbot].forEach(cy => {
-    const cPoints = [
-      new THREE.Vector3(bbox.min.x + 6, cy, cableZ2),
-      new THREE.Vector3(bbox.min.x + (hingeX - bbox.min.x) * 0.5, cy, cableZ2 - 2),
-      new THREE.Vector3(hingeX, cy, cableZ2 - 3),
-      new THREE.Vector3(rightEdgeX - (hingeX - bbox.min.x) * 0.5, cy, cableZ2 - 2),
-      new THREE.Vector3(rightEdgeX - 6, cy, cableZ2),
+
+  // F05.2-F05.5: Cable Y-positions from actual switch coordinates.
+  // Near-user cable: N (right, row2 col0) and Z (left, row2 col0)
+  // Far-user cable: Y (right, row0 col0) and Q (left, row0 col0)
+  // Use buildKeyPositionMap data to find these keys.
+  const cableKeyMap = buildKeyPositionMap(pts);
+  const HALF_SWITCH = 6.9; // half of 13.8mm switch footprint
+
+  // Helper: find a matrix key by row/col/side, return scene coords {x, y}
+  function findKeyScenePos(keys, rowIdx, colIdx) {
+    const k = keys.find(kk => kk.zone === 'matrix' && kk.rowIdx === rowIdx && kk.colIdx === colIdx);
+    if (!k) return null;
+    return { x: k.x, y: -k.y }; // ergogen Y-up → scene Y-down
+  }
+
+  // N = right half, row 2, col 0 — "bottom right corner" → x + half, y + half
+  const nPos = findKeyScenePos(cableKeyMap.rightKeys, 2, 0);
+  // Z = left half, row 2, col 0 — "bottom left corner" → x - half, y + half
+  const zPos = findKeyScenePos(cableKeyMap.leftKeys, 2, 0);
+  // Y = right half, row 0, col 0 — "bottom right corner" → x + half, y + half
+  const yPos = findKeyScenePos(cableKeyMap.rightKeys, 0, 0);
+  // Q = left half, row 0, col 0 — "bottom left corner" → x - half, y + half
+  const qPos = findKeyScenePos(cableKeyMap.leftKeys, 0, 0);
+
+  // Near-user cable Y: average of N and Z switch Y coords (bottom row)
+  // Far-user cable Y: average of Y and Q switch Y coords (top row)
+  const nearCableY = (nPos && zPos) ? (nPos.y + zPos.y) / 2 : bbox.min.y + (bbox.max.y - bbox.min.y) * 0.8;
+  const farCableY = (yPos && qPos) ? (yPos.y + qPos.y) / 2 : bbox.min.y + (bbox.max.y - bbox.min.y) * 0.2;
+
+  // Left attachment X: at the key's edge (F05.2: "bottom right corner of N" on left half)
+  // The left half outer edge is bbox.min.x. Attachment is inset from edge.
+  const nearLeftX = zPos ? zPos.x + HALF_SWITCH : bbox.min.x + 10;
+  const nearRightX = nPos ? (2 * hingeX - nPos.x) - HALF_SWITCH : rightEdgeX - 10;
+  const farLeftX = qPos ? qPos.x - HALF_SWITCH : bbox.min.x + 10;
+  const farRightX = yPos ? (2 * hingeX - yPos.x) + HALF_SWITCH : rightEdgeX - 10;
+
+  // Clevis pin positions: near the hinge line on each side
+  // Left cable goes: ring eye nut (left edge) → turnbuckle (midway) → clevis pin (near hinge)
+  // Right cable goes: clevis pin (near hinge) → right edge attachment
+  const clevisOffsetX = 12; // distance from hinge line to clevis pin
+
+  // Store cable data for fold animation (R09.1)
+  const cableSegments = []; // {leftGroup, rightGroup, clevisLeftX, clevisRightX, cy, turnbuckleX}
+
+  [{cy: nearCableY, leftX: nearLeftX, rightX: nearRightX, label: 'near'},
+   {cy: farCableY, leftX: farLeftX, rightX: farRightX, label: 'far'}].forEach(({cy, leftX, rightX, label}) => {
+    const clevisLeftX = hingeX - clevisOffsetX;
+    const clevisRightX = hingeX + clevisOffsetX;
+    const turnbuckleX = (leftX + clevisLeftX) / 2;
+
+    // ── Left segment: ring eye nut → turnbuckle → clevis pin ──
+    const leftSegGroup = new THREE.Group();
+    leftSegGroup.userData._cableSide = 'left';
+
+    // Cable tube: left attachment to clevis
+    const leftPts = [
+      new THREE.Vector3(leftX, cy, cableZ),
+      new THREE.Vector3((leftX + turnbuckleX) / 2, cy, cableZ - 1),
+      new THREE.Vector3(turnbuckleX, cy, cableZ - 1.5),
+      new THREE.Vector3((turnbuckleX + clevisLeftX) / 2, cy, cableZ - 1),
+      new THREE.Vector3(clevisLeftX, cy, cableZ),
     ];
-    const curve = new THREE.CatmullRomCurve3(cPoints);
-    const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 48, 0.6, 8, false), cableMat);
-    tube.castShadow = true; cablesGroup.add(tube);
-    const tbGeo = new THREE.CylinderGeometry(2, 2, 16, 12); tbGeo.rotateZ(Math.PI / 2);
-    const tb = new THREE.Mesh(tbGeo, chromeMat.clone()); tb.position.set(hingeX, cy, cableZ2 - 3); tb.castShadow = true; cablesGroup.add(tb);
-    [bbox.min.x + 6, rightEdgeX - 6].forEach(ppx => {
-      const pinGeo = new THREE.CylinderGeometry(1.2, 1.2, 4, 8);
-      const pin = new THREE.Mesh(pinGeo, chromeMat.clone()); pin.position.set(ppx, cy, cableZ2); pin.castShadow = true; cablesGroup.add(pin);
+    const leftCurve = new THREE.CatmullRomCurve3(leftPts);
+    const leftTube = new THREE.Mesh(new THREE.TubeGeometry(leftCurve, 32, 0.6, 8, false), cableMat);
+    leftTube.castShadow = true;
+    leftSegGroup.add(leftTube);
+
+    // F05.6: Ring eye nut at left attachment point
+    // Torus (ring) through which cable passes
+    const ringRadius = 3, ringTube = 0.8;
+    const ringGeo = new THREE.TorusGeometry(ringRadius, ringTube, 12, 24);
+    ringGeo.rotateY(Math.PI / 2); // orient ring perpendicular to cable direction (X axis)
+    const ringEye = new THREE.Mesh(ringGeo, brassMat.clone());
+    ringEye.position.set(leftX, cy, cableZ);
+    ringEye.castShadow = true;
+    leftSegGroup.add(ringEye);
+
+    // Bolt sunk into cork/wood (vertical cylinder going up into bottom plate)
+    const boltLen = T_BOTTOM_PLATE + T_CORK_LOWER + 1;
+    const boltGeo = new THREE.CylinderGeometry(1.2, 1.2, boltLen, 8);
+    const bolt = new THREE.Mesh(boltGeo, steelMat.clone());
+    bolt.position.set(leftX, cy, cableZ + boltLen / 2);
+    bolt.castShadow = true;
+    leftSegGroup.add(bolt);
+
+    // Nut base (hex nut connecting ring to bolt)
+    const nutGeo = new THREE.CylinderGeometry(2.5, 2.5, 2, 6);
+    const nut = new THREE.Mesh(nutGeo, brassMat.clone());
+    nut.position.set(leftX, cy, cableZ + 0.5);
+    nut.castShadow = true;
+    leftSegGroup.add(nut);
+
+    // F09: Turnbuckle for adjustable tension
+    // Central hex body
+    const tbBodyLen = 10;
+    const tbBodyGeo = new THREE.CylinderGeometry(2.2, 2.2, tbBodyLen, 6);
+    tbBodyGeo.rotateZ(Math.PI / 2); // along X axis
+    const tbBody = new THREE.Mesh(tbBodyGeo, chromeMat.clone());
+    tbBody.position.set(turnbuckleX, cy, cableZ - 1.5);
+    tbBody.castShadow = true;
+    leftSegGroup.add(tbBody);
+
+    // Turnbuckle eye ends (small torus at each end)
+    [-1, 1].forEach(dir => {
+      const eyeGeo = new THREE.TorusGeometry(1.5, 0.4, 8, 16);
+      eyeGeo.rotateY(Math.PI / 2);
+      const eye = new THREE.Mesh(eyeGeo, steelMat.clone());
+      eye.position.set(turnbuckleX + dir * (tbBodyLen / 2 + 1), cy, cableZ - 1.5);
+      eye.castShadow = true;
+      leftSegGroup.add(eye);
     });
+
+    cablesGroup.add(leftSegGroup);
+
+    // ── Right segment: clevis pin → right attachment ──
+    const rightSegGroup = new THREE.Group();
+    rightSegGroup.userData._cableSide = 'right';
+
+    const rightPts = [
+      new THREE.Vector3(clevisRightX, cy, cableZ),
+      new THREE.Vector3((clevisRightX + rightX) / 2, cy, cableZ - 1),
+      new THREE.Vector3(rightX, cy, cableZ),
+    ];
+    const rightCurve = new THREE.CatmullRomCurve3(rightPts);
+    const rightTube = new THREE.Mesh(new THREE.TubeGeometry(rightCurve, 24, 0.6, 8, false), cableMat);
+    rightTube.castShadow = true;
+    rightSegGroup.add(rightTube);
+
+    // Right side attachment (magnetic/clevis bracket)
+    const bracketGeo = new THREE.BoxGeometry(3, 4, 3);
+    const bracket = new THREE.Mesh(bracketGeo, steelMat.clone());
+    bracket.position.set(rightX, cy, cableZ);
+    bracket.castShadow = true;
+    rightSegGroup.add(bracket);
+
+    cablesGroup.add(rightSegGroup);
+
+    // ── F05.7/F06: Clevis pins at the connection point (near hinge) ──
+    // Left clevis pin
+    const clevisPinGeo = new THREE.CylinderGeometry(1.5, 1.5, 5, 12);
+    const clevisPinL = new THREE.Mesh(clevisPinGeo, chromeMat.clone());
+    clevisPinL.position.set(clevisLeftX, cy, cableZ);
+    clevisPinL.castShadow = true;
+    leftSegGroup.add(clevisPinL);
+
+    // Clevis bracket (U-shape approximated with a box with a notch)
+    const clevisBracketGeo = new THREE.BoxGeometry(4, 6, 4);
+    const clevisBracketL = new THREE.Mesh(clevisBracketGeo, steelMat.clone());
+    clevisBracketL.position.set(clevisLeftX, cy, cableZ + 3);
+    clevisBracketL.castShadow = true;
+    leftSegGroup.add(clevisBracketL);
+
+    // Right clevis pin (matches left)
+    const clevisPinR = new THREE.Mesh(clevisPinGeo.clone(), chromeMat.clone());
+    clevisPinR.position.set(clevisRightX, cy, cableZ);
+    clevisPinR.castShadow = true;
+    rightSegGroup.add(clevisPinR);
+
+    const clevisBracketR = new THREE.Mesh(clevisBracketGeo.clone(), steelMat.clone());
+    clevisBracketR.position.set(clevisRightX, cy, cableZ + 3);
+    clevisBracketR.castShadow = true;
+    rightSegGroup.add(clevisBracketR);
+
+    // Spring ball detent (small sphere at each clevis pin)
+    const detentGeo = new THREE.SphereGeometry(0.8, 8, 8);
+    [clevisLeftX, clevisRightX].forEach((cx, i) => {
+      const detent = new THREE.Mesh(detentGeo, chromeMat.clone());
+      detent.position.set(cx, cy, cableZ - 2);
+      (i === 0 ? leftSegGroup : rightSegGroup).add(detent);
+    });
+
+    cableSegments.push({ leftGroup: leftSegGroup, rightGroup: rightSegGroup, clevisLeftX, clevisRightX, cy, turnbuckleX });
   });
+
   boardRoot.add(cablesGroup);
 
-  // ── Layer labels ──
-  const labelSprites = [];
-  function addLabel(text, x, y, z, layerId) {
-    const lc = document.createElement('canvas'); lc.width = 256; lc.height = 64;
-    const lg = lc.getContext('2d');
-    lg.fillStyle = 'rgba(0,0,0,0)'; lg.fillRect(0, 0, 256, 64);
-    lg.font = '600 22px -apple-system, BlinkMacSystemFont, sans-serif';
-    lg.fillStyle = '#ffffff'; lg.textAlign = 'center'; lg.fillText(text, 128, 38);
-    const tex = new THREE.CanvasTexture(lc);
-    const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0.85 });
-    const sprite = new THREE.Sprite(spriteMat);
-    sprite.position.set(x, y, z); sprite.scale.set(40, 10, 1); sprite.visible = false;
-    if (layerId) sprite.userData.layerId = layerId;
-    boardRoot.add(sprite); labelSprites.push(sprite); return sprite;
+  // ── R01.3: Component labels with leader lines and group toggling ──
+  // 2D overlay canvas for labels with diagonal-then-horizontal leader lines.
+  // Labels are projected from 3D anchor points to 2D screen space.
+  // Re-sorted on camera change to prevent line crossings.
+
+  const labelCanvas = document.createElement('canvas');
+  labelCanvas.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:4;';
+  container.style.position = 'relative';
+  container.appendChild(labelCanvas);
+  const labelCtx = labelCanvas.getContext('2d');
+
+  // Label definitions: {text, anchor (3D in model space), group, layerId, visible}
+  const leaderLabels = [];
+  const labelGroupVisibility = {}; // group → boolean
+
+  function addLeaderLabel(text, x, y, z, group, layerId) {
+    if (!labelGroupVisibility.hasOwnProperty(group)) labelGroupVisibility[group] = true;
+    leaderLabels.push({
+      text, anchor: new THREE.Vector3(x, y, z),
+      group, layerId: layerId || null, visible: true
+    });
   }
-  addLabel('Bamboo Bottom Plate', hingeX, bbox.min.y - 8, Z_BOTTOM + T_BOTTOM_PLATE / 2, 'bottomPlate');
-  addLabel('Cork Gasket (Lower)', hingeX, bbox.min.y - 8, Z_CORK_LOWER + T_CORK_LOWER / 2, 'corkLower');
-  addLabel('FR-4 PCB', hingeX, bbox.min.y - 8, Z_PCB + T_PCB / 2, 'pcb');
-  addLabel('Cork Gasket (Upper)', hingeX, bbox.min.y - 8, Z_CORK_UPPER + T_CORK_UPPER / 2, 'corkUpper');
-  addLabel('Switch Plate', hingeX, bbox.min.y - 8, Z_SWITCH_PLATE + T_SWITCH_PLATE / 2, 'switchPlate');
-  addLabel('Cherry MX ULP', hingeX, bbox.min.y - 8, Z_KEYCAP, 'keycaps');
-  addLabel('nice!nano v2 (underside)', nanoLeftX, bbox.min.y - 8, Z_PCB - 4, 'pcb');
-  addLabel('USB-C Port', nanoLeftX, bbox.min.y - 12, Z_PCB - 4, 'pcb');
-  addLabel('Ball Joint Hinge', hingeX, hy + 20, hz + 8);
-  addLabel('LiPo Battery', battX, bbox.min.y - 8, Z_CORK_LOWER + 3, 'corkLower');
+
+  // Component labels
+  addLeaderLabel('Bamboo Bottom Plate', hingeX, center.y, Z_BOTTOM + T_BOTTOM_PLATE / 2, 'layers', 'bottomPlate');
+  addLeaderLabel('Cork Gasket (Lower)', hingeX, center.y, Z_CORK_LOWER + T_CORK_LOWER / 2, 'layers', 'corkLower');
+  addLeaderLabel('FR-4 PCB', hingeX, center.y, Z_PCB + T_PCB / 2, 'layers', 'pcb');
+  addLeaderLabel('Cork Gasket (Upper)', hingeX, center.y, Z_CORK_UPPER + T_CORK_UPPER / 2, 'layers', 'corkUpper');
+  addLeaderLabel('Switch Plate', hingeX, center.y, Z_SWITCH_PLATE + T_SWITCH_PLATE / 2, 'layers', 'switchPlate');
+  addLeaderLabel('Cherry MX ULP', hingeX, center.y, Z_KEYCAP, 'layers', 'keycaps');
+  addLeaderLabel('nice!nano v2', nanoLeftX, center.y, Z_PCB - 4, 'electronics', 'pcb');
+  addLeaderLabel('USB-C Port', nanoLeftX, bbox.min.y + 5, Z_PCB - 4, 'electronics', 'pcb');
+  addLeaderLabel('Ball Joint Hinge', hingeX, hy, hz, 'hardware');
+  addLeaderLabel('LiPo Battery', battX, center.y, Z_CORK_LOWER + 3, 'electronics', 'corkLower');
+
+  // Screw labels (one per screw position, group = 'screws')
+  screwPositions.forEach((sp, i) => {
+    addLeaderLabel(`Bolt ${i + 1}`, sp.x, sp.y, Z_SWITCH_PLATE_TOP + 1, 'screws');
+  });
+
+  // Cable hardware labels
+  addLeaderLabel('Turnbuckle (near)', cableSegments[0]?.turnbuckleX || hingeX, nearCableY, cableZ - 1.5, 'cables');
+  addLeaderLabel('Turnbuckle (far)', cableSegments[1]?.turnbuckleX || hingeX, farCableY, cableZ - 1.5, 'cables');
+  addLeaderLabel('Ring Eye Nut (near)', nearLeftX, nearCableY, cableZ, 'cables');
+  addLeaderLabel('Ring Eye Nut (far)', farLeftX, farCableY, cableZ, 'cables');
+  addLeaderLabel('Clevis Pin (near)', cableSegments[0]?.clevisLeftX || hingeX - 12, nearCableY, cableZ, 'cables');
+  addLeaderLabel('Clevis Pin (far)', cableSegments[1]?.clevisLeftX || hingeX - 12, farCableY, cableZ, 'cables');
+
+  let labelsVisible = false;
+  const LABEL_MARGIN_RIGHT = 20; // px from right edge
+  const LABEL_LINE_HEIGHT = 16; // px between labels
+  const LEADER_ELBOW_OFFSET = 30; // px horizontal from anchor to elbow
+
+  function projectToScreen(point3d) {
+    // Point is in model space (boardRoot space). boardRoot is rotated 180° Z.
+    // Apply boardRoot transform to get world position.
+    const wp = point3d.clone();
+    wp.applyMatrix4(boardRoot.matrixWorld);
+    const ndc = wp.clone().project(camera);
+    const w = labelCanvas.width, h = labelCanvas.height;
+    return {
+      x: (ndc.x * 0.5 + 0.5) * w,
+      y: (-ndc.y * 0.5 + 0.5) * h,
+      behind: ndc.z > 1 || ndc.z < -1
+    };
+  }
+
+  function drawLeaderLabels() {
+    const w = container.clientWidth, h = container.clientHeight;
+    const dpr = window.devicePixelRatio || 1;
+    labelCanvas.width = w * dpr;
+    labelCanvas.height = h * dpr;
+    labelCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    labelCtx.clearRect(0, 0, w, h);
+
+    if (!labelsVisible) return;
+
+    // Project all visible label anchors to screen space
+    const projected = [];
+    leaderLabels.forEach((lbl, idx) => {
+      if (!lbl.visible) return;
+      if (!labelGroupVisibility[lbl.group]) return;
+      if (lbl.layerId && layerVisibility[lbl.layerId] === false) return;
+      const sp = projectToScreen(lbl.anchor);
+      if (sp.behind) return;
+      projected.push({ idx, text: lbl.text, ax: sp.x, ay: sp.y, group: lbl.group });
+    });
+
+    if (projected.length === 0) return;
+
+    // Sort by screen Y (top to bottom) to assign label slots and prevent crossings
+    projected.sort((a, b) => a.ay - b.ay);
+
+    // Assign label Y positions on the right side, evenly spaced, avoiding overlap
+    const labelX = w - LABEL_MARGIN_RIGHT;
+    const startY = 90; // leave room for nav legend
+    projected.forEach((p, i) => {
+      p.labelY = startY + i * LABEL_LINE_HEIGHT;
+      p.labelX = labelX;
+    });
+
+    // Draw leader lines and labels
+    labelCtx.font = '600 11px -apple-system, BlinkMacSystemFont, sans-serif';
+    labelCtx.textAlign = 'right';
+    labelCtx.textBaseline = 'middle';
+
+    const groupColors = {
+      layers: '#5a9ae0',
+      electronics: '#e0a03a',
+      hardware: '#aaaaaa',
+      screws: '#d0d0d0',
+      cables: '#70c070'
+    };
+
+    projected.forEach(p => {
+      const color = groupColors[p.group] || '#cccccc';
+
+      // Elbow point: anchor → diagonal up-right to elbow → horizontal to label
+      const elbowX = p.labelX - LEADER_ELBOW_OFFSET;
+      const elbowY = p.labelY;
+
+      // Draw leader line: anchor → elbow (diagonal)
+      labelCtx.beginPath();
+      labelCtx.moveTo(p.ax, p.ay);
+      labelCtx.lineTo(elbowX, elbowY);
+      labelCtx.strokeStyle = color;
+      labelCtx.lineWidth = 1;
+      labelCtx.globalAlpha = 0.6;
+      labelCtx.stroke();
+
+      // Draw horizontal line: elbow → label
+      labelCtx.beginPath();
+      labelCtx.moveTo(elbowX, elbowY);
+      labelCtx.lineTo(p.labelX, elbowY);
+      labelCtx.stroke();
+
+      // Small dot at anchor
+      labelCtx.beginPath();
+      labelCtx.arc(p.ax, p.ay, 2, 0, Math.PI * 2);
+      labelCtx.fillStyle = color;
+      labelCtx.globalAlpha = 0.8;
+      labelCtx.fill();
+
+      // Label text
+      labelCtx.globalAlpha = 0.9;
+      labelCtx.fillStyle = color;
+      labelCtx.fillText(p.text, p.labelX, p.labelY);
+      labelCtx.globalAlpha = 1.0;
+    });
+  }
+
+  // Keep backward compatibility: labelSprites array (empty, but referenced by wizard.html)
+  const labelSprites = [];
 
   // ── XYZ Axis Indicator + Named Anchors (R37/R38, geometry.md) ──
   // Added to scene directly (not boardRoot) to avoid the 180° display rotation.
@@ -1522,7 +1807,41 @@ function buildNewScene(ergogenResults, config, container) {
         }
       });
     }
-    cablesGroup.visible = internalDeg === 0;
+    // R09.1: Cable fold animation — disengage at clevis pins, each segment follows its half.
+    // When flat (internalDeg === 0), both segments are visible and connected.
+    // When folding, left segments rotate with left half, right segments rotate with right half.
+    // The clevis pins separate as the halves fold apart.
+    cablesGroup.visible = true; // always visible
+    const cablePivot = new THREE.Vector3(hingeX, hingeCenterY, hingeZ);
+    cableSegments.forEach(seg => {
+      // Reset all children to original positions
+      [seg.leftGroup, seg.rightGroup].forEach(grp => {
+        grp.children.forEach(child => {
+          if (!child.userData._cableOrigPos) {
+            child.userData._cableOrigPos = child.position.clone();
+            child.userData._cableOrigQuat = child.quaternion.clone();
+          }
+          child.position.copy(child.userData._cableOrigPos);
+          child.quaternion.copy(child.userData._cableOrigQuat);
+        });
+      });
+      if (internalDeg !== 0) {
+        // Left cable segment follows left half fold
+        seg.leftGroup.children.forEach(child => {
+          const p = child.position.clone().sub(cablePivot);
+          p.applyAxisAngle(yAxis, halfRad);
+          child.position.copy(p.add(cablePivot));
+          child.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(yAxis, halfRad));
+        });
+        // Right cable segment follows right half fold
+        seg.rightGroup.children.forEach(child => {
+          const p = child.position.clone().sub(cablePivot);
+          p.applyAxisAngle(yAxis, -halfRad);
+          child.position.copy(p.add(cablePivot));
+          child.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(yAxis, -halfRad));
+        });
+      }
+    });
 
     // Apply combined fold + butterfly to halves
     applyButterfly(currentButterflyDeg);
@@ -1614,18 +1933,64 @@ function buildNewScene(ergogenResults, config, container) {
   }
 
   // ── Exploded view ──
+  // Helper: determine layer index from Z position
+  function zToLayerIdx(z) {
+    if (z >= Z_SWITCH_PLATE) return 4;
+    if (z >= Z_CORK_UPPER) return 3;
+    if (z >= Z_PCB) return 2;
+    if (z >= Z_CORK_LOWER) return 1;
+    return 0;
+  }
+
   function applyExplodedView(on) {
     const gap = on ? 12 : 0;
+    const tmpMat = new THREE.Matrix4();
+    const tmpPos = new THREE.Vector3();
+    const tmpQuat = new THREE.Quaternion();
+    const tmpScale = new THREE.Vector3();
+
     [leftHalf, rightHalf].forEach(half => {
       half.traverse(obj => {
-        if (!obj.isMesh && !obj.isInstancedMesh) return;
+        // Handle InstancedMesh: adjust each instance's Z based on its position
+        if (obj.isInstancedMesh) {
+          if (!obj.userData._origMatrices) {
+            obj.userData._origMatrices = obj.instanceMatrix.array.slice();
+          }
+          const origArr = obj.userData._origMatrices;
+          const count = obj.count;
+          for (let i = 0; i < count; i++) {
+            tmpMat.fromArray(origArr, i * 16);
+            tmpMat.decompose(tmpPos, tmpQuat, tmpScale);
+            const origZ = tmpPos.z;
+            const layerIdx = zToLayerIdx(origZ);
+
+            // For screw shafts that span the full stack, stretch to fill the exploded gap
+            if (obj.userData._screwShaft && on) {
+              // Shaft center should be at the midpoint of the exploded stack
+              const bottomZ = Z_BOTTOM;
+              const topZ = Z_SWITCH_PLATE_TOP;
+              const bottomExploded = bottomZ; // layer 0 offset = 0
+              const topExploded = topZ + 4 * gap; // layer 4 offset
+              const newCenter = (bottomExploded + topExploded) / 2;
+              const newHeight = topExploded - bottomExploded;
+              tmpPos.z = newCenter;
+              // Scale Z to stretch (original height is T_FRAME, need newHeight)
+              tmpScale.z = newHeight / T_FRAME;
+            } else {
+              tmpPos.z = origZ + layerIdx * gap;
+            }
+
+            tmpMat.compose(tmpPos, tmpQuat, tmpScale);
+            obj.instanceMatrix.setMatrixAt ? tmpMat.toArray(obj.instanceMatrix.array, i * 16) : obj.setMatrixAt(i, tmpMat);
+          }
+          obj.instanceMatrix.needsUpdate = true;
+          return;
+        }
+
+        if (!obj.isMesh) return;
         if (obj.userData._origZ === undefined) obj.userData._origZ = obj.position.z;
         const origZ = obj.userData._origZ;
-        let layerIdx = 0;
-        if (origZ >= Z_SWITCH_PLATE) layerIdx = 4;
-        else if (origZ >= Z_CORK_UPPER) layerIdx = 3;
-        else if (origZ >= Z_PCB) layerIdx = 2;
-        else if (origZ >= Z_CORK_LOWER) layerIdx = 1;
+        const layerIdx = zToLayerIdx(origZ);
         obj.position.z = origZ + layerIdx * gap;
       });
     });
@@ -1719,6 +2084,7 @@ function buildNewScene(ergogenResults, config, container) {
     updateKeyPresses();
     controls.update();
     renderer.render(scene, camera);
+    drawLeaderLabels(); // R01.3: update leader line labels each frame
   }
   animate();
 
@@ -1727,6 +2093,7 @@ function buildNewScene(ergogenResults, config, container) {
     const ww = container.clientWidth, hh = container.clientHeight;
     camera.aspect = ww / hh; camera.updateProjectionMatrix();
     renderer.setSize(ww, hh);
+    drawLeaderLabels(); // R01.3: redraw labels on resize
   });
 
   // ── Return control interface for wizard.html to wire up UI ──
@@ -1737,11 +2104,16 @@ function buildNewScene(ergogenResults, config, container) {
     butterflyLimits,
     applyExplodedView,
     setLayerVisible,
-    setLabelsVisible: (v) => labelSprites.forEach(s => {
-      // R28: only show label if its layer is also visible
-      if (v && s.userData.layerId && !layerVisibility[s.userData.layerId]) return;
-      s.visible = v;
-    }),
+    setLabelsVisible: (v) => {
+      labelsVisible = v;
+      drawLeaderLabels();
+    },
+    setLabelGroupVisible: (group, v) => {
+      labelGroupVisibility[group] = v;
+      drawLeaderLabels();
+    },
+    getLabelGroups: () => Object.keys(labelGroupVisibility),
+    labelGroupVisibility,
     setAxesVisible: (v) => { axisGroup.visible = v; },
     setCablesVisible: (v) => { cablesGroup.visible = v; },
     setHingeVisible: (v) => { hingeGroup.visible = v; },
