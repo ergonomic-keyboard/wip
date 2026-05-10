@@ -73,6 +73,10 @@
 | R23 | SELF_PASS | 1 | 0 | 0 | Battery at halfCenterX, Z=Z_PCB-1.5 (between bottom plate and PCB). Bottom plate recess mesh (14x32mm, dark wood) added at battery location |
 | R24 | SELF_PASS | 1 | 0 | 0 | USB-C as separate createUsbCPort() at bbox.min.x+3.75 (outer edge), Z_PCB_TOP+1.63, rotated 90° so opening faces outward. Chrome + dark hole |
 | R25 | SELF_PASS | 1 | 0 | 0 | halfCenterX=(bbox.min.x+hingeX)/2, halfOuterEdgeX=bbox.min.x — all component positions derived from bbox, no hingeX-offset hardcoding |
+| R26 | SELF_PASS | 1 | 0 | 0 | 6 layer groups (bottomPlate, corkLower, pcb, corkUpper, switchPlate, keycaps) with userData.layerId tags. setLayerVisible() toggles groups in both halves. 6 checkboxes in toolbar |
+| R27 | SELF_PASS | 1 | 0 | 0 | Layer toggles set group.visible independently of exploded view Z-offsets. Both controls compose — exploded moves Z, toggles hide/show |
+| R28 | SELF_PASS | 1 | 0 | 0 | Label sprites tagged with userData.layerId. setLayerVisible hides labels when layer hidden. setLabelsVisible respects layerVisibility state |
+| R29 | SELF_PASS | 1 | 0 | 0 | 6 labeled checkboxes (all checked by default) in toolbar after divider, with "Layers:" prefix. Each wired to setLayerVisible via change event |
 
 ## Phase 4 — Hardware / BOM / Assembly
 
@@ -149,8 +153,8 @@
 
 | Metric | Count |
 |--------|-------|
-| Total requirements | 106 |
-| Self-verified PASS | 106 |
+| Total requirements | 110 |
+| Self-verified PASS | 110 |
 | User-confirmed PASS | 0 |
 | User corrections (I was wrong) | 28 |
 | Runtime re-verified (after fix) | 15 |

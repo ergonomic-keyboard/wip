@@ -234,6 +234,26 @@ Note: Half-to-half communication shall use Bluetooth (not wired USB-C between ha
 **REQ-R24** — The USB-C port on each half shall be rendered at the outer board edge (perimeter) of each half, oriented outward, at PCB height. It shall not be at the hinge edge.
 
 **REQ-R25** — In the 3D render, the MCU, battery, and USB-C port positions shall be computed from the board outline bounding box of each half (e.g., center-X of the half, offset from hinge edge) rather than hardcoded relative to `hingeX`/`center.y`.
+
+**REQ-R26** — The 3D render shall provide individual binary visibility toggles for each hardware layer. The toggleable layers shall be:
+
+| Toggle | Layer | Default |
+|--------|-------|---------|
+| Keycaps | Keycap meshes + key legends | ON |
+| Switch Plate | Switch plate + switch housings/stems | ON |
+| Cork Upper | Upper cork gasket | ON |
+| PCB | PCB + MCU + USB-C + diodes + solder pads | ON |
+| Cork Lower | Lower cork gasket + battery | ON |
+| Bottom Plate | Bottom plate + battery recess | ON |
+
+Each toggle shall independently show/hide that layer's meshes without affecting any other layer.
+
+**REQ-R27** — Layer toggles shall work in both normal (assembled) view and exploded view. Toggling a layer off shall hide its meshes in whichever view mode is active. The exploded view separation and the layer toggles shall be independent controls.
+
+**REQ-R28** — When a layer is toggled off, its exploded-view label (if any) shall also be hidden. Toggling the layer back on shall restore the label (if exploded view labels are enabled).
+
+**REQ-R29** — The layer toggle controls shall be rendered as a row of labeled checkboxes (all checked by default), positioned near the existing fold/butterfly sliders in the 3D view toolbar. Each checkbox shall be labeled with its layer name.
+
 ---
 
 ## 10. Stage Fidelity

@@ -6,12 +6,12 @@
 
 Phase 1 — Foundation (software pipeline): **COMPLETE** (all 14 requirements SELF_PASS)
 Phase 2 — UI/UX Verification: **COMPLETE** (all 11 requirements SELF_PASS)
-Phase 3 — 3D Render Verification: **COMPLETE** (R01-R25 all SELF_PASS)
+Phase 3 — 3D Render Verification: **COMPLETE** (R01-R29 all SELF_PASS)
 Phase 4 — Hardware / BOM / Assembly: **COMPLETE** (all SELF_PASS — R03, R10, S10, E04, H02 fixed via R22-R25)
 Phase 5 — Hinge & Mechanism A: **COMPLETE** (all 19 requirements SELF_PASS)
 Phase 6 — Design Guidelines: **COMPLETE** (all 9 guidelines SELF_PASS)
 
-**106 total requirements. 0 USER_FAIL, 0 NOT_STARTED. 28 total user corrections.**
+**110 total requirements. 0 USER_FAIL, 0 NOT_STARTED. 28 total user corrections.**
 
 ## Session History
 
@@ -30,35 +30,40 @@ Phase 6 — Design Guidelines: **COMPLETE** (all 9 guidelines SELF_PASS)
 | 10 | 2026-05-09 | Fix labels/angle/hinge + R21 butterfly | **Labels counter-rotated for boardRoot, angle annotation reversed, hinge pivot at top surface, R21 butterfly fold 0-45° with butterflyRoot group. 102 requirements, 23 user corrections** |
 | 11 | 2026-05-10 | Fix R18 annotation + R21 butterfly axis + MCU/battery violations | **R18: origin moved to thumb col, inner axis flipped. R21: butterfly changed from X-axis tilt to per-half Z-axis Hirth rotation, fixed compounding bug. MCU/battery/USB-C misplacement identified → 5 USER_FAIL (R03, R10, S10, E04, H02), 4 new requirements added (R22-R25). 28 user corrections** |
 | 12 | 2026-05-10 | Fix MCU/battery/USB-C placement (R22-R25 + 5 USER_FAIL) | **9/9 fixed. MCU at half center on PCB, battery between bottom plate/PCB with recess, USB-C at outer edge oriented outward. All positions from bbox. 106/106 SELF_PASS, 28 user corrections** |
+| 13 | 2026-05-10 | Per-layer visibility toggles (R26-R29) | **4/4 implemented. 6 layer groups with userData.layerId, setLayerVisible API, 6 checkboxes in toolbar, label sprites tagged for R28. 110/110 SELF_PASS** |
 
 ## Last Session Summary
 
-**Session 12 — Fix MCU/battery/USB-C placement (R22-R25 + 5 USER_FAIL)**
+**Session 13 — Per-layer visibility toggles (R26-R29)**
 
 ### What was done:
-1. **R25 — Bbox-based position computation**: Added `halfCenterX = (bbox.min.x + hingeX) / 2`, `halfCenterY = center.y`, `halfOuterEdgeX = bbox.min.x` — all component positions now derived from the left half's board outline bbox.
+1. **R26 — Layer groups**: Created 6 THREE.Group objects tagged with `userData.layerId`: `bottomPlate`, `corkLower`, `pcb`, `corkUpper`, `switchPlate`, `keycaps`. All mesh creation redirected from flat `boardGroup.add()` to the appropriate layer group. Layer groups added to `boardGroup`. Meshes categorized:
+   - `bottomPlate`: bottom plate extrusion, frame surround, battery recess
+   - `corkLower`: cork lower extrusion, battery group
+   - `pcb`: PCB extrusion, diodes, diode leads, MCU, USB-C port
+   - `corkUpper`: cork upper extrusion
+   - `switchPlate`: switch plate extrusion, switch housings
+   - `keycaps`: keycap instanced mesh, stems, key label groups (left + right)
 
-2. **R22 — MCU on PCB surface**: `createNiceNano()` placed at `halfCenterX, halfCenterY` on `Z_PCB_TOP + 0.8`. USB-C removed from MCU body (now separate component). MCU sits visually on top of PCB within board outline.
+2. **R27 — Exploded + toggle independence**: Exploded view modifies `position.z` of individual meshes. Layer toggles modify `group.visible`. These are orthogonal — no interaction issues.
 
-3. **R23 — Battery between bottom plate and PCB**: Battery at `halfCenterX, halfCenterY - 18`, Z positioned so top touches PCB underside (`Z_PCB - battThickness/2`). Bottom plate recess mesh (14x32mm, dark wood material) added at battery location.
+3. **R28 — Label sprite hiding**: Label sprites tagged with `userData.layerId`. `setLayerVisible()` hides labels when layer is hidden. `setLabelsVisible()` respects `layerVisibility` state — won't show a label whose layer is off.
 
-4. **R24 — USB-C at outer edge**: New `createUsbCPort()` function — chrome body + dark opening, placed at `bbox.min.x + 3.75` (outer edge), rotated 90° so opening faces outward. Separate from MCU.
-
-5. **5 USER_FAIL resolved**: R03, R10, S10, E04, H02 all fixed as a consequence of R22-R25.
-
-6. **Labels updated**: Added "USB-C Port" label, moved "LiPo Battery" label to new battX position.
+4. **R29 — UI checkboxes**: 6 labeled checkboxes added to toolbar (after divider, with "Layers:" prefix): Keycaps, Switch Plate, Cork Upper, PCB, Cork Lower, Bottom Plate. All checked by default. Each wired to `setLayerVisible()` via change event.
 
 ### Changes made:
-- `wip/render3d.js`: MCU/battery/USB-C placement rewrite (~lines 895-970)
-- `wip/compliance_scorecard.md`: 5 USER_FAIL→SELF_PASS, 4 NOT_STARTED→SELF_PASS, totals updated, session 12 summary
+- `wip/render3d.js`: Layer group architecture, `setLayerVisible()` function, label tagging, `setLabelsVisible()` respects layer state
+- `wip/wizard.html`: 6 layer toggle checkboxes + event handler loop
+- `wip/final_requirements.md`: R26-R29 formatted
+- `wip/compliance_scorecard.md`: R26-R29 SELF_PASS, totals updated to 110
 - `wip/session_state.md`: This file updated
 
 ## What To Do Next
 
-**All 106 requirements are SELF_PASS. No USER_FAIL or NOT_STARTED remain.**
+**All 110 requirements are SELF_PASS. No USER_FAIL or NOT_STARTED remain.**
 
 Potential future work:
-- User visual verification of MCU/battery/USB-C placement in 3D render
+- User visual verification of layer toggles in 3D render
 - The ROTATED thumb mode algorithm is still a placeholder (defaults to STRAIGHT behavior)
 - Old `build3DScene()` dead code still in wizard.html (~1000 lines, no longer called)
 - `convert.py` and JS `ergopadToErgogen()` should be kept in sync

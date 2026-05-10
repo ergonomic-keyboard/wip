@@ -606,27 +606,38 @@ function buildNewScene(ergogenResults, config, container) {
     return grp;
   }
 
-  // ── Build board layers ──
+  // ── Build board layers (R26: each layer in its own tagged group for visibility toggling) ──
   const boardGroup = new THREE.Group();
 
+  // Layer groups — each tagged with userData.layerId for per-layer visibility control
+  const layerBottomPlate = new THREE.Group(); layerBottomPlate.userData.layerId = 'bottomPlate';
+  const layerCorkLower   = new THREE.Group(); layerCorkLower.userData.layerId   = 'corkLower';
+  const layerPCB         = new THREE.Group(); layerPCB.userData.layerId         = 'pcb';
+  const layerCorkUpper   = new THREE.Group(); layerCorkUpper.userData.layerId   = 'corkUpper';
+  const layerSwitchPlate = new THREE.Group(); layerSwitchPlate.userData.layerId = 'switchPlate';
+  const layerKeycaps     = new THREE.Group(); layerKeycaps.userData.layerId     = 'keycaps';
+
   // Bottom plate — bamboo
-  boardGroup.add(extrudeLayer(boardShape, T_BOTTOM_PLATE, bambooMat, Z_BOTTOM,
+  layerBottomPlate.add(extrudeLayer(boardShape, T_BOTTOM_PLATE, bambooMat, Z_BOTTOM,
     { bevelEnabled: true, bevelThickness: 0.3, bevelSize: 0.3, bevelSegments: 2 }));
-  // Cork gasket lower
-  boardGroup.add(extrudeLayer(boardShape, T_CORK_LOWER, corkMat, Z_CORK_LOWER));
-  // PCB
-  const pcbLayer = extrudeLayer(boardShape, T_PCB, corkMat, Z_PCB); // placeholder material
-  boardGroup.add(pcbLayer);
-  // Cork gasket upper
-  boardGroup.add(extrudeLayer(boardShape, T_CORK_UPPER, corkMat, Z_CORK_UPPER));
-  // Switch plate with cutouts
-  boardGroup.add(extrudeLayer(switchPlateShape, T_SWITCH_PLATE, bambooSideMat, Z_SWITCH_PLATE,
-    { bevelEnabled: true, bevelThickness: 0.2, bevelSize: 0.2, bevelSegments: 1 }));
-  // Frame surround
+  // Frame surround (part of bottom plate layer — it spans full stack but is structurally bottom)
   if (frameSurroundShape) {
-    boardGroup.add(extrudeLayer(frameSurroundShape, T_FRAME, bambooMat.clone(), Z_BOTTOM,
+    layerBottomPlate.add(extrudeLayer(frameSurroundShape, T_FRAME, bambooMat.clone(), Z_BOTTOM,
       { bevelEnabled: true, bevelThickness: 0.4, bevelSize: 0.4, bevelSegments: 2 }));
   }
+  // Cork gasket lower
+  layerCorkLower.add(extrudeLayer(boardShape, T_CORK_LOWER, corkMat, Z_CORK_LOWER));
+  // PCB
+  const pcbLayer = extrudeLayer(boardShape, T_PCB, corkMat, Z_PCB); // placeholder material
+  layerPCB.add(pcbLayer);
+  // Cork gasket upper
+  layerCorkUpper.add(extrudeLayer(boardShape, T_CORK_UPPER, corkMat, Z_CORK_UPPER));
+  // Switch plate with cutouts
+  layerSwitchPlate.add(extrudeLayer(switchPlateShape, T_SWITCH_PLATE, bambooSideMat, Z_SWITCH_PLATE,
+    { bevelEnabled: true, bevelThickness: 0.2, bevelSize: 0.2, bevelSegments: 1 }));
+
+  // Add all layer groups to boardGroup
+  [layerBottomPlate, layerCorkLower, layerPCB, layerCorkUpper, layerSwitchPlate, layerKeycaps].forEach(g => boardGroup.add(g));
 
   // ── Compute bbox for PCB texture and hardware placement ──
   const bbox = new THREE.Box3().setFromObject(boardGroup);
@@ -701,10 +712,18 @@ function buildNewScene(ergogenResults, config, container) {
     dummy.updateMatrix(); diodeLeadInst.setMatrixAt(i * 2 + 1, dummy.matrix);
   });
 
+  // Assign per-key instanced meshes to their respective layer groups
   [switchInst, keycapInst, stemInst, diodeInst, diodeLeadInst].forEach(inst => {
     inst.instanceMatrix.needsUpdate = true;
-    boardGroup.add(inst);
   });
+  // Keycaps + stems + switch housings → keycaps layer (user sees them as one unit)
+  layerKeycaps.add(keycapInst);
+  layerKeycaps.add(stemInst);
+  // Switch housings sit on the switch plate
+  layerSwitchPlate.add(switchInst);
+  // Diodes are on the PCB
+  layerPCB.add(diodeInst);
+  layerPCB.add(diodeLeadInst);
 
   // Diagnostic: verify switch instance positions vs board geometry
   {
@@ -919,7 +938,7 @@ function buildNewScene(ergogenResults, config, container) {
     return grp;
   }
   const nanoLeftX = halfCenterX, nanoY = halfCenterY;
-  boardGroup.add(createNiceNano(nanoLeftX, nanoY));
+  layerPCB.add(createNiceNano(nanoLeftX, nanoY));
 
   // ── USB-C port (R24: at outer board edge of each half, oriented outward, at PCB height) ──
   function createUsbCPort(posX, posY) {
@@ -937,7 +956,7 @@ function buildNewScene(ergogenResults, config, container) {
   }
   const usbX = halfOuterEdgeX + 3.75; // half USB body depth protruding slightly
   const usbY = halfCenterY;
-  boardGroup.add(createUsbCPort(usbX, usbY));
+  layerPCB.add(createUsbCPort(usbX, usbY));
 
   // ── Battery (R23: between bottom plate and PCB, within board outline, with bottom plate recess) ──
   const batteryGroup = new THREE.Group();
@@ -961,13 +980,13 @@ function buildNewScene(ergogenResults, config, container) {
   const battX = halfCenterX;
   const battY = halfCenterY - 18; // offset toward bottom to avoid MCU overlap
   batteryGroup.add(addBattery(battX, battY));
-  boardGroup.add(batteryGroup);
+  layerCorkLower.add(batteryGroup);
 
   // ── Bottom plate battery recess (R23: visible cutout in bottom plate) ──
   const recessMat = new THREE.MeshStandardMaterial({ color: 0x3d2b1f, roughness: 0.8, metalness: 0.0 });
   const recessMesh = new THREE.Mesh(new THREE.BoxGeometry(14, 32, T_BOTTOM_PLATE * 0.7), recessMat);
   recessMesh.position.set(battX, battY, Z_BOTTOM + T_BOTTOM_PLATE * 0.15);
-  boardGroup.add(recessMesh);
+  layerBottomPlate.add(recessMesh);
 
   // ── Screws ──
   const bx0 = bbox.min.x + 10, bx1 = bbox.max.x - 10;
@@ -987,7 +1006,9 @@ function buildNewScene(ergogenResults, config, container) {
     dummy.position.z = Z_BOTTOM + T_FRAME / 2; dummy.updateMatrix(); screwShaftInst.setMatrixAt(i, dummy.matrix);
     dummy.position.z = Z_BOTTOM + 1.5; dummy.updateMatrix(); insertInst.setMatrixAt(i, dummy.matrix);
   });
-  [screwHeadInst, screwShaftInst, insertInst].forEach(inst => { inst.instanceMatrix.needsUpdate = true; boardGroup.add(inst); });
+  const screwGroup = new THREE.Group(); screwGroup.userData.layerId = 'screws';
+  [screwHeadInst, screwShaftInst, insertInst].forEach(inst => { inst.instanceMatrix.needsUpdate = true; screwGroup.add(inst); });
+  boardGroup.add(screwGroup);
 
   // ── Split into left/right halves ──
   const leftHalf = new THREE.Group();
@@ -1040,8 +1061,8 @@ function buildNewScene(ergogenResults, config, container) {
 
   const labelGeo = new THREE.PlaneGeometry(13, 13);
   const labelZ = Z_KEYCAP + 1.7;
-  const leftLabelGroup = new THREE.Group();
-  const rightLabelGroup = new THREE.Group();
+  const leftLabelGroup = new THREE.Group(); leftLabelGroup.userData.layerId = 'keycaps';
+  const rightLabelGroup = new THREE.Group(); rightLabelGroup.userData.layerId = 'keycaps';
   const rightLabelData = [];
 
   keyMap.leftKeys.forEach(k => {
@@ -1143,7 +1164,7 @@ function buildNewScene(ergogenResults, config, container) {
 
   // ── Layer labels ──
   const labelSprites = [];
-  function addLabel(text, x, y, z) {
+  function addLabel(text, x, y, z, layerId) {
     const lc = document.createElement('canvas'); lc.width = 256; lc.height = 64;
     const lg = lc.getContext('2d');
     lg.fillStyle = 'rgba(0,0,0,0)'; lg.fillRect(0, 0, 256, 64);
@@ -1153,17 +1174,19 @@ function buildNewScene(ergogenResults, config, container) {
     const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0.85 });
     const sprite = new THREE.Sprite(spriteMat);
     sprite.position.set(x, y, z); sprite.scale.set(40, 10, 1); sprite.visible = false;
+    if (layerId) sprite.userData.layerId = layerId;
     boardRoot.add(sprite); labelSprites.push(sprite); return sprite;
   }
-  addLabel('Bamboo Bottom Plate', hingeX, bbox.min.y - 8, Z_BOTTOM + T_BOTTOM_PLATE / 2);
-  addLabel('Cork Gasket', hingeX, bbox.min.y - 8, Z_CORK_LOWER + T_CORK_LOWER / 2);
-  addLabel('FR-4 PCB', hingeX, bbox.min.y - 8, Z_PCB + T_PCB / 2);
-  addLabel('Switch Plate', hingeX, bbox.min.y - 8, Z_SWITCH_PLATE + T_SWITCH_PLATE / 2);
-  addLabel('Cherry MX ULP', hingeX, bbox.min.y - 8, Z_KEYCAP);
-  addLabel('nice!nano v2', nanoLeftX, bbox.min.y - 8, Z_PCB_TOP + 4);
-  addLabel('USB-C Port', usbX, bbox.min.y - 8, Z_PCB_TOP + 4);
+  addLabel('Bamboo Bottom Plate', hingeX, bbox.min.y - 8, Z_BOTTOM + T_BOTTOM_PLATE / 2, 'bottomPlate');
+  addLabel('Cork Gasket (Lower)', hingeX, bbox.min.y - 8, Z_CORK_LOWER + T_CORK_LOWER / 2, 'corkLower');
+  addLabel('FR-4 PCB', hingeX, bbox.min.y - 8, Z_PCB + T_PCB / 2, 'pcb');
+  addLabel('Cork Gasket (Upper)', hingeX, bbox.min.y - 8, Z_CORK_UPPER + T_CORK_UPPER / 2, 'corkUpper');
+  addLabel('Switch Plate', hingeX, bbox.min.y - 8, Z_SWITCH_PLATE + T_SWITCH_PLATE / 2, 'switchPlate');
+  addLabel('Cherry MX ULP', hingeX, bbox.min.y - 8, Z_KEYCAP, 'keycaps');
+  addLabel('nice!nano v2', nanoLeftX, bbox.min.y - 8, Z_PCB_TOP + 4, 'pcb');
+  addLabel('USB-C Port', usbX, bbox.min.y - 8, Z_PCB_TOP + 4, 'pcb');
   addLabel('Ball Joint Hinge', hingeX, hy + 20, hz + 8);
-  addLabel('LiPo Battery', battX, bbox.min.y - 8, Z_CORK_LOWER + 3);
+  addLabel('LiPo Battery', battX, bbox.min.y - 8, Z_CORK_LOWER + 3, 'corkLower');
 
   // ── Camera position (from HUMAN/typist side — R19) ──
   // boardRoot is rotated 180° around Z, so world coords = (-local_x, -local_y, local_z).
@@ -1317,6 +1340,31 @@ function buildNewScene(ergogenResults, config, container) {
     });
   }
 
+  // ── R26: Per-layer visibility toggling ──
+  const layerVisibility = {
+    bottomPlate: true, corkLower: true, pcb: true,
+    corkUpper: true, switchPlate: true, keycaps: true
+  };
+
+  function setLayerVisible(layerId, visible) {
+    layerVisibility[layerId] = visible;
+    // Toggle groups in both halves that match this layerId
+    [leftHalf, rightHalf].forEach(half => {
+      half.traverse(obj => {
+        if (obj.userData.layerId === layerId) {
+          obj.visible = visible;
+        }
+      });
+    });
+    // Toggle associated label sprites (R28)
+    labelSprites.forEach(sprite => {
+      if (sprite.userData.layerId === layerId) {
+        // Only hide the label; don't force-show it (labels are controlled by setLabelsVisible too)
+        if (!visible) sprite.visible = false;
+      }
+    });
+  }
+
   // ── Key press interaction ──
   const pressedKeys = new Map();
   const PRESS_DEPTH = 1.5, PRESS_DOWN_MS = 80, PRESS_UP_MS = 200;
@@ -1397,7 +1445,12 @@ function buildNewScene(ergogenResults, config, container) {
     getMaxButterflyDeg,
     butterflyLimits,
     applyExplodedView,
-    setLabelsVisible: (v) => labelSprites.forEach(s => s.visible = v),
+    setLayerVisible,
+    setLabelsVisible: (v) => labelSprites.forEach(s => {
+      // R28: only show label if its layer is also visible
+      if (v && s.userData.layerId && !layerVisibility[s.userData.layerId]) return;
+      s.visible = v;
+    }),
     setCablesVisible: (v) => { cablesGroup.visible = v; },
     setHingeVisible: (v) => { hingeGroup.visible = v; },
     setBatteryVisible: (v) => { batteryGroup.visible = v; },
