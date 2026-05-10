@@ -6,12 +6,12 @@
 
 Phase 1 — Foundation (software pipeline): **COMPLETE** (all 14 requirements SELF_PASS)
 Phase 2 — UI/UX Verification: **COMPLETE** (all 11 requirements SELF_PASS)
-Phase 3 — 3D Render Verification: **COMPLETE** (all 16 requirements SELF_PASS)
+Phase 3 — 3D Render Verification: **COMPLETE** (all 17 requirements SELF_PASS, R17-R21)
 Phase 4 — Hardware / BOM / Assembly: **COMPLETE** (all 28 requirements SELF_PASS)
 Phase 5 — Hinge & Mechanism A: **COMPLETE** (all 19 requirements SELF_PASS)
 Phase 6 — Design Guidelines: **COMPLETE** (all 9 guidelines SELF_PASS)
 
-**ALL 101 REQUIREMENTS SELF_PASS — 0 USER_FAIL, 21 total user corrections**
+**ALL 102 REQUIREMENTS SELF_PASS — 0 USER_FAIL, 23 total user corrections**
 
 ## Session History
 
@@ -27,6 +27,7 @@ Phase 6 — Design Guidelines: **COMPLETE** (all 9 guidelines SELF_PASS)
 | 7 | 2026-05-08 | User screenshot review + root cause analysis | **6 new USER_FAIL: R03, R11, R14, SF01, S03, DG-01. Root cause: render3d.js uses wrong coordinate system** |
 | 8 | 2026-05-08 | Fix 6 USER_FAIL + R17-R20 + thumb fix | **6/6 fixed, R17 fixed, R18-R20 implemented, thumb positions corrected. 101/101 SELF_PASS, 19 user corrections** |
 | 9 | 2026-05-09 | Fix R19 + R20 USER_FAIL | **R19: 180° Z rotation via boardRoot group. R20: fold remapped (180°=flat, 0°=closed, 270°=tented). 21 user corrections** |
+| 10 | 2026-05-09 | Fix labels/angle/hinge + R21 butterfly | **Labels counter-rotated for boardRoot, angle annotation reversed, hinge pivot at top surface, R21 butterfly fold 0-45° with butterflyRoot group. 102 requirements, 23 user corrections** |
 
 ## Last Session Summary
 

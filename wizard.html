@@ -155,6 +155,7 @@ header { display: flex; align-items: center; justify-content: space-between; pad
 <div id="page2" class="page">
   <div class="toolbar">
     <label>Fold: <input type="range" id="fold-slider" min="0" max="270" step="5" value="180"> <span id="fold-val">180</span>&deg;</label>
+    <label>Butterfly: <input type="range" id="butterfly-slider" min="0" max="45" step="1" value="0"> <span id="butterfly-val">0</span>&deg; <span id="butterfly-limit" style="color:#888;font-size:0.85em">(max 45&deg;)</span></label>
     <label><input type="checkbox" id="show-cables" checked> Cables</label>
     <label><input type="checkbox" id="show-hinge" checked> Hinge</label>
     <label><input type="checkbox" id="show-battery" checked> Battery</label>
@@ -3095,6 +3096,9 @@ function build3DScene() {
 
   document.getElementById('fold-slider').value = 180;
   document.getElementById('fold-val').textContent = '180';
+  document.getElementById('butterfly-slider').value = 0;
+  document.getElementById('butterfly-val').textContent = '0';
+  document.getElementById('butterfly-limit').textContent = '(max 45\u00b0)';
 
   // ── Interactions ──
   renderer.domElement.addEventListener('pointerdown', onKeyPress);
@@ -3287,8 +3291,32 @@ window.addEventListener('resize', () => {
 
 
 // Forward toolbar events to renderer
+function updateButterflyLimit() {
+  if (!window._newSceneCtrl) return;
+  const foldVal = +document.getElementById('fold-slider').value;
+  const maxB = window._newSceneCtrl.getMaxButterflyDeg(foldVal);
+  const bSlider = document.getElementById('butterfly-slider');
+  const bLimit = document.getElementById('butterfly-limit');
+  bSlider.max = maxB;
+  if (+bSlider.value > maxB) {
+    bSlider.value = maxB;
+    document.getElementById('butterfly-val').textContent = maxB;
+    window._newSceneCtrl.applyButterfly(maxB);
+  }
+  bLimit.textContent = maxB < 45 ? `(max ${maxB}\u00b0 at fold ${foldVal}\u00b0)` : `(max ${maxB}\u00b0)`;
+}
 document.getElementById('fold-slider').addEventListener('input', () => {
-  if (window._newSceneCtrl) window._newSceneCtrl.applyFold(+document.getElementById('fold-slider').value);
+  if (!window._newSceneCtrl) return;
+  const v = +document.getElementById('fold-slider').value;
+  document.getElementById('fold-val').textContent = v;
+  window._newSceneCtrl.applyFold(v);
+  updateButterflyLimit();
+});
+document.getElementById('butterfly-slider').addEventListener('input', () => {
+  if (!window._newSceneCtrl) return;
+  const v = +document.getElementById('butterfly-slider').value;
+  document.getElementById('butterfly-val').textContent = v;
+  window._newSceneCtrl.applyButterfly(v);
 });
 document.getElementById('show-cables').addEventListener('change', () => {
   if (window._newSceneCtrl) window._newSceneCtrl.setCablesVisible(document.getElementById('show-cables').checked && +document.getElementById('fold-slider').value === 180);

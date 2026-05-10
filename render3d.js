@@ -632,7 +632,9 @@ function buildNewScene(ergogenResults, config, container) {
   const bbox = new THREE.Box3().setFromObject(boardGroup);
   const center = new THREE.Vector3(); bbox.getCenter(center);
   let hingeX = bbox.max.x;
-  const hingeZ = center.z;
+  // Hinge pivot at top surface so halves fold together cleanly (keycap-to-keycap)
+  // without inner edges colliding
+  const hingeZ = Z_SWITCH_PLATE_TOP;
   const hingeCenterY = center.y;
 
   console.log(`render3d board bbox: min=(${bbox.min.x.toFixed(1)}, ${bbox.min.y.toFixed(1)}, ${bbox.min.z.toFixed(1)}) max=(${bbox.max.x.toFixed(1)}, ${bbox.max.y.toFixed(1)}, ${bbox.max.z.toFixed(1)})`);
@@ -773,22 +775,18 @@ function buildNewScene(ergogenResults, config, container) {
     const innerCol = stage1Keys['index_far'];
     const thumbCol = stage1Keys['thumb'];
     if (innerCol && thumbCol) {
-      // Inner column direction in scene space (Y-down)
-      const innerDirRad = -innerCol.angleDeg * Math.PI / 180;
-      // Thumb column direction in scene space
-      const thumbDirRad = -thumbCol.angleDeg * Math.PI / 180;
-      // Column directions point along local +Y (padding direction).
-      // In scene coords: direction = (sin(sceneRot), cos(sceneRot)) because
-      // ergogen rotation r → local Y axis = (-sin(r), cos(r)) in ergogen space,
-      // after Y-negation → (sin(-r), -cos(-r)) ... let's just compute from the actual positions.
-      // Use bottom→top vector for each column.
       const innerBot = { x: innerCol.bottom.x, y: -innerCol.bottom.y };
       const innerTop = { x: innerCol.top.x, y: -innerCol.top.y };
       const thumbBot = { x: thumbCol.bottom.x, y: -thumbCol.bottom.y };
       const thumbTop = { x: thumbCol.top.x, y: -thumbCol.top.y };
 
-      const innerDx = innerTop.x - innerBot.x, innerDy = innerTop.y - innerBot.y;
-      const thumbDx = thumbTop.x - thumbBot.x, thumbDy = thumbTop.y - thumbBot.y;
+      // Thumb direction: top→bottom (negated) so it points toward thumb cluster
+      // after boardRoot's 180° Z rotation
+      const thumbDx = -(thumbTop.x - thumbBot.x), thumbDy = -(thumbTop.y - thumbBot.y);
+      // Inner direction: bottom→top (NOT negated) so it points ABOVE the thumb axis
+      // after boardRoot's 180° Z rotation. This ensures the arc spans the acute angle
+      // between them (the angle between the columns) rather than the reflex angle.
+      const innerDx = (innerTop.x - innerBot.x), innerDy = (innerTop.y - innerBot.y);
       const innerLen = Math.sqrt(innerDx * innerDx + innerDy * innerDy);
       const thumbLen = Math.sqrt(thumbDx * thumbDx + thumbDy * thumbDy);
 
@@ -798,11 +796,10 @@ function buildNewScene(ergogenResults, config, container) {
         const angleBetween = Math.acos(Math.max(-1, Math.min(1, dot)));
         const angleDeg = angleBetween * 180 / Math.PI;
 
-        // Draw from inner column home position
-        const origin = { x: innerCol.home.x, y: -innerCol.home.y };
-        const lineLen = 25; // mm, length of direction lines
+        // Origin at thumb column home position (intersection at thumb cluster)
+        const origin = { x: thumbCol.home.x, y: -thumbCol.home.y };
+        const lineLen = 25;
 
-        // Inner column direction line (normalized, scaled)
         const iux = innerDx / innerLen, iuy = innerDy / innerLen;
         const tux = thumbDx / thumbLen, tuy = thumbDy / thumbLen;
 
@@ -820,11 +817,10 @@ function buildNewScene(ergogenResults, config, container) {
         outlineGroup.add(new THREE.Line(thumbLineGeo, purpleMat));
 
         // Circular arc between the two lines
-        const arcRadius = 15; // mm
+        const arcRadius = 15;
         const innerAngle = Math.atan2(iuy, iux);
         const thumbAngle = Math.atan2(tuy, tux);
-        // Determine sweep direction (shortest arc)
-        let startAngle = innerAngle, endAngle = thumbAngle;
+        let startAngle = thumbAngle, endAngle = innerAngle;
         let sweep = endAngle - startAngle;
         if (sweep > Math.PI) sweep -= 2 * Math.PI;
         if (sweep < -Math.PI) sweep += 2 * Math.PI;
@@ -843,19 +839,17 @@ function buildNewScene(ergogenResults, config, container) {
         const arcGeo = new THREE.BufferGeometry().setFromPoints(arcPts);
         outlineGroup.add(new THREE.Line(arcGeo, purpleMat));
 
-        // Arrowhead at the end of the arc (pointing along arc direction)
+        // Arrowhead at the end of the arc
         const lastA = startAngle + sweep;
         const arrowTip = new THREE.Vector3(
           origin.x + arcRadius * Math.cos(lastA),
           origin.y + arcRadius * Math.sin(lastA),
           Z_PURPLE_OUTLINES
         );
-        // Tangent at end of arc: perpendicular to radial direction, in sweep direction
         const tangentSign = sweep > 0 ? 1 : -1;
         const tangentX = -Math.sin(lastA) * tangentSign;
         const tangentY = Math.cos(lastA) * tangentSign;
-        const arrowLen = 3;
-        const arrowSpread = 1.2;
+        const arrowLen = 3, arrowSpread = 1.2;
         const arrowBase = new THREE.Vector3(
           arrowTip.x - tangentX * arrowLen,
           arrowTip.y - tangentY * arrowLen,
@@ -881,7 +875,6 @@ function buildNewScene(ergogenResults, config, container) {
         const labelTex = new THREE.CanvasTexture(labelCanvas);
         const labelMat = new THREE.SpriteMaterial({ map: labelTex, transparent: true, depthWrite: false });
         const labelSprite = new THREE.Sprite(labelMat);
-        // Position at midpoint of arc
         const midA = startAngle + sweep * 0.5;
         labelSprite.position.set(
           origin.x + (arcRadius + 6) * Math.cos(midA),
@@ -1030,8 +1023,9 @@ function buildNewScene(ergogenResults, config, container) {
     const lm = new THREE.Mesh(labelGeo, mat);
     const pt2 = pts[k.name]; if (!pt2) return;
     // Apply same Y/rotation negation as entry construction
+    // Add Math.PI to Z rotation to counter boardRoot's 180° Z rotation (keeps text upright)
     lm.position.set(pt2.x, -pt2.y, labelZ);
-    lm.rotation.set(0, 0, -pt2.r * Math.PI / 180);
+    lm.rotation.set(0, 0, -pt2.r * Math.PI / 180 + Math.PI);
     leftLabelGroup.add(lm);
   });
 
@@ -1042,7 +1036,8 @@ function buildNewScene(ergogenResults, config, container) {
     if (!leftMatch) return;
     const lpt = pts[leftMatch.name]; if (!lpt) return;
     // Apply same Y/rotation negation as entry construction
-    rightLabelData.push({ label, leftSx: lpt.x, leftSy: -lpt.y, leftSr: -lpt.r * Math.PI / 180 });
+    // Add Math.PI to counter boardRoot's 180° Z rotation (keeps text upright)
+    rightLabelData.push({ label, leftSx: lpt.x, leftSy: -lpt.y, leftSr: -lpt.r * Math.PI / 180 + Math.PI });
   });
 
   leftHalf.add(leftLabelGroup);
@@ -1060,6 +1055,7 @@ function buildNewScene(ergogenResults, config, container) {
   // This flips the board so thumbs face the user (closest to camera).
   const boardRoot = new THREE.Group();
   boardRoot.rotation.z = Math.PI;  // 180° around Z axis (axis sticking out of table)
+
   scene.add(boardRoot);
 
   boardRoot.add(leftHalf);
@@ -1195,6 +1191,94 @@ function buildNewScene(ergogenResults, config, container) {
       });
     }
     cablesGroup.visible = internalDeg === 0;
+    currentFoldSliderDeg = sliderDeg;
+    // Re-apply butterfly on top of the new fold position
+    if (currentButterflyDeg > 0) applyButterfly(currentButterflyDeg);
+  }
+
+  // ── R21: Butterfly tilt mechanism (Hirth joint) ──
+  // Each half rotates independently around the Z axis (vertical, sticking out of table).
+  // Left half rotates clockwise (viewed from top), right half counter-clockwise.
+  // Pivot point for each half is the hinge line (at hingeX).
+  // This is NOT a whole-keyboard tilt — each half tilts individually via Hirth discs.
+  const boardHalfWidth = hingeX - bbox.min.x;
+  const boardHeight = Z_SWITCH_PLATE_TOP;
+
+  // Max butterfly angle: when folded, the inner edges of the halves are closer
+  // together. Butterfly rotation swings the outer edges forward. The constraint
+  // is that the two halves must not collide. At fold slider foldDeg (internal =
+  // 180 - foldDeg), each half is rotated inward by halfFold = internal/2.
+  // The butterfly adds rotation around Z, swinging the front edge of each half
+  // toward the other. The gap between halves at the front is:
+  //   gap = 2 * boardHalfWidth * sin(halfFold) * cos(butterfly)
+  // Collision when the front corners overlap. For simplicity, compute max butterfly
+  // where the front outer corner of each half stays clear:
+  //   At front (Y = bbox.min.y in local), each half has width boardHalfWidth.
+  //   After fold by halfFold, the half's front edge is at X offset from hinge:
+  //     dx = boardHalfWidth * cos(halfFold)
+  //   After butterfly rotation by β around Z at hinge, the front corner sweeps.
+  //   The X position of the front-outer corner becomes:
+  //     dx * cos(β) - dy * sin(β) where dy is the Y distance from hinge center.
+  //   Collision: left front corner X < right front corner X (they cross the center).
+  //   Since the halves are mirrored, collision when: dx * cos(β) < 0 can't happen for β<90°.
+  //   The actual constraint is the depth overlap: the front edges of the two halves
+  //   at different Y positions overlap in Y.
+  //   For a closed fold (internal=180, halfFold=90°), halves are stacked vertically.
+  //   Any butterfly > 0 swings them and they can't collide in Y (they're thin vertically).
+  //   For flat fold (internal=0), halves are side by side. Butterfly swings front edges
+  //   together. The front edge at Y=bbox.min.y swings by boardDepth * sin(β) in the
+  //   Y direction toward the other half... but each half only extends from hinge outward.
+  //   Max β before front corners of left and right meet at Y center:
+  //   boardHalfWidth * sin(β) = boardDepth/2 → β = asin(boardDepth / (2*boardHalfWidth))
+  //   For typical keyboards, boardDepth < boardHalfWidth so this is well above 45°.
+  // Conservative: always allow 45°.
+  function getMaxButterflyDeg(foldSliderDeg) {
+    return 45;
+  }
+
+  // Pre-compute butterfly limits for each integer fold angle
+  const butterflyLimits = {};
+  for (let fold = 0; fold <= 270; fold++) {
+    butterflyLimits[fold] = getMaxButterflyDeg(fold);
+  }
+
+  let currentButterflyDeg = 0;
+  let currentFoldSliderDeg = 180;
+
+  function applyButterfly(butterflyDeg) {
+    currentButterflyDeg = butterflyDeg;
+    const betaRad = butterflyDeg * Math.PI / 180;
+
+    // Reset both halves' butterfly rotation (applied on top of fold)
+    // Butterfly is applied by rotating each half around the Z axis at the hinge point.
+    // Left half: clockwise from top = negative Z rotation
+    // Right half: counter-clockwise from top = positive Z rotation
+    // But we're inside boardRoot which is rotated 180° around Z, so the directions
+    // appear inverted in world space. In local space:
+    // Left half rotates +Z (CCW in local = CW in world after 180° flip)
+    // Right half rotates -Z (CW in local = CCW in world after 180° flip)
+
+    // We don't use butterflyRoot for this anymore — apply directly to leftHalf/rightHalf.
+    // The fold has already set leftHalf/rightHalf positions and quaternions.
+    // We add the butterfly rotation on top of the fold rotation.
+
+    if (betaRad === 0) return;
+
+    // Butterfly pivot is the hinge line at (hingeX, hingeCenterY, hingeZ)
+    const zAxis = new THREE.Vector3(0, 0, 1);
+
+    // Left half: rotate +beta around Z at hinge point
+    const leftPivot = new THREE.Vector3(hingeX, hingeCenterY, hingeZ);
+    const leftOffset = leftHalf.position.clone().sub(leftPivot);
+    leftOffset.applyAxisAngle(zAxis, betaRad);
+    leftHalf.position.copy(leftOffset.add(leftPivot));
+    leftHalf.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(zAxis, betaRad));
+
+    // Right half: rotate -beta around Z at hinge point
+    const rightOffset = rightHalf.position.clone().sub(leftPivot);
+    rightOffset.applyAxisAngle(zAxis, -betaRad);
+    rightHalf.position.copy(rightOffset.add(leftPivot));
+    rightHalf.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(zAxis, -betaRad));
   }
 
   // ── Exploded view ──
@@ -1291,6 +1375,9 @@ function buildNewScene(ergogenResults, config, container) {
   // ── Return control interface for wizard.html to wire up UI ──
   return {
     applyFold,
+    applyButterfly,
+    getMaxButterflyDeg,
+    butterflyLimits,
     applyExplodedView,
     setLabelsVisible: (v) => labelSprites.forEach(s => s.visible = v),
     setCablesVisible: (v) => { cablesGroup.visible = v; },
