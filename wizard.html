@@ -3611,6 +3611,40 @@ function initPage4() {
 // ══════════════════════════════════════════════════════════════════
 updateToolbar();
 
+// Auto-load default example so user can immediately click Next to see the 3D preview
+setTimeout(() => {
+  fetch('examples/new0.json')
+    .then(r => r.ok ? r.json() : Promise.reject('not found'))
+    .then(data => {
+      if (!data.positions) return;
+      // Only load if user hasn't already tapped any positions
+      if (COLUMNS.some(c => positions[c.id].length > 0)) return;
+      const scaleX = (data.canvasWidth && data.canvasWidth > 0) ? canvas.width / data.canvasWidth : 1;
+      const scaleY = (data.canvasHeight && data.canvasHeight > 0) ? canvas.height / data.canvasHeight : 1;
+      COLUMNS.forEach(col => {
+        if (Array.isArray(data.positions[col.id])) {
+          positions[col.id] = data.positions[col.id].map(p => ({ x: p.x * scaleX, y: p.y * scaleY }));
+        }
+      });
+      if (typeof data.calibratedPPM === 'number' && data.calibratedPPM > 0) {
+        calibratedPPM = data.calibratedPPM * ((scaleX + scaleY) / 2);
+      }
+      if (data.thumbMode && ['STRAIGHT','ROTATED','ERGOGEN'].includes(data.thumbMode)) {
+        thumbMode = data.thumbMode;
+        document.querySelectorAll('.thumb-mode-btn').forEach(b => {
+          b.style.background = b.dataset.mode === thumbMode ? '#2a6abf' : '#333';
+          b.style.color = b.dataset.mode === thumbMode ? '#fff' : '#ccc';
+          b.style.borderColor = b.dataset.mode === thumbMode ? '#4a8adf' : '#555';
+        });
+      }
+      if (data.thumbParams) thumbParams = data.thumbParams;
+      computeErgogenPreview();
+      drawCanvas();
+      updateToolbar();
+    })
+    .catch(() => {}); // silently ignore if example not available
+}, 100); // wait for canvas resize
+
 // Expose functions on window for testability / browser control
 window.goToPage = goToPage;
 window.computeErgogenPreview = computeErgogenPreview;
