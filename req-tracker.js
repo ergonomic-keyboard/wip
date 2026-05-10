@@ -43,6 +43,19 @@ function readJSON(file) {
   catch { return {}; }
 }
 
+// Migrate old SKIP statuses to FAIL
+function migrateSkipToFail(data) {
+  let changed = false;
+  for (const [k, v] of Object.entries(data)) {
+    if (v && typeof v === 'object' && v.status === 'SKIP') {
+      v.status = 'FAIL'; changed = true;
+    } else if (typeof v === 'string' && v === 'SKIP') {
+      data[k] = 'FAIL'; changed = true;
+    }
+  }
+  return changed;
+}
+
 function writeJSON(file, data) {
   fs.writeFileSync(file, JSON.stringify(data, null, 2) + '\n');
 }
@@ -64,11 +77,11 @@ function ensureStatus(hash) {
       const prevData = readJSON(prev);
       const inherited = {};
       for (const [k, v] of Object.entries(prevData)) {
-        if (v && typeof v === 'object') {
-          inherited[k] = { status: v.status || '', comment: '' };
-        } else if (typeof v === 'string') {
-          inherited[k] = { status: v, comment: '' };
-        }
+        let s = '';
+        if (v && typeof v === 'object') { s = v.status || ''; }
+        else if (typeof v === 'string') { s = v; }
+        if (s === 'SKIP') s = 'FAIL';
+        inherited[k] = { status: s, comment: '' };
       }
       writeJSON(f, inherited);
       return;
@@ -118,6 +131,7 @@ const server = http.createServer(async (req, res) => {
     const requirements = fs.readFileSync(REQUIREMENTS_FILE, 'utf8');
     const commits = commitList();
     const userStatus = readJSON(statusFile(hash));
+    if (migrateSkipToFail(userStatus)) writeJSON(statusFile(hash), userStatus);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ requirements, commits, currentCommit: currentCommit(), selectedCommit: hash, userStatus }));
     return;

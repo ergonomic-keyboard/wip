@@ -270,10 +270,17 @@ Y runs positiveley along the columns (top to bottom of keyboard). Z is vertical 
 
 **REQ-F05.1** — These cables shall prevent the keyboard from collapsing under gravity/key press force.
 
-**REQ-F06** — Cables shall use quick-release clevis pins with spring-loaded ball detent for one-handed press-button detach.
+**REQ-F05.2** — The cable closest to the user shall be attached below the left half of the keyboard board at the coordinate of the bottom right corner of the N switch.
+**REQ-F05.3** — The cable closest to the user shall be attached below the right half of the keyboard at the coordinate of the bottom left corner of the Z switch.
 
-**REQ-F06.1** — Clevis brackets shall be recessed into the frame edge.
+**REQ-F05.4** — The cable furthest away from the user shall be attached below the left half of the keyboard board at the coordinate of the bottom right corner of the Y switch.
 
+**REQ-F05.5** — The cable furthest away from the user shall be attached below the left half of the keyboard board at the coordinate of the bottom left corner of the Q switch.
+
+**REQ-F05.6** — The cables will be attached on the left side using a nut with a ring eye as had through which the cable will pass. its bolt will be sinked into the cork and wooden backplate.
+
+**REQ-F05.7** — The cables will be attached on the right side of the keyboard using magnetic attachment that clicks into place by moving the two sides close into each other like two hooks grappling into each other, such that the tension on the cable is transferred through the hook contacts, but that the  hooks staying hooked into each other is done by the magnet. (a cone and cone hole would prevent side slipping in any direction, a magnet would prevent disconnect at random wiggling/slight moments of movement where the tension on the cable may be reduced.
+Alternatively Cables shall use quick-release clevis pins with spring-loaded ball detent for one-handed press-button detach. In that case Clevis brackets shall be recessed into the frame edge.
 **REQ-F07** — The quick-release clevis pins with spring-loaded ball detent shall be positioned such that when the keyboard is folded closed, it will be on a flat surface on the backside of the board, and not at the edge of the keyboard.
 
 **REQ-F08** — When detached, the cables shall wrap around the closed keyboard to keep it shut (like a rope around a diary).
@@ -305,6 +312,9 @@ Y runs positiveley along the columns (top to bottom of keyboard). Z is vertical 
 **REQ-E04** — Two 301230 LiPo batteries (one per half) shall be included in the BOM.
 
 **REQ-E04.1** — Battery placement shall be visible in assembly.scad.
+
+**REQ-E04.2** — The battery connection to the PC will be included in the rendering.
+
 
 **REQ-E05** — Keyboard firmware shall be available and functional for the nice!nano MCU (e.g., ZMK or equivalent).
 

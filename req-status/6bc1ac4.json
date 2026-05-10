@@ -20,7 +20,7 @@
     "comment": ""
   },
   "L04a": {
-    "status": "SKIP",
+    "status": "FAIL",
     "comment": ""
   },
   "L05": {
@@ -32,7 +32,7 @@
     "comment": ""
   },
   "L07": {
-    "status": "SKIP",
+    "status": "FAIL",
     "comment": ""
   },
   "L07a": {
@@ -40,7 +40,7 @@
     "comment": ""
   },
   "L07b": {
-    "status": "SKIP",
+    "status": "FAIL",
     "comment": ""
   },
   "L08": {

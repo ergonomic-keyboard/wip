@@ -237,7 +237,7 @@
   },
   "L11": {
     "status": "",
-    "comment": "The shortcuts for this are not shown."
+    "comment": ""
   },
   "L11.1": {
     "status": "ASSUME",
@@ -265,7 +265,7 @@
   },
   "S02.2": {
     "status": "",
-    "comment": "It is not exactly a radius but it looks ok/good to me, maybe even better than radius, keep as is currently."
+    "comment": ""
   },
   "S02.3": {
     "status": "PASS",
@@ -273,7 +273,7 @@
   },
   "S02.4": {
     "status": "",
-    "comment": "This is a flat line, that should be turned into an arc."
+    "comment": ""
   },
   "S02.5": {
     "status": "ASSUME",
@@ -321,7 +321,7 @@
   },
   "S07a.1": {
     "status": "FAIL",
-    "comment": "The nuts and bolts are not visible."
+    "comment": ""
   },
   "S07a.2": {
     "status": "FAIL",
@@ -365,6 +365,122 @@
   },
   "S10.2": {
     "status": "ASSUME",
+    "comment": ""
+  },
+  "S11": {
+    "status": "FAIL",
+    "comment": "The pcb is rendered like a green plate, instead of the actual pcb with the connections for the pcb the holes for the screws and the connection paths that will be printed on it. (e.g. battery mounting points etc.)"
+  },
+  "F01": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "F01.1": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "F01.2": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "F01a": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "F01a.1": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "F01a.2": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "F01b": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "F01b.1": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "F01c": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "F01c.1": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "F01d": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "F05": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "F05.2": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "F05.3": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "F05.4": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "F05.5": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "F05.7": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "F05.6": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "E01": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "E04": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "E03": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "E04.2": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "E04.1": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "E05": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "R01": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "R01.1": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "R01.2": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "R02": {
+    "status": "PASS",
     "comment": ""
   }
 }

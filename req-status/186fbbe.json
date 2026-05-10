@@ -20,7 +20,7 @@
     "comment": ""
   },
   "L04a": {
-    "status": "SKIP",
+    "status": "FAIL",
     "comment": ""
   },
   "L05": {
@@ -32,7 +32,7 @@
     "comment": ""
   },
   "L07": {
-    "status": "SKIP",
+    "status": "FAIL",
     "comment": ""
   },
   "L07a": {
@@ -40,7 +40,7 @@
     "comment": ""
   },
   "L07b": {
-    "status": "SKIP",
+    "status": "FAIL",
     "comment": ""
   },
   "L08": {
@@ -148,31 +148,31 @@
     "comment": ""
   },
   "L07.2": {
-    "status": "SKIP",
+    "status": "FAIL",
     "comment": ""
   },
   "L07.2a": {
-    "status": "SKIP",
+    "status": "FAIL",
     "comment": ""
   },
   "L07.2b": {
-    "status": "SKIP",
+    "status": "FAIL",
     "comment": ""
   },
   "L07.2c": {
-    "status": "SKIP",
+    "status": "FAIL",
     "comment": ""
   },
   "L07.2d": {
-    "status": "SKIP",
+    "status": "FAIL",
     "comment": ""
   },
   "L07.3": {
-    "status": "SKIP",
+    "status": "FAIL",
     "comment": ""
   },
   "L07.3a": {
-    "status": "SKIP",
+    "status": "FAIL",
     "comment": ""
   },
   "L07a.1": {
@@ -180,19 +180,19 @@
     "comment": ""
   },
   "L07a.2": {
-    "status": "SKIP",
+    "status": "FAIL",
     "comment": ""
   },
   "L07a.3": {
-    "status": "SKIP",
+    "status": "FAIL",
     "comment": ""
   },
   "L07b.1": {
-    "status": "SKIP",
+    "status": "FAIL",
     "comment": ""
   },
   "L08.1": {
-    "status": "SKIP",
+    "status": "FAIL",
     "comment": ""
   },
   "L09.1": {

@@ -69,7 +69,7 @@
   .req:hover { border-color: #444; }
   .req.mark-PASS { border-left: 3px solid #3a3; }
   .req.mark-ASSUME { border-left: 3px solid #38a; }
-  .req.mark-SKIP { border-left: 3px solid #883; }
+  .req.mark-FAIL { border-left: 3px solid #a33; }
   .req.mark-deleted { border-left: 3px solid #a33; opacity: 0.3; }
   .req.superseded { opacity: 0.35; }
 
@@ -87,7 +87,7 @@
   .req-btns button:hover { border-color: #888; }
   .req-btns button.sel-PASS { background: #1a4a1a; border-color: #3a3; color: #5c5; font-weight: bold; }
   .req-btns button.sel-ASSUME { background: #1a3a4a; border-color: #38a; color: #6ae; font-weight: bold; }
-  .req-btns button.sel-SKIP { background: #2a2a1a; border-color: #883; color: #aa8; font-weight: bold; }
+  .req-btns button.sel-FAIL { background: #3a1a1a; border-color: #a33; color: #f66; font-weight: bold; }
   .req-btns button.btn-comment { color: #5a9ae0; }
   .req-btns button.btn-comment.has-comment { color: #5ae; border-color: #5a9ae0; }
   .req-btns button.btn-del { color: #a55; }
@@ -180,8 +180,12 @@ function getComment(id) { return userStatus[id]?.comment || ''; }
 function migrateStatus(raw) {
   const r = {};
   for (const [k, v] of Object.entries(raw)) {
-    if (typeof v === 'string') r[k] = { status: v, comment: '' };
-    else if (v && typeof v === 'object') r[k] = { status: v.status || '', comment: v.comment || '' };
+    let status, comment;
+    if (typeof v === 'string') { status = v; comment = ''; }
+    else if (v && typeof v === 'object') { status = v.status || ''; comment = v.comment || ''; }
+    else continue;
+    if (status === 'SKIP') status = 'FAIL';
+    r[k] = { status, comment };
   }
   return r;
 }
@@ -240,21 +244,21 @@ function render() {
   const active = reqs.length - sup.length;
   const pass = reqs.filter(r => getStatus(r.id) === 'PASS').length;
   const assume = reqs.filter(r => getStatus(r.id) === 'ASSUME').length;
-  const skip = reqs.filter(r => getStatus(r.id) === 'SKIP').length;
-  const unch = active - pass - assume - skip;
+  const fail = reqs.filter(r => getStatus(r.id) === 'FAIL').length;
+  const unch = active - pass - assume - fail;
 
   document.getElementById('stats').innerHTML = `
     <span class="s"><span class="dot" style="background:#5c5"></span>PASS: ${pass}</span>
     <span class="s"><span class="dot" style="background:#6ae"></span>Assumed: ${assume}</span>
-    <span class="s"><span class="dot" style="background:#aa8"></span>SKIP: ${skip}</span>
+    <span class="s"><span class="dot" style="background:#f66"></span>FAIL: ${fail}</span>
     <span class="s"><span class="dot" style="background:#555"></span>Unchecked: ${unch}</span>
-    <span class="s" style="color:#fff;font-weight:bold">${pass+assume+skip}/${active}</span>
+    <span class="s" style="color:#fff;font-weight:bold">${pass+assume}/${active}</span>
     <div class="filters">
       <button data-f="all" class="${activeFilter==='all'?'active':''}">All</button>
       <button data-f="unchecked" class="${activeFilter==='unchecked'?'active':''}">Unchecked</button>
       <button data-f="PASS" class="${activeFilter==='PASS'?'active':''}">PASS</button>
       <button data-f="ASSUME" class="${activeFilter==='ASSUME'?'active':''}">Assumed</button>
-      <button data-f="SKIP" class="${activeFilter==='SKIP'?'active':''}">SKIP</button>
+      <button data-f="FAIL" class="${activeFilter==='FAIL'?'active':''}">FAIL</button>
     </div>
   `;
 
@@ -305,7 +309,7 @@ function render() {
       if (!isDeleted) {
         html += `<button class="${s==='PASS'?'sel-PASS':''}" onclick="mark('${item.id}','PASS')">PASS</button>`;
         html += `<button class="${s==='ASSUME'?'sel-ASSUME':''}" onclick="mark('${item.id}','ASSUME')" title="Assumed pass">Assume</button>`;
-        html += `<button class="${s==='SKIP'?'sel-SKIP':''}" onclick="mark('${item.id}','SKIP')">SKIP</button>`;
+        html += `<button class="${s==='FAIL'?'sel-FAIL':''}" onclick="mark('${item.id}','FAIL')">FAIL</button>`;
         html += `<button class="btn-comment ${c ? 'has-comment' : ''}" onclick="toggleComment('${item.id}')" title="Comment">&#x1f4ac;</button>`;
         html += `<button class="btn-del" onclick="deleteReq('${item.id}')" title="Delete requirement">&#x2715;</button>`;
       } else {
