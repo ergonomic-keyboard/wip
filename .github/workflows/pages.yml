@@ -1,0 +1,60 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build tracker data
+        run: node build-tracker-data.js
+
+      - name: Prepare site
+        run: |
+          mkdir -p _site
+          # Core pages
+          cp wizard.html _site/
+          cp req-tracker.html _site/
+          cp req-tracker-data.json _site/
+          cp final_requirements.md _site/
+          # JS dependencies
+          cp ergogen.js _site/
+          cp fitting.js _site/
+          cp render3d.js _site/
+          # Supporting files
+          cp defaults.yaml _site/ 2>/dev/null || true
+          cp -r examples _site/examples 2>/dev/null || true
+          cp -r mechanisms _site/mechanisms 2>/dev/null || true
+          cp -r footprints _site/footprints 2>/dev/null || true
+          cp -r input _site/input 2>/dev/null || true
+          # Index redirect to wizard
+          cat > _site/index.html << 'HEREDOC'
+          <!DOCTYPE html>
+          <html><head><meta http-equiv="refresh" content="0;url=wizard.html"></head>
+          <body><a href="wizard.html">Keyboard Builder</a></body></html>
+          HEREDOC
+          touch _site/.nojekyll
+
+      - uses: actions/configure-pages@v4
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - uses: actions/deploy-pages@v4
+        id: deployment

@@ -1,0 +1,206 @@
+{
+  "L01": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "L02": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "L03a": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "L03b": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "L04": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "L04a": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "L05": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "L06": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "L07": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "L07a": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "L07b": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "L08": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "L09": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "L10": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "L11": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "V01a": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "V01b": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "V02": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "V03": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "V04": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "V05": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "V06": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "H01": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "H02": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "H03": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "T01": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "T02": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "L02.1": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "L03a.1": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "L03b.1": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "L03b.2": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "L04.1": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "L04.2": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "L04a.1": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "L07.1": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "L07.1a": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "L07.1b": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "L07.2": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "L07.2a": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "L07.2b": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "L07.2c": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "L07.2d": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "L07.3": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "L07.3a": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "L07a.1": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "L07a.2": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "L07a.3": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "L07b.1": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "L08.1": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "L09.1": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "L05.1": {
+    "status": "PASS",
+    "comment": ""
+  }
+}

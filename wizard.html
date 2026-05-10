@@ -21,6 +21,8 @@ header { display: flex; align-items: center; justify-content: space-between; pad
 .nav-btns button:disabled { opacity: 0.3; cursor: default; }
 .nav-btns button.primary { background: #2a6abf; border-color: #4a8adf; color: #fff; }
 .nav-btns button.primary:hover:not(:disabled) { background: #3a7adf; }
+.compliance-link { padding: 6px 14px; border-radius: 4px; font-size: 13px; border: 1px solid #4a8adf; background: #2a5a9f; color: #fff; text-decoration: none; white-space: nowrap; margin-left: 4px; display: inline-flex; align-items: center; }
+.compliance-link:hover { background: #3a6abf; }
 
 /* ── Pages ── */
 .page { display: none; height: calc(100vh - 48px); }
@@ -118,6 +120,7 @@ header { display: flex; align-items: center; justify-content: space-between; pad
   <div class="nav-btns">
     <button id="btn-back" disabled>Back</button>
     <button id="btn-next" class="primary" disabled>Next</button>
+    <a href="req-tracker.html" id="btn-compliance" class="compliance-link">Requirement Compliance</a>
   </div>
 </header>
 
