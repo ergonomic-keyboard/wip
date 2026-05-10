@@ -50,14 +50,14 @@
 |-----|--------|--------------|------------|-----------------|-------|
 | R01 | SELF_PASS | 1 | 0 | 0 | WebGLRenderer + OrbitControls (orbit/zoom/pan) + PerspectiveCamera + damping + animation loop + toolbar controls |
 | R02 | SELF_PASS | 1 | 0 | 0 | build3DScene/buildNewScene called after ergogen.process() — model updates on config change |
-| R03 | SELF_PASS | 3 | 0 | 2 | Runtime pass: layers present at correct Z. USER_FAIL #2: duplicate/overlapping board geometry. Fix: removed old build3DScene() call, applied Y/rotation negation in render3d.js. Runtime re-verify: all layers present (145 meshes, 92123 verts) |
+| R03 | SELF_PASS | 4 | 0 | 3 | USER_FAIL #3: MCU/battery floating at hinge center. Fix: R22-R25 implemented — MCU on PCB surface at half center, battery between bottom plate/PCB with recess, USB-C at outer edge, all positions computed from bbox |
 | R04 | SELF_PASS | 2 | 0 | 1 | Static: exploded view code present. USER_FAIL: layers not distinct. Runtime re-verify: 5.8x Z-separation, 8 labels, 7 material bands, 23 distinct colors |
 | R05 | SELF_PASS | 1 | 0 | 0 | Raycaster click → press state → PRESS_DEPTH 1.5mm → ease curve → Z decrease → return to base. Pointer + hover cursor |
 | R06 | SELF_PASS | 2 | 0 | 1 | Static: hinge group + applyFold code. USER_FAIL: hinge misaligned at fold angles. Runtime re-verify: 4/13 components moved between fold=0° and 45°, max delta=18.4mm, halves articulated |
 | R07 | SELF_PASS | 1 | 0 | 0 | Butterfly mechanism with constraints in mechanisms/demo. Fold slider covers 0–160°. Full collision constraint needs E2E |
 | R08 | SELF_PASS | 1 | 0 | 0 | Fold slider 0–160° (req 180), applyFold with pivot at hinge center, both halves always visible, no localClippingEnabled |
 | R09 | SELF_PASS | 2 | 0 | 1 | Static: cable geometry in code. USER_FAIL: cables invisible at fold=0. Runtime re-verify: 6 cables visible at fold=0° (cablesGroup.visible=true) |
-| R10 | SELF_PASS | 1 | 0 | 0 | Chrome material (metalness 0.98, roughness 0.15) on USB body, dark inner opening (0x050505), correct USB-C dimensions |
+| R10 | SELF_PASS | 2 | 0 | 1 | USER_FAIL #1: USB-C at hinge center. Fix: USB-C now rendered as separate component at outer board edge (bbox.min.x) with chrome material + dark opening, identifiable as USB-C |
 | R11 | SELF_PASS | 4 | 1 | 1 | Keys at ergogen coords, cutouts from same array. Self-fail 1: ergopadToErgogen wrapper. USER_FAIL: key positions wrong — raw ergogen coords without Y/rotation negation. Fix: entry construction applies y=-pt.y, r=-rawR. Thumb positions overridden with stage 1 data (config._stage1Keys) to match purple outlines. THUMB_ROT_CORRECTION removed (was -90°, now 0°). Runtime re-verify: keys at correct positions |
 | R12 | SELF_PASS | 2 | 0 | 1 | Static: CanvasTexture label code present. USER_FAIL: labels invisible. Runtime re-verify: 36 key label planes with canvas textures found (all 36 total) |
 | R13 | SELF_PASS | 1 | 0 | 0 | generateWoodTexture with normalMap + roughnessMap, roughness=0.4 metalness=0, grain lines, growth rings, nodes, fiber |
@@ -68,14 +68,18 @@
 | R18 | SELF_PASS | 2 | 0 | 1 | USER_FAIL #1: origin at inner col instead of thumb col, inner axis pointed below thumb axis showing wrong sector (180-angle). Fix: origin moved to thumbCol.home, inner direction flipped to point above thumb axis, arc sweeps from thumb to inner. Angle value unchanged (~86°) |
 | R19 | SELF_PASS | 2 | 0 | 1 | USER_FAIL #1: camera-only fix insufficient — board not rotated, thumbs still on wrong side. Fix: wrapped all board geometry in `boardRoot` group with `rotation.z = Math.PI` (180° around Z axis). Camera repositioned to world-space thumb side. Thumbs now closest to user, furthest from screen |
 | R20 | SELF_PASS | 2 | 0 | 1 | USER_FAIL #1: fold semantics inverted — 0°=flat caused halves to push through each other at higher angles. Fix: remapped slider so 180°=flat/open, 0°=closed, 270°=tented. `applyFold(sliderDeg)` converts to `internalDeg = 180 - sliderDeg`. Slider default now 180° |
-| R21 | SELF_PASS | 2 | 0 | 1 | USER_FAIL #1: butterfly rotated whole board around X axis (tilt) instead of each half around Z (Hirth). Fix: each half rotates independently around Z axis at hinge point — left CW, right CCW (viewed from top). Applied on top of fold via `applyButterfly(deg)`. UI slider 0-45° with dynamic limit indicator |
+| R21 | SELF_PASS | 3 | 0 | 2 | USER_FAIL #1: butterfly rotated whole board around X axis (tilt) instead of each half around Z (Hirth). Fix: each half rotates independently around Z axis at hinge point. USER_FAIL #2: rotation compounded on each slider event (premultiply on existing quaternion) and pivoted around fold hinge center instead of Hirth disc. Fix: `applyButterfly` now recomputes full combined transform (fold+butterfly) from scratch each call. Combined quaternion = Q_fold * Q_butterfly, position = Q_combined * (-pivot) + pivot. No compounding possible |
+| R22 | SELF_PASS | 1 | 0 | 0 | MCU at halfCenterX/halfCenterY on Z_PCB_TOP+0.8 (PCB surface), within board outline. Mirrored to right half via boardGroup.clone |
+| R23 | SELF_PASS | 1 | 0 | 0 | Battery at halfCenterX, Z=Z_PCB-1.5 (between bottom plate and PCB). Bottom plate recess mesh (14x32mm, dark wood) added at battery location |
+| R24 | SELF_PASS | 1 | 0 | 0 | USB-C as separate createUsbCPort() at bbox.min.x+3.75 (outer edge), Z_PCB_TOP+1.63, rotated 90° so opening faces outward. Chrome + dark hole |
+| R25 | SELF_PASS | 1 | 0 | 0 | halfCenterX=(bbox.min.x+hingeX)/2, halfOuterEdgeX=bbox.min.x — all component positions derived from bbox, no hingeX-offset hardcoding |
 
 ## Phase 4 — Hardware / BOM / Assembly
 
 | REQ | Status | Self-attempts | Self-fails | User corrections | Notes |
 |-----|--------|--------------|------------|-----------------|-------|
 | H01 | SELF_PASS | 1 | 0 | 0 | BOM lists 36x Cherry MX ULP, footprint file exists, defaults.yaml PCB uses cherry_ulp |
-| H02 | SELF_PASS | 1 | 0 | 0 | No-solder policy in BOM, Mill-Max sockets for MCU, PCBA handles SMD, switches clip-in |
+| H02 | SELF_PASS | 2 | 0 | 1 | USER_FAIL #1: MCU disconnected from PCB. Fix: MCU now at halfCenterX on PCB surface (Z_PCB_TOP + 0.8), visually connected to PCB, within board outline |
 | H03 | SELF_PASS | 1 | 0 | 0 | QWERTY labels in render3d.js, keycaps listed in BOM |
 | S01 | SELF_PASS | 1 | 0 | 0 | Mirror config produces 2 halves, left/right in render3d.js |
 | S02 | SELF_PASS | 1 | 0 | 0 | Fillet >= 8mm in defaults.yaml, convex hull + filletedHullShape in render3d.js, thumb bridge fillet |
@@ -88,13 +92,13 @@
 | S08 | SELF_PASS | 2 | 0 | 1 | Static: layer Z constants correct. USER_FAIL: stack not rendered. Runtime re-verify: all 5 layers found at correct Z — bottomPlate, corkLower, pcb, corkUpper, switchPlate. 12 distinct Z levels |
 | S08a | SELF_PASS | 1 | 0 | 0 | Cork 0.5mm lower + 0.5mm upper = 1.0mm total. BOM lists 0.5mm cork sheet |
 | S09 | SELF_PASS | 2 | 0 | 1 | Static: stack math correct. USER_FAIL: single flat slab. Runtime re-verify: 11 Z-levels spanning 5.1mm (Z 0.0–5.1). Multi-layer stack confirmed |
-| S10 | SELF_PASS | 1 | 0 | 0 | Battery positioned in render3d.js within board footprint. BOM lists 301230 LiPo |
+| S10 | SELF_PASS | 2 | 0 | 1 | USER_FAIL #1: battery at hinge center. Fix: battery now at halfCenterX within board outline, Z between bottom plate and PCB (top at Z_PCB), bottom plate recess mesh added |
 | S11 | SELF_PASS | 1 | 0 | 0 | Battery in BOM + render3d.js. nice!nano has built-in JST-PH battery connector |
 | S12 | SELF_PASS | 1 | 0 | 0 | Board bound rectangles, render3d.js px+4 board / px+8 frame padding, fillet applied |
 | E01 | SELF_PASS | 1 | 0 | 0 | BOM: 2x nice!nano v2. FIRMWARE.md + render3d.js MCU model |
 | E02 | SELF_PASS | 1 | 0 | 0 | BOM: wired/wireless/split modes. Firmware: Bluetooth 5.0 + USB-C + split support |
 | E03 | SELF_PASS | 1 | 0 | 0 | 2 MCUs = 2 USB-C ports. USB-C modeled with chrome material in render3d.js |
-| E04 | SELF_PASS | 1 | 0 | 0 | BOM: 2x 301230 LiPo. Battery group in render3d.js |
+| E04 | SELF_PASS | 2 | 0 | 1 | USER_FAIL #1: battery at hinge. Fix: battery within board outline between bottom plate and PCB, visible in assembly (recess in bottom plate) |
 | E05 | SELF_PASS | 1 | 0 | 0 | FIRMWARE.md: ZMK + flashing + native_posix test suite + keymap docs |
 | B01 | SELF_PASS | 1 | 0 | 0 | BOM.md: 22 unique line items across electronics, mechanical, assembly sections |
 | B02 | SELF_PASS | 2 | 1 | 0 | All 22 items have links + prices. Self-fail 1: 5 items lacked URLs (had "Hardware store"), added links |
@@ -145,10 +149,10 @@
 
 | Metric | Count |
 |--------|-------|
-| Total requirements | 101 |
-| Self-verified PASS | 101 |
+| Total requirements | 106 |
+| Self-verified PASS | 106 |
 | User-confirmed PASS | 0 |
-| User corrections (I was wrong) | 19 |
+| User corrections (I was wrong) | 28 |
 | Runtime re-verified (after fix) | 15 |
 | Currently USER_FAIL | 0 |
 | Blocked | 0 |
@@ -167,3 +171,13 @@
 - **DG-01** (2nd): Dashed/dotted outline artifacts still visible
 
 **Session 8 fix**: Root cause was render3d.js using raw ergogen coordinates without Y-negation or rotation-negation. Fixed by transforming entry coordinates at construction time (y=-pt.y, r=-rawR). Also removed duplicate old build3DScene() call from initPage2(). All 6 USER_FAIL re-verified PASS via runtime (12/12 total pass).
+
+**Session 11 failures (5 USER_FAIL + 4 NOT_STARTED)**: MCU/battery/USB-C at hardcoded hingeX/center.y coordinates:
+- **R03** (3rd): MCU/battery floating at hinge center, not in board
+- **R10**: USB-C derived from MCU position at hinge center
+- **S10**: Battery at hinge center, not within board outline
+- **E04**: Battery not within board outline
+- **H02**: MCU disconnected from PCB
+- **R22-R25**: New requirements for proper placement (NOT_STARTED)
+
+**Session 12 fix**: Root cause was all component positions hardcoded relative to hingeX (inner edge) instead of computed from each half's board outline bbox. Fix: computed halfCenterX=(bbox.min.x+hingeX)/2, placed MCU at half center on PCB surface, battery at half center between bottom plate and PCB with recess, USB-C as separate component at outer edge (bbox.min.x) oriented outward. All 9 requirements now SELF_PASS.

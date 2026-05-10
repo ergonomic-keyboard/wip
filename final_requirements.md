@@ -226,6 +226,14 @@ Note: Half-to-half communication shall use Bluetooth (not wired USB-C between ha
 **REQ-R20** The render shall show the full fold to 0 degrees to 180 degrees flat on the table, to 270 degrees tilted.
 
 **REQ-R21** The render shall show the full fold to 0 degrees to 45 degrees butterfly as optional. You shall limit that degree based on the two halves bump into eachother constraint at any given integer folding angle. (The butter fly folds forwad, away from user, toward screen. (horizontal line/as it is now is the normal/0 degrees.)) In the gui clearly indicate the limitation based on the fold angle if there is any limitation.
+
+**REQ-R22** — The nice!nano MCU shall be rendered on the PCB surface, centered within each half's board outline (not at the hinge edge). Its Z position shall place it on top of the PCB layer. It shall be visually connected to the PCB (not floating).
+
+**REQ-R23** — The battery shall be rendered between the bottom plate and PCB (in the cork gasket cavity), within each half's board outline. The bottom plate shall show a visible recess/cutout at the battery location per REQ-S10.
+
+**REQ-R24** — The USB-C port on each half shall be rendered at the outer board edge (perimeter) of each half, oriented outward, at PCB height. It shall not be at the hinge edge.
+
+**REQ-R25** — In the 3D render, the MCU, battery, and USB-C port positions shall be computed from the board outline bounding box of each half (e.g., center-X of the half, offset from hinge edge) rather than hardcoded relative to `hingeX`/`center.y`.
 ---
 
 ## 10. Stage Fidelity

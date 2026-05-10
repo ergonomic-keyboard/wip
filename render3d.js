@@ -892,8 +892,13 @@ function buildNewScene(ergogenResults, config, container) {
   }
   boardGroup.add(outlineGroup);
 
-  // ── nice!nano MCU ──
-  function createNiceNano(posX, posY, usbFacingRight) {
+  // ── R25: Compute component positions from each half's board outline bbox ──
+  const halfCenterX = (bbox.min.x + hingeX) / 2;  // center-X of left half
+  const halfCenterY = center.y;                     // center-Y of board
+  const halfOuterEdgeX = bbox.min.x;               // outer edge of left half
+
+  // ── nice!nano MCU (R22: on PCB surface, centered within half's board outline) ──
+  function createNiceNano(posX, posY) {
     const grp = new THREE.Group();
     const body = new THREE.Mesh(new THREE.BoxGeometry(18, 33, 1.6), nanoPcbMat);
     body.castShadow = true; grp.add(body);
@@ -901,12 +906,6 @@ function buildNewScene(ergogenResults, config, container) {
     ic.position.set(0, 4, 1.2); grp.add(ic);
     const ic2 = new THREE.Mesh(new THREE.BoxGeometry(3, 2.5, 0.6), blackMat);
     ic2.position.set(-4, -6, 1.1); grp.add(ic2);
-    const usbBody = new THREE.Mesh(new THREE.BoxGeometry(8.94, 7.5, 3.26), chromeMat);
-    usbBody.castShadow = true;
-    const usbHole = new THREE.Mesh(new THREE.BoxGeometry(7.0, 2.0, 2.0),
-      new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.9, metalness: 0.0 }));
-    usbHole.position.set(0, -3.0, 0); usbBody.add(usbHole);
-    usbBody.position.set(0, -33 / 2, 2.5); grp.add(usbBody);
     const padGeo = new THREE.BoxGeometry(1.0, 0.5, 0.05);
     for (let j = 0; j < 12; j++) {
       const lp = new THREE.Mesh(padGeo, goldMat); lp.position.set(-8.5, -13 + j * 2.54, 0.825); grp.add(lp);
@@ -915,18 +914,37 @@ function buildNewScene(ergogenResults, config, container) {
     const btnGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.4, 8); btnGeo.rotateX(Math.PI / 2);
     const btn = new THREE.Mesh(btnGeo, new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.5, metalness: 0.5 }));
     btn.position.set(5, -12, 1.1); grp.add(btn);
+    // R22: Z position places MCU on top of PCB surface
     grp.position.set(posX, posY, Z_PCB_TOP + 0.8);
-    if (usbFacingRight) grp.rotation.z = Math.PI;
     return grp;
   }
-  const nanoLeftX = hingeX - 20, nanoY = center.y + 5;
-  boardGroup.add(createNiceNano(nanoLeftX, nanoY, false));
+  const nanoLeftX = halfCenterX, nanoY = halfCenterY;
+  boardGroup.add(createNiceNano(nanoLeftX, nanoY));
 
-  // ── Battery ──
+  // ── USB-C port (R24: at outer board edge of each half, oriented outward, at PCB height) ──
+  function createUsbCPort(posX, posY) {
+    const grp = new THREE.Group();
+    const usbBody = new THREE.Mesh(new THREE.BoxGeometry(8.94, 7.5, 3.26), chromeMat);
+    usbBody.castShadow = true;
+    const usbHole = new THREE.Mesh(new THREE.BoxGeometry(7.0, 2.0, 2.0),
+      new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.9, metalness: 0.0 }));
+    usbHole.position.set(0, 0, 0); usbBody.add(usbHole);
+    grp.add(usbBody);
+    // Position at outer edge, rotated so opening faces outward (toward min.x)
+    grp.position.set(posX, posY, Z_PCB_TOP + 1.63);
+    grp.rotation.z = Math.PI / 2; // rotate so opening faces the outer edge
+    return grp;
+  }
+  const usbX = halfOuterEdgeX + 3.75; // half USB body depth protruding slightly
+  const usbY = halfCenterY;
+  boardGroup.add(createUsbCPort(usbX, usbY));
+
+  // ── Battery (R23: between bottom plate and PCB, within board outline, with bottom plate recess) ──
   const batteryGroup = new THREE.Group();
   function addBattery(bx, by) {
     const bg = new THREE.Group();
-    const battBody = new THREE.Mesh(new THREE.BoxGeometry(12, 30, 3), battMat);
+    const battThickness = 3.0; // 301230 LiPo thickness
+    const battBody = new THREE.Mesh(new THREE.BoxGeometry(12, 30, battThickness), battMat);
     battBody.castShadow = true; bg.add(battBody);
     const wireRad = 0.25;
     [{ color: redMat, dx: -2 }, { color: blackMat, dx: 2 }].forEach(ww => {
@@ -934,11 +952,22 @@ function buildNewScene(ergogenResults, config, container) {
       const curve = new THREE.CatmullRomCurve3(wpts);
       bg.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 8, wireRad, 6), ww.color));
     });
-    bg.position.set(bx, by, Z_CORK_LOWER + T_CORK_LOWER / 2 + 1.5);
+    // R23: battery center Z between bottom plate top and PCB bottom
+    // Top of battery at Z_PCB (touching PCB underside), extends into bottom plate recess
+    bg.position.set(bx, by, Z_PCB - battThickness / 2);
     return bg;
   }
-  batteryGroup.add(addBattery(hingeX - 35, center.y - 10));
+  // R25: battery position computed from half's board outline bbox
+  const battX = halfCenterX;
+  const battY = halfCenterY - 18; // offset toward bottom to avoid MCU overlap
+  batteryGroup.add(addBattery(battX, battY));
   boardGroup.add(batteryGroup);
+
+  // ── Bottom plate battery recess (R23: visible cutout in bottom plate) ──
+  const recessMat = new THREE.MeshStandardMaterial({ color: 0x3d2b1f, roughness: 0.8, metalness: 0.0 });
+  const recessMesh = new THREE.Mesh(new THREE.BoxGeometry(14, 32, T_BOTTOM_PLATE * 0.7), recessMat);
+  recessMesh.position.set(battX, battY, Z_BOTTOM + T_BOTTOM_PLATE * 0.15);
+  boardGroup.add(recessMesh);
 
   // ── Screws ──
   const bx0 = bbox.min.x + 10, bx1 = bbox.max.x - 10;
@@ -1132,8 +1161,9 @@ function buildNewScene(ergogenResults, config, container) {
   addLabel('Switch Plate', hingeX, bbox.min.y - 8, Z_SWITCH_PLATE + T_SWITCH_PLATE / 2);
   addLabel('Cherry MX ULP', hingeX, bbox.min.y - 8, Z_KEYCAP);
   addLabel('nice!nano v2', nanoLeftX, bbox.min.y - 8, Z_PCB_TOP + 4);
+  addLabel('USB-C Port', usbX, bbox.min.y - 8, Z_PCB_TOP + 4);
   addLabel('Ball Joint Hinge', hingeX, hy + 20, hz + 8);
-  addLabel('LiPo Battery', hingeX - 35, bbox.min.y - 8, Z_CORK_LOWER + 3);
+  addLabel('LiPo Battery', battX, bbox.min.y - 8, Z_CORK_LOWER + 3);
 
   // ── Camera position (from HUMAN/typist side — R19) ──
   // boardRoot is rotated 180° around Z, so world coords = (-local_x, -local_y, local_z).
