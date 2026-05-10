@@ -8,11 +8,11 @@
     "comment": ""
   },
   "L03a": {
-    "status": "PASS",
+    "status": "ASSUME",
     "comment": ""
   },
   "L03b": {
-    "status": "PASS",
+    "status": "ASSUME",
     "comment": ""
   },
   "L04": {
@@ -28,7 +28,7 @@
     "comment": ""
   },
   "L06": {
-    "status": "PASS",
+    "status": "ASSUME",
     "comment": ""
   },
   "L07": {
@@ -36,7 +36,7 @@
     "comment": ""
   },
   "L07a": {
-    "status": "PASS",
+    "status": "ASSUME",
     "comment": ""
   },
   "L07b": {
@@ -104,6 +104,102 @@
     "comment": ""
   },
   "T02": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "L02.1": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "L03a.1": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "L03b.1": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "L03b.2": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "L04.1": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "L04.2": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "L04a.1": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "L07.1": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "L07.1a": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "L07.1b": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "L07.2": {
+    "status": "SKIP",
+    "comment": ""
+  },
+  "L07.2a": {
+    "status": "SKIP",
+    "comment": ""
+  },
+  "L07.2b": {
+    "status": "SKIP",
+    "comment": ""
+  },
+  "L07.2c": {
+    "status": "SKIP",
+    "comment": ""
+  },
+  "L07.2d": {
+    "status": "SKIP",
+    "comment": ""
+  },
+  "L07.3": {
+    "status": "SKIP",
+    "comment": ""
+  },
+  "L07.3a": {
+    "status": "SKIP",
+    "comment": ""
+  },
+  "L07a.1": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "L07a.2": {
+    "status": "SKIP",
+    "comment": ""
+  },
+  "L07a.3": {
+    "status": "SKIP",
+    "comment": ""
+  },
+  "L07b.1": {
+    "status": "SKIP",
+    "comment": ""
+  },
+  "L08.1": {
+    "status": "SKIP",
+    "comment": ""
+  },
+  "L09.1": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "L05.1": {
     "status": "PASS",
     "comment": ""
   }

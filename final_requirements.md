@@ -96,7 +96,6 @@ Y runs positiveley along the columns (top to bottom of keyboard). Z is vertical 
 **REQ-L09.3** — The converter shall inverse-solve for world-space zone_anchor positions.
 
 **REQ-L09.4** — For the thumb zone, the converter shall use the algorithm-specific parameter derivation corresponding to the selected thumb mode (REQ-L07).
-
 **REQ-L10** — The user shall be able to export and reload layout data as JSON.
 
 **REQ-L10.1** — The export shall include raw tap coordinates per column (as `{x, y}` arrays).

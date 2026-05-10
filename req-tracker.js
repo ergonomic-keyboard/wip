@@ -186,16 +186,37 @@ const server = http.createServer(async (req, res) => {
   }
 
   // API: POST /api/add-requirement — add a requirement to a specific section
+  // Supports afterId to insert after a specific requirement (for sub-requirements)
   if (url.pathname === '/api/add-requirement' && req.method === 'POST') {
     const body = await readBody(req);
     try {
-      const { id, text, afterSection } = JSON.parse(body);
+      const { id, text, afterSection, afterId } = JSON.parse(body);
       if (!id || !text) throw new Error('id and text required');
       let md = fs.readFileSync(REQUIREMENTS_FILE, 'utf8');
       const newReq = '\n**REQ-' + id + '** — ' + text + '\n';
-      if (afterSection) {
-        // Find the section header, then find the end of that section (next ## or --- or EOF)
-        const lines = md.split('\n');
+      const lines = md.split('\n');
+      let inserted = false;
+
+      // If afterId is provided, insert after the last line of that requirement
+      if (afterId) {
+        const eid = afterId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const re = new RegExp(`^\\*\\*(?:REQ-)?${eid}\\*\\*\\s*[—–-]`);
+        for (let i = 0; i < lines.length; i++) {
+          if (re.test(lines[i])) {
+            // Skip multiline content of this requirement
+            let j = i + 1;
+            while (j < lines.length && lines[j] && !lines[j].match(/^\*\*/) && !lines[j].match(/^##/) && !lines[j].match(/^---/)) {
+              j++;
+            }
+            lines.splice(j, 0, newReq);
+            inserted = true;
+            break;
+          }
+        }
+      }
+
+      // Fallback: insert at end of section
+      if (!inserted && afterSection) {
         let sectionStart = -1;
         for (let i = 0; i < lines.length; i++) {
           if (lines[i].match(/^## /) && lines[i].includes(afterSection)) {
@@ -203,7 +224,6 @@ const server = http.createServer(async (req, res) => {
           }
         }
         if (sectionStart >= 0) {
-          // Find end of section: next --- or next ## header
           let insertAt = lines.length;
           for (let i = sectionStart + 1; i < lines.length; i++) {
             if (lines[i].match(/^---/) || (lines[i].match(/^## /) && i > sectionStart)) {
@@ -211,13 +231,15 @@ const server = http.createServer(async (req, res) => {
             }
           }
           lines.splice(insertAt, 0, newReq);
-          md = lines.join('\n');
-        } else {
-          md = md.trimEnd() + '\n' + newReq;
+          inserted = true;
         }
-      } else {
-        md = md.trimEnd() + '\n' + newReq;
       }
+
+      if (!inserted) {
+        lines.push(newReq);
+      }
+
+      md = lines.join('\n');
       fs.writeFileSync(REQUIREMENTS_FILE, md);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end('{"ok":true}');

@@ -113,6 +113,46 @@
     text-align: left;
   }
   .add-section-req:hover { border-color: #5a9ae0; color: #aaa; }
+
+  /* Inline add-requirement form */
+  .add-form {
+    margin: 6px 0 12px; padding: 8px 10px; border: 1px solid #5a9ae0; border-radius: 4px;
+    background: #111118; display: flex; gap: 8px; align-items: flex-start; position: relative;
+  }
+  .add-form-id-wrap { position: relative; flex-shrink: 0; }
+  .add-form-id-wrap input {
+    width: 110px; padding: 5px 8px; font-size: 0.85em; font-family: monospace;
+    background: #1a1a22; color: #8af; border: 1px solid #444; border-radius: 3px;
+  }
+  .add-form-id-wrap input:focus { border-color: #5a9ae0; outline: none; }
+  .add-form-text {
+    flex: 1; padding: 5px 8px; font-size: 0.85em; font-family: inherit;
+    background: #1a1a22; color: #ccc; border: 1px solid #444; border-radius: 3px;
+    min-height: 32px; resize: vertical;
+  }
+  .add-form-text:focus { border-color: #5a9ae0; outline: none; }
+  .add-form button {
+    padding: 5px 12px; font-size: 0.82em; border: 1px solid #3a3; border-radius: 3px;
+    background: #1a3a1a; color: #5c5; cursor: pointer; flex-shrink: 0;
+  }
+  .add-form button:hover { background: #2a4a2a; }
+  .add-form .add-cancel {
+    border-color: #555; background: #1a1a1f; color: #888;
+  }
+  .add-form .add-cancel:hover { background: #2a2a30; }
+
+  .id-suggest {
+    position: absolute; top: 100%; left: 0; z-index: 50;
+    background: #1a1a22; border: 1px solid #444; border-radius: 3px; min-width: 200px;
+    max-height: 180px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  }
+  .id-suggest .sug-item {
+    padding: 4px 10px; font-size: 0.82em; cursor: pointer; display: flex; gap: 8px;
+    border-bottom: 1px solid #222;
+  }
+  .id-suggest .sug-item:hover, .id-suggest .sug-item.highlighted { background: #2a4a6a; }
+  .id-suggest .sug-id { color: #8af; font-family: monospace; flex-shrink: 0; }
+  .id-suggest .sug-hint { color: #666; font-size: 0.9em; }
 </style>
 </head>
 <body>
@@ -238,9 +278,9 @@ function render() {
     const item = parsed[pi];
 
     if (item.type === 'section') {
-      // Close previous section with its + button
+      // Close previous section with its + button or add form
       if (currentSection) {
-        html += `<button class="add-section-req" onclick="addReqToSection('${esc(currentSection)}')">+ Add requirement to ${esc(currentSection)}</button>`;
+        html += renderAddArea(currentSection);
       }
       currentSection = item.title;
       html += `<div class="section-hdr"><span class="section-title">${esc(item.title)}</span></div>`;
@@ -282,9 +322,9 @@ function render() {
     html += `</div>`;
   }
 
-  // Final section + button
+  // Final section + button or add form
   if (currentSection) {
-    html += `<button class="add-section-req" onclick="addReqToSection('${esc(currentSection)}')">+ Add requirement to ${esc(currentSection)}</button>`;
+    html += renderAddArea(currentSection);
   }
 
   content.innerHTML = html;
@@ -301,6 +341,24 @@ function render() {
       scheduleSave();
     });
   });
+}
+
+function renderAddArea(sectionTitle) {
+  if (activeAddForm && activeAddForm.sectionTitle === sectionTitle) {
+    return `<div class="add-form">
+      <div class="add-form-id-wrap" id="add-id-wrap">
+        <input id="add-id-input" type="text" placeholder="e.g. L09.5" autocomplete="off"
+          oninput="showSuggestions('${esc(sectionTitle)}', this.value); sugHighlight=0;"
+          onfocus="showSuggestions('${esc(sectionTitle)}', this.value)"
+          onkeydown="addIdKeydown(event, '${esc(sectionTitle)}')" />
+      </div>
+      <textarea id="add-text-input" class="add-form-text" placeholder="Requirement text..." rows="1"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();commitAddReq();}"></textarea>
+      <button onclick="commitAddReq()">Add</button>
+      <button class="add-cancel" onclick="cancelAddForm()">Cancel</button>
+    </div>`;
+  }
+  return `<button class="add-section-req" onclick="addReqToSection('${esc(sectionTitle)}')">+ Add requirement to ${esc(sectionTitle)}</button>`;
 }
 
 function mark(id, status) {
@@ -378,24 +436,176 @@ function onReqTextEdit(el) {
   }).catch(e => flashSave('Error: ' + e.message, '#f66'));
 }
 
+function sectionReqIds(sectionTitle) {
+  // Get all requirement IDs that belong to this section
+  const ids = [];
+  let inSection = false;
+  for (const item of parsed) {
+    if (item.type === 'section') {
+      if (item.title === sectionTitle) inSection = true;
+      else if (inSection) break;
+    } else if (inSection && item.type === 'req') {
+      ids.push(item.id);
+    }
+  }
+  return ids;
+}
+
+function suggestIds(sectionTitle, typed) {
+  const ids = sectionReqIds(sectionTitle);
+  if (!ids.length) return [];
+  const suggestions = [];
+
+  // Extract section prefix (e.g. "L" from "L01", "L02", "B" from "B01")
+  const prefixMatch = ids[0].match(/^([A-Za-z]+)/);
+  const sectionPrefix = prefixMatch ? prefixMatch[1] : '';
+
+  // For each existing root ID, suggest the next sub-requirement
+  const roots = new Map(); // rootId -> highest sub number
+  for (const id of ids) {
+    const dotIdx = id.indexOf('.');
+    const root = dotIdx >= 0 ? id.slice(0, dotIdx) : id;
+    if (!roots.has(root)) roots.set(root, []);
+    if (dotIdx >= 0) roots.get(root).push(id.slice(dotIdx + 1));
+  }
+
+  // Suggest sub-reqs for roots that already have subs or for any root
+  for (const [root, subs] of roots) {
+    if (subs.length > 0) {
+      // Find highest numeric sub
+      let maxNum = 0;
+      for (const s of subs) {
+        const n = parseInt(s, 10);
+        if (!isNaN(n) && n > maxNum) maxNum = n;
+      }
+      suggestions.push({ id: `${root}.${maxNum + 1}`, hint: `sub of ${root}` });
+    } else {
+      suggestions.push({ id: `${root}.1`, hint: `first sub of ${root}` });
+    }
+  }
+
+  // Suggest next root-level ID
+  const rootIds = [...roots.keys()].sort();
+  if (rootIds.length > 0) {
+    const lastRoot = rootIds[rootIds.length - 1];
+    const numMatch = lastRoot.match(/^([A-Za-z]+)(\d+)(.*)/);
+    if (numMatch) {
+      const nextNum = String(parseInt(numMatch[2], 10) + 1).padStart(numMatch[2].length, '0');
+      suggestions.push({ id: `${numMatch[1]}${nextNum}`, hint: 'new root requirement' });
+    }
+  }
+
+  // Filter by typed text (case-insensitive prefix match)
+  if (typed) {
+    const t = typed.toLowerCase();
+    return suggestions.filter(s => s.id.toLowerCase().startsWith(t) || s.id.toLowerCase().includes(t));
+  }
+  return suggestions;
+}
+
+let activeAddForm = null; // { sectionTitle }
+let sugHighlight = -1;
+
 function addReqToSection(sectionTitle) {
-  const id = prompt('Requirement ID (e.g. R40, L12):');
-  if (!id) return;
-  const text = prompt('Requirement text:');
-  if (!text) return;
-  // Insert into parsed array right before the next section
-  const secIdx = parsed.findIndex(p => p.type === 'section' && p.title === sectionTitle);
+  activeAddForm = { sectionTitle };
+  render();
+  // Focus the ID input after render
+  setTimeout(() => {
+    const inp = document.getElementById('add-id-input');
+    if (inp) { inp.focus(); showSuggestions(sectionTitle, ''); }
+  }, 0);
+}
+
+function cancelAddForm() {
+  activeAddForm = null;
+  sugHighlight = -1;
+  render();
+}
+
+function showSuggestions(sectionTitle, typed) {
+  const wrap = document.getElementById('add-id-wrap');
+  if (!wrap) return;
+  let dd = document.getElementById('id-suggest-dd');
+  const sugs = suggestIds(sectionTitle, typed);
+  if (!sugs.length) { if (dd) dd.remove(); return; }
+
+  if (!dd) {
+    dd = document.createElement('div');
+    dd.className = 'id-suggest';
+    dd.id = 'id-suggest-dd';
+    wrap.appendChild(dd);
+  }
+  sugHighlight = Math.min(sugHighlight, sugs.length - 1);
+  if (sugHighlight < 0) sugHighlight = 0;
+  dd.innerHTML = sugs.map((s, i) =>
+    `<div class="sug-item ${i === sugHighlight ? 'highlighted' : ''}" data-id="${esc(s.id)}">
+      <span class="sug-id">${esc(s.id)}</span><span class="sug-hint">${esc(s.hint)}</span>
+    </div>`
+  ).join('');
+
+  dd.querySelectorAll('.sug-item').forEach(el => {
+    el.addEventListener('mousedown', e => {
+      e.preventDefault();
+      document.getElementById('add-id-input').value = el.dataset.id;
+      dd.remove();
+      document.getElementById('add-text-input').focus();
+    });
+  });
+}
+
+function commitAddReq() {
+  if (!activeAddForm) return;
+  const idInput = document.getElementById('add-id-input');
+  const textInput = document.getElementById('add-text-input');
+  const id = (idInput?.value || '').trim();
+  const text = (textInput?.value || '').trim();
+  if (!id) { idInput?.focus(); flashSave('ID required', '#f66'); return; }
+  if (!text) { textInput?.focus(); flashSave('Text required', '#f66'); return; }
+  const sectionTitle = activeAddForm.sectionTitle;
+
+  // Determine insertion position in parsed array
+  // If dotted ID, insert after siblings; otherwise at end of section
   let insertIdx = parsed.length;
+  const secIdx = parsed.findIndex(p => p.type === 'section' && p.title === sectionTitle);
   if (secIdx >= 0) {
+    // Default: end of section
     for (let i = secIdx + 1; i < parsed.length; i++) {
       if (parsed[i].type === 'section') { insertIdx = i; break; }
     }
   }
+
+  // For dotted IDs, find the parent or last sibling and insert after
+  let afterId = null;
+  const dotIdx = id.indexOf('.');
+  if (dotIdx >= 0) {
+    const parentId = id.slice(0, dotIdx);
+    // Find last item with matching parent prefix in this section
+    let lastSiblingIdx = -1;
+    let inSection = false;
+    for (let i = 0; i < parsed.length; i++) {
+      if (parsed[i].type === 'section') {
+        if (parsed[i].title === sectionTitle) inSection = true;
+        else if (inSection) break;
+      } else if (inSection && parsed[i].type === 'req') {
+        if (parsed[i].id === parentId || parsed[i].id.startsWith(parentId + '.')) {
+          lastSiblingIdx = i;
+          afterId = parsed[i].id;
+        }
+      }
+    }
+    if (lastSiblingIdx >= 0) {
+      insertIdx = lastSiblingIdx + 1;
+    }
+  }
+
   parsed.splice(insertIdx, 0, { type: 'req', id, text });
+  activeAddForm = null;
+  sugHighlight = -1;
+
   fetch('/api/add-requirement', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id, text, afterSection: sectionTitle }),
+    body: JSON.stringify({ id, text, afterSection: sectionTitle, afterId }),
   }).then(r => r.json()).then(r => {
     if (r.ok) flashSave('Added ' + id, '#5ae');
     else flashSave('Error: ' + (r.error || ''), '#f66');
@@ -481,8 +691,38 @@ document.getElementById('stats').addEventListener('click', e => {
   render();
 });
 
+function addIdKeydown(e, sectionTitle) {
+  const dd = document.getElementById('id-suggest-dd');
+  if (!dd) {
+    if (e.key === 'Enter') { e.preventDefault(); document.getElementById('add-text-input')?.focus(); }
+    if (e.key === 'Escape') { e.preventDefault(); cancelAddForm(); }
+    return;
+  }
+  const items = dd.querySelectorAll('.sug-item');
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    sugHighlight = Math.min(sugHighlight + 1, items.length - 1);
+    showSuggestions(sectionTitle, e.target.value);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    sugHighlight = Math.max(sugHighlight - 1, 0);
+    showSuggestions(sectionTitle, e.target.value);
+  } else if (e.key === 'Enter' || e.key === 'Tab') {
+    e.preventDefault();
+    const sel = items[sugHighlight];
+    if (sel) {
+      e.target.value = sel.dataset.id;
+      dd.remove();
+      document.getElementById('add-text-input')?.focus();
+    }
+  } else if (e.key === 'Escape') {
+    e.preventDefault();
+    dd.remove();
+  }
+}
+
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeDropdown();
+  if (e.key === 'Escape') { closeDropdown(); if (activeAddForm) cancelAddForm(); }
 });
 
 load();
