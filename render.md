@@ -1,6 +1,44 @@
 # 3D Rendering & Interactive Viewer
 
-## Install
+## Browser-based 3D Preview (recommended)
+
+The wizard includes a built-in Three.js 3D preview with no installation required.
+
+```bash
+cd /home/a/git/git/keyboard/wip
+python3 -m http.server 8080
+# Open http://localhost:8080/wizard.html → go to Step 2
+```
+
+**Features:**
+- PBR materials with environment-based reflections (bamboo, cork, brushed steel, brass, FR-4 PCB)
+- Procedural textures: wood grain, cork pores, PCB copper traces, brushed metal
+- Per-key components: Cherry MX ULP switch housings, keycaps, stems, SOD-123 diodes
+- Key press animation (click any key — 1.8mm travel with easeOutQuad)
+- M2 countersunk screws and brass heat-set inserts
+- nice!nano v2 controllers with USB-C port and gold pads
+- LiPo batteries with wiring
+- Ball joint hinge with rod-end bearing and thumb nut
+- Turnbuckle cables with clevis pins (CatmullRomCurve3 droop)
+- Fold angle slider (0–160 degrees)
+- Toggle checkboxes for cables, hinge, battery visibility
+
+**Controls:**
+- **Left-drag** — orbit
+- **Right-drag** — pan
+- **Scroll** — zoom
+- **Click a key** — press animation
+
+**Technical details:**
+- Three.js r160 with ES module import maps
+- ACES filmic tone mapping, SRGB color space
+- PMREMGenerator + RoomEnvironment for metallic reflections
+- InstancedMesh for efficient rendering of 34+ switches, keycaps, screws
+- Raycaster hit detection on keycap instances
+
+## Desktop Tools
+
+### Install
 
 ```bash
 # OpenSCAD (interactive 3D viewer for full assembly)
@@ -21,9 +59,9 @@ macOS:
 brew install --cask openscad kicad freecad meshlab
 ```
 
-## Interactive 3D assembly viewer (OpenSCAD)
+### Interactive 3D assembly viewer (OpenSCAD)
 
-This is the primary way to inspect the keyboard. Open `assembly.scad` in OpenSCAD for a fully interactive 3D view with all components:
+Open `assembly.scad` in OpenSCAD for a fully interactive 3D view with all components:
 
 ```bash
 cd /home/a/git/git/keyboard/wip
@@ -82,7 +120,7 @@ The assembly.scad regenerates automatically when you re-run `generate.sh`. Keepi
 
 A pre-rendered `assembly.png` is also generated if OpenSCAD is installed.
 
-## View the PCB in 3D (KiCad)
+### View the PCB in 3D (KiCad)
 
 ```bash
 cd /home/a/git/git/keyboard/wip
@@ -93,7 +131,7 @@ Then: **View → 3D Viewer** — shows the PCB with component footprints.
 
 Note: use `pcbnew`, not `kicad`. Use the `_v7` file for KiCad 7+.
 
-## View cases/plates as STL
+### View cases/plates as STL
 
 ```bash
 meshlab builds/<name>/cases/switch_plate.stl
@@ -103,7 +141,7 @@ meshlab builds/<name>/cases/wooden_frame.stl
 
 Or drag into any online STL viewer: https://www.viewstl.com/
 
-## View outlines (FreeCAD / browser)
+### View outlines (FreeCAD / browser)
 
 ```bash
 # DXF outlines
@@ -114,17 +152,18 @@ xdg-open builds/<name>/outlines/board.svg
 xdg-open builds/<name>/outlines/frame.svg
 ```
 
-## View wood cutting files
+### View wood cutting files
 
 ```bash
 freecad builds/<name>/outlines/frame_with_holes.dxf
 ```
 This outline includes the mounting hole positions for accurate drilling.
 
-## Generated files summary
+### Generated files summary
 
 | File | Format | Viewer | Description |
 |------|--------|--------|-------------|
+| `wizard.html` | HTML | any browser | Browser-based 3D preview with PBR materials, key press animation |
 | `assembly.scad` | OpenSCAD | `openscad` | Interactive 3D: all components, cables, ball joint, battery, MCU |
 | `assembly.png` | PNG | any image viewer | Static render of assembly |
 | `pcbs/keyboard_v7.kicad_pcb` | KiCad 7 | `pcbnew` | PCB with footprints |

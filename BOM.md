@@ -13,7 +13,7 @@ All components are no-solder. PCB is assembled by the fab house (PCBA service).
 | 2 | Mill-Max 315 socket strip (12-pin) | €4.00 | €16.00 | [splitkb.com](https://splitkb.com/products/mill-max-low-profile-sockets), [Arrow](https://www.arrow.com/en/products/315-43-120-41-003000/mill-max) |
 | 2 | 301230 LiPo battery (110mAh) | €3.00 | €6.00 | [AliExpress](https://www.aliexpress.com/w/wholesale-301230-lipo.html) |
 | 2 | MSK-12C02 power switch | €0.20 | €0.40 | [LCSC](https://www.lcsc.com/product-detail/C431541.html) |
-| 1 | USB-C cable | €5.00 | €5.00 | Any |
+| 1 | USB-C cable | €5.00 | €5.00 | [Amazon](https://www.amazon.com/s?k=usb-c+cable+short) |
 | 2 | PCB (assembled, PCBA) | ~€15.00 | ~€30.00 | [JLCPCB](https://jlcpcb.com/pcb-assembly) |
 
 **Phase 0 electronics total: ~€195**
@@ -69,8 +69,8 @@ Cut two gaskets per half from `board.dxf` outline. Placed between layers: bottom
 |-----|-----------|-----------|-------|--------|
 | 1 | M6 rod-end bearing (ball joint) | €3.00 | €3.00 | [AliExpress](https://www.aliexpress.com/w/wholesale-m6-rod-end-bearing.html), [eBay](https://www.ebay.com/sch/i.html?_nkw=m6+rod+end+bearing) |
 | 1 | M6 thumb nut (locking) | €0.50 | €0.50 | [AliExpress](https://www.aliexpress.com/w/wholesale-m6-thumb-nut.html) |
-| 2 | M6 threaded rod stub 15mm | €0.30 | €0.60 | Hardware store |
-| 2 | Mounting plate (flat bracket, drilled for M2) | €1.00 | €2.00 | Hardware store or 3D-printed |
+| 2 | M6 threaded rod stub 15mm | €0.30 | €0.60 | [AliExpress](https://www.aliexpress.com/w/wholesale-m6-threaded-rod-stud.html) |
+| 2 | Mounting plate (flat bracket, drilled for M2) | €1.00 | €2.00 | [AliExpress](https://www.aliexpress.com/w/wholesale-flat-bracket-M2.html) or 3D-printed |
 
 Rod-end bearing mounts at the inner edge between halves. Provides free tilt in all axes for tenting adjustment. Thumb nut locks chosen angle. Range: ~140-160° fold (not full 180° flat).
 
@@ -81,12 +81,30 @@ Rod-end bearing mounts at the inner edge between halves. Provides free tilt in a
 | 2 | Braided steel cable 1.5mm × 250mm | €0.50 | €1.00 | Hardware store or [Amazon](https://www.amazon.com/s?k=braided+steel+cable+1.5mm) |
 | 2 | Small turnbuckle (M3, ~40mm body) | €1.50 | €3.00 | [AliExpress](https://www.aliexpress.com/w/wholesale-small-turnbuckle-m3.html), hardware store |
 | 2 | Quick-release clevis pin (spring-loaded ball detent) | €2.50 | €5.00 | [AliExpress](https://www.aliexpress.com/w/wholesale-quick-release-clevis-pin.html), [McMaster](https://www.mcmaster.com) |
-| 2 | Clevis bracket (recessed into frame edge) | €1.00 | €2.00 | Hardware store or 3D-printed |
-| 4 | Cable crimp eyelet | €0.20 | €0.80 | Hardware store |
+| 2 | Clevis bracket (recessed into frame edge) | €1.00 | €2.00 | [AliExpress](https://www.aliexpress.com/w/wholesale-clevis-bracket-small.html) or 3D-printed |
+| 4 | Cable crimp eyelet | €0.20 | €0.80 | [Amazon](https://www.amazon.com/s?k=cable+crimp+eyelet+1.5mm) |
 
 Cables serve dual purpose: structural support (prevents collapse under gravity) and tenting angle adjustment via turnbuckle length. One cable top, one bottom. Quick-release clevis pins allow one-handed press-button detach for folding.
 
-**Phase 1 total: ~€35**
+## Mechanism A — Hirth Coupling Components
+
+| Qty | Component | Unit Price | Total | Source |
+|-----|-----------|-----------|-------|--------|
+| 2 | Hirth half-moon coupling disc, 72-tooth 60mm | €45.00 | €90.00 | [TEDISA](https://www.tedisa-hirth.com/), [TAC Rockford](https://tacrockford.com/product/machine-components/milling-machine/hirth-couplings-face-gears/) |
+| 1 | Butterfly nut M6 (wing nut, stainless steel) | €1.00 | €1.00 | [AliExpress](https://www.aliexpress.com/w/wholesale-m6-butterfly-wing-nut-stainless.html), [Amazon](https://www.amazon.com/s?k=m6+butterfly+wing+nut+stainless) |
+| 2 | Neodymium disc magnet 8×3mm (≥2N pull force) | €0.50 | €1.00 | [AliExpress](https://www.aliexpress.com/w/wholesale-neodymium-disc-magnet-8x3mm.html), [Amazon](https://www.amazon.com/s?k=neodymium+disc+magnet+8x3mm) |
+
+Hirth discs mount flat on the back (bottom face) of each keyboard half near the center edge. When the butterfly angle is set, the two discs mesh and the butterfly nut clamps them together. 72 teeth give 5° resolution (9 selectable positions in ±45° butterfly range). Neodymium magnets at the center eye allow quick-release disconnect for fold-to-close.
+
+## Fold-to-Close Accessories
+
+| Qty | Component | Unit Price | Total | Source |
+|-----|-----------|-----------|-------|--------|
+| 2 | Elastic band (silicone, ~150mm circumference) | €0.30 | €0.60 | [Amazon](https://www.amazon.com/s?k=silicone+elastic+band+150mm), [AliExpress](https://www.aliexpress.com/w/wholesale-silicone-elastic-band.html) |
+
+Elastic bands secure the cables around the closed keyboard when folded, regardless of turnbuckle position. No turnbuckle length adjustment needed for folding/unfolding.
+
+**Phase 1 total: ~€128**
 
 ---
 
@@ -128,4 +146,4 @@ Screw positions: 7 per half — see `outlines/mounting_holes.dxf` for exact coor
 
 ---
 
-**Grand total (all phases): ~€233**
+**Grand total (all phases): ~€326**

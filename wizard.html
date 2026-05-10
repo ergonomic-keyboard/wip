@@ -1,0 +1,3618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Keyboard Builder</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #111; color: #eee; overflow: hidden; height: 100vh; }
+a { color: #6bf; }
+
+/* ── Header / Steps ── */
+header { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; background: #1a1a1a; border-bottom: 1px solid #333; height: 48px; z-index: 10; }
+.steps { display: flex; gap: 4px; }
+.step-btn { padding: 6px 16px; border-radius: 4px; font-size: 13px; border: 1px solid #444; background: #222; color: #888; cursor: default; transition: all 0.2s; }
+.step-btn.active { background: #2a4a6a; color: #fff; border-color: #4a8abf; }
+.step-btn.done { background: #1a3a1a; color: #6c6; border-color: #3a6a3a; cursor: pointer; }
+.nav-btns { display: flex; gap: 8px; }
+.nav-btns button { padding: 6px 20px; border-radius: 4px; font-size: 13px; border: 1px solid #555; background: #333; color: #ddd; cursor: pointer; }
+.nav-btns button:hover:not(:disabled) { background: #444; }
+.nav-btns button:disabled { opacity: 0.3; cursor: default; }
+.nav-btns button.primary { background: #2a6abf; border-color: #4a8adf; color: #fff; }
+.nav-btns button.primary:hover:not(:disabled) { background: #3a7adf; }
+
+/* ── Pages ── */
+.page { display: none; height: calc(100vh - 48px); }
+.page.active { display: flex; flex-direction: column; }
+
+/* ── Page 1: Finger Input ── */
+#page1 .toolbar { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: #1a1a1a; border-bottom: 1px solid #333; flex-wrap: wrap; }
+#page1 .toolbar .col-btn { padding: 4px 12px; border-radius: 3px; font-size: 12px; border: 2px solid transparent; cursor: pointer; color: #000; font-weight: 600; }
+#page1 .toolbar .col-btn.active { border-color: #fff; box-shadow: 0 0 8px rgba(255,255,255,0.4); }
+#page1 .toolbar .col-btn .count { font-size: 10px; opacity: 0.7; margin-left: 4px; }
+#page1 .toolbar .sep { width: 1px; height: 24px; background: #444; margin: 0 4px; }
+#page1 .toolbar .tool-btn { padding: 4px 10px; border-radius: 3px; font-size: 11px; border: 1px solid #555; background: #333; color: #ccc; cursor: pointer; }
+#page1 .toolbar .tool-btn:hover { background: #444; }
+.canvas-wrap { flex: 1; position: relative; background: #0a0a0a; overflow: hidden; }
+.canvas-wrap canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.canvas-hint { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #444; font-size: 18px; pointer-events: none; text-align: center; line-height: 1.6; }
+.canvas-hint.hidden { display: none; }
+
+/* ── Tune Scale Modal ── */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal-box { background: #1e1e22; border: 1px solid #444; border-radius: 8px; padding: 24px; max-width: 420px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+.modal-box h3 { margin: 0 0 12px; font-size: 16px; color: #ddd; }
+.modal-box p { font-size: 13px; color: #aaa; line-height: 1.5; margin: 0 0 12px; }
+.modal-box .ref-line { height: 3px; background: #cc3333; border-radius: 1px; margin: 8px 0 16px; }
+.modal-box label { display: block; font-size: 12px; color: #999; margin-bottom: 4px; }
+.modal-box input[type=number] { width: 100%; padding: 6px 10px; border-radius: 4px; border: 1px solid #555; background: #111; color: #eee; font-size: 14px; }
+.modal-box .modal-footer { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
+.modal-box .modal-footer button { padding: 6px 20px; border-radius: 4px; font-size: 13px; border: 1px solid #555; background: #333; color: #ddd; cursor: pointer; }
+.modal-box .modal-footer button:hover { background: #444; }
+.modal-box .modal-footer button.primary { background: #2a6abf; border-color: #4a8adf; color: #fff; }
+.modal-box .modal-footer button.primary:hover { background: #3a7adf; }
+.modal-box .ppm-display { font-size: 11px; color: #666; margin-top: 8px; }
+
+/* ── Page 2: 3D View ── */
+#page2 .toolbar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #1a1a1a; border-bottom: 1px solid #333; flex-wrap: wrap; }
+#page2 .toolbar label { font-size: 12px; color: #aaa; display: flex; align-items: center; gap: 4px; }
+#page2 .toolbar input[type=range] { width: 120px; }
+#page2 .toolbar input[type=checkbox] { accent-color: #4a8abf; }
+#page2 { position: relative; }
+#viewport-new { flex: 1; position: relative; background: #0a0a0a; }
+#viewport-new canvas { display: block; }
+#loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #888; font-size: 16px; }
+
+/* ── Page 3: BOM ── */
+#page3 { overflow-y: auto; padding: 20px; }
+#page3 h2 { margin: 20px 0 10px; font-size: 18px; color: #adf; }
+#page3 h2:first-child { margin-top: 0; }
+#page3 table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 13px; }
+#page3 th { text-align: left; padding: 6px 10px; background: #222; border-bottom: 2px solid #444; color: #aaa; font-weight: 600; }
+#page3 td { padding: 6px 10px; border-bottom: 1px solid #2a2a2a; }
+#page3 tr:hover td { background: #1a1a2a; }
+#page3 .phase-total { text-align: right; font-weight: 600; color: #8c8; padding: 8px 10px; }
+#page3 .grand-total { font-size: 18px; font-weight: 700; color: #adf; text-align: right; padding: 16px 0; border-top: 2px solid #444; margin-top: 8px; }
+.download-row { display: flex; gap: 12px; margin-top: 16px; }
+.download-row button { padding: 10px 24px; border-radius: 6px; font-size: 14px; border: 1px solid #4a8adf; background: #2a5a9f; color: #fff; cursor: pointer; }
+.download-row button:hover { background: #3a6abf; }
+
+/* ── Page 4: Firmware & Test ── */
+#page4 { overflow-y: auto; padding: 20px; }
+#page4 h2 { margin: 20px 0 10px; font-size: 18px; color: #adf; }
+#page4 h2:first-child { margin-top: 0; }
+#page4 h3 { margin: 16px 0 8px; font-size: 14px; color: #8cf; }
+.file-tabs { display: flex; gap: 2px; margin-bottom: 0; flex-wrap: wrap; }
+.file-tab { padding: 6px 14px; border-radius: 4px 4px 0 0; font-size: 12px; font-family: monospace; border: 1px solid #333; border-bottom: none; background: #1a1a1a; color: #888; cursor: pointer; }
+.file-tab.active { background: #222; color: #eee; border-color: #555; }
+.file-content { background: #222; border: 1px solid #555; border-radius: 0 4px 4px 4px; padding: 0; margin-bottom: 20px; max-height: 400px; overflow: auto; }
+.file-content pre { margin: 0; padding: 12px; font-size: 12px; line-height: 1.5; color: #ccc; white-space: pre; tab-size: 4; }
+.keymap-grid { display: grid; gap: 3px; margin: 8px 0 16px; }
+.keymap-row { display: flex; gap: 3px; justify-content: center; }
+.keymap-key { width: 48px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-size: 10px; font-family: monospace; font-weight: 600; border: 1px solid #444; background: #2a2a2a; color: #ccc; }
+.keymap-key.thumb { background: #2a2a3a; border-color: #4a4a6a; }
+.keymap-key.spacer { visibility: hidden; }
+.layer-tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+.layer-tab { padding: 4px 12px; border-radius: 3px; font-size: 12px; border: 1px solid #444; background: #222; color: #888; cursor: pointer; }
+.layer-tab.active { background: #2a4a6a; color: #fff; border-color: #4a8abf; }
+.test-info { background: #1a2a1a; border: 1px solid #3a6a3a; border-radius: 6px; padding: 16px; margin: 16px 0; }
+.test-info h3 { margin: 0 0 8px; color: #6c6; }
+.test-info code { background: #111; padding: 2px 6px; border-radius: 3px; font-size: 12px; color: #adf; }
+.test-info pre { background: #111; padding: 10px; border-radius: 4px; margin: 8px 0; font-size: 12px; color: #ccc; overflow-x: auto; }
+.test-list { list-style: none; padding: 0; }
+.test-list li { padding: 4px 0; font-size: 13px; }
+.test-list li::before { content: '\2713'; color: #6c6; margin-right: 8px; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="steps">
+    <div class="step-btn active" data-step="1">1. Finger Positions</div>
+    <div class="step-btn" data-step="2">2. 3D Preview</div>
+    <div class="step-btn" data-step="3">3. Bill of Materials</div>
+    <div class="step-btn" data-step="4">4. Firmware & Test</div>
+  </div>
+  <div class="nav-btns">
+    <button id="btn-back" disabled>Back</button>
+    <button id="btn-next" class="primary" disabled>Next</button>
+  </div>
+</header>
+
+<!-- ═══════════════ PAGE 1: Finger Input ═══════════════ -->
+<div id="page1" class="page active">
+  <div class="toolbar" id="col-toolbar"></div>
+  <div class="canvas-wrap">
+    <canvas id="tap-canvas"></canvas>
+    <div class="canvas-hint" id="canvas-hint">
+      Place your LEFT hand flat on the screen (or trackpad).<br>
+      Select a finger column above, then tap 3 key positions:<br>
+      bottom row, home row, top row.
+    </div>
+    <div style="position:absolute;top:12px;left:16px;color:#555;font-size:13px;font-weight:600;letter-spacing:1px;pointer-events:none;">LEFT HAND</div>
+  </div>
+</div>
+
+<!-- ═══════════════ Tune Scale Modal ═══════════════ -->
+<div class="modal-overlay" id="scale-modal">
+  <div class="modal-box">
+    <h3>Tune scale factor</h3>
+    <p>The default key size may not match your screen. Measure the red line below with a ruler and enter its width in millimeters.</p>
+    <div class="ref-line" id="scale-ref-line"></div>
+    <label for="scale-mm-input">Red line width in mm</label>
+    <input type="number" id="scale-mm-input" min="1" step="0.5" placeholder="e.g. 50">
+    <div class="ppm-display" id="ppm-display"></div>
+    <div class="modal-footer">
+      <button id="scale-reset-btn">Reset to auto</button>
+      <button id="scale-ok-btn" class="primary">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ PAGE 2: 3D Preview ═══════════════ -->
+<div id="page2" class="page">
+  <div class="toolbar">
+    <label>Fold: <input type="range" id="fold-slider" min="0" max="270" step="5" value="180"> <span id="fold-val">180</span>&deg;</label>
+    <label>Butterfly: <input type="range" id="butterfly-slider" min="0" max="45" step="1" value="0"> <span id="butterfly-val">0</span>&deg; <span id="butterfly-limit" style="color:#888;font-size:0.85em">(max 45&deg;)</span></label>
+    <label><input type="checkbox" id="show-cables" checked> Cables</label>
+    <label><input type="checkbox" id="show-hinge" checked> Hinge</label>
+    <label><input type="checkbox" id="show-battery" checked> Battery</label>
+    <div style="width:1px;height:20px;background:#444;margin:0 4px;"></div>
+    <label><input type="checkbox" id="show-exploded"> Exploded View</label>
+    <label><input type="checkbox" id="show-labels"> Labels</label>
+    <label><input type="checkbox" id="show-axes"> Axes</label>
+    <div style="width:1px;height:20px;background:#444;margin:0 4px;"></div>
+    <span style="font-size:0.85em;color:#999;margin-right:4px;">Layers:</span>
+    <label><input type="checkbox" id="layer-keycaps" checked> Keycaps</label>
+    <label><input type="checkbox" id="layer-switchPlate" checked> Switch Plate</label>
+    <label><input type="checkbox" id="layer-corkUpper" checked> Cork Upper</label>
+    <label><input type="checkbox" id="layer-pcb" checked> PCB</label>
+    <label><input type="checkbox" id="layer-corkLower" checked> Cork Lower</label>
+    <label><input type="checkbox" id="layer-bottomPlate" checked> Bottom Plate</label>
+    <!-- Toggle removed: single renderer (render3d.js) is now the only renderer -->
+  </div>
+  <div id="viewport-new">
+    <div id="loading">Processing layout...</div>
+  </div>
+</div>
+
+<!-- ═══════════════ PAGE 3: BOM ═══════════════ -->
+<div id="page3" class="page">
+  <div id="bom-content"></div>
+  <div class="download-row">
+    <button id="btn-download">Download Design Files (.zip)</button>
+  </div>
+</div>
+
+<!-- ═══════════════ PAGE 4: Firmware & Test ═══════════════ -->
+<div id="page4" class="page">
+  <div id="firmware-content"></div>
+</div>
+
+<!-- ═══════════════ Three.js Import Map (ESM) ═══════════════ -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<!-- ═══════════════ CDN Dependencies ═══════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/js-yaml@3.14.1/dist/js-yaml.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjs@15.0.0/lib/browser/math.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/makerjs@0.18.1/dist/browser.maker.js"></script>
+
+<!-- ═══════════════ Hull.js (inlined, not on CDN) ═══════════════ -->
+<script>
+window.hull = (function() {
+  // intersect.js
+  function ccw(x1,y1,x2,y2,x3,y3) {
+    var cw = ((y3-y1)*(x2-x1)) - ((y2-y1)*(x3-x1));
+    return cw > 0 ? true : cw < 0 ? false : true;
+  }
+  function intersect(seg1, seg2) {
+    var x1=seg1[0][0],y1=seg1[0][1],x2=seg1[1][0],y2=seg1[1][1],
+        x3=seg2[0][0],y3=seg2[0][1],x4=seg2[1][0],y4=seg2[1][1];
+    return ccw(x1,y1,x3,y3,x4,y4) !== ccw(x2,y2,x3,y3,x4,y4) &&
+           ccw(x1,y1,x2,y2,x3,y3) !== ccw(x1,y1,x2,y2,x4,y4);
+  }
+  // format.js
+  var formatUtil = {
+    toXy: function(ps, fmt) {
+      if (!fmt) return ps.slice();
+      var xn=fmt[0].slice(1), yn=fmt[1].slice(1);
+      return ps.map(function(p){return [p[xn],p[yn]];});
+    },
+    fromXy: function(ps, fmt) {
+      if (!fmt) return ps.slice();
+      var xn=fmt[0].slice(1), yn=fmt[1].slice(1);
+      return ps.map(function(p){var o={};o[xn]=p[0];o[yn]=p[1];return o;});
+    }
+  };
+  // grid.js
+  function Grid(points, cellSize) {
+    this._cells=[]; this._cellSize=cellSize; this._reverseCellSize=1/cellSize;
+    for (var i=0;i<points.length;i++) {
+      var p=points[i], x=this.coordToCellNum(p[0]), y=this.coordToCellNum(p[1]);
+      if (!this._cells[x]) { var a=[]; a[y]=[p]; this._cells[x]=a; }
+      else if (!this._cells[x][y]) { this._cells[x][y]=[p]; }
+      else { this._cells[x][y].push(p); }
+    }
+  }
+  Grid.prototype = {
+    cellPoints: function(x,y) { return (this._cells[x]!==undefined&&this._cells[x][y]!==undefined)?this._cells[x][y]:[]; },
+    rangePoints: function(bbox) {
+      var tlX=this.coordToCellNum(bbox[0]),tlY=this.coordToCellNum(bbox[1]),brX=this.coordToCellNum(bbox[2]),brY=this.coordToCellNum(bbox[3]),pts=[];
+      for(var x=tlX;x<=brX;x++) for(var y=tlY;y<=brY;y++) { var cp=this.cellPoints(x,y); for(var i=0;i<cp.length;i++) pts.push(cp[i]); }
+      return pts;
+    },
+    removePoint: function(point) {
+      var cx=this.coordToCellNum(point[0]),cy=this.coordToCellNum(point[1]),cell=this._cells[cx][cy];
+      for(var i=0;i<cell.length;i++) if(cell[i][0]===point[0]&&cell[i][1]===point[1]){cell.splice(i,1);break;}
+      return cell;
+    },
+    coordToCellNum: function(x) { return Math.trunc(x*this._reverseCellSize); },
+    extendBbox: function(bbox, sf) { return [bbox[0]-sf*this._cellSize,bbox[1]-sf*this._cellSize,bbox[2]+sf*this._cellSize,bbox[3]+sf*this._cellSize]; }
+  };
+  function grid(points, cellSize) { return new Grid(points, cellSize); }
+  // convex.js
+  function _ccw(p1,p2,p3) { return (p2[0]-p1[0])*(p3[1]-p1[1])-(p2[1]-p1[1])*(p3[0]-p1[0])<=0; }
+  function _tangent(ps) { var r=[]; for(var t=0;t<ps.length;t++){while(r.length>1&&_ccw(r[r.length-2],r[r.length-1],ps[t]))r.pop();r.push(ps[t]);}r.pop();return r; }
+  function convexHull(ps) { var u=_tangent(ps),l=_tangent(ps.reverse()),c=l.concat(u);c.push(ps[0]);return c; }
+  // hull.js
+  var MAX_CONCAVE_ANGLE_COS = Math.cos(90/(180/Math.PI));
+  var MAX_SEARCH_BBOX_SIZE_PERCENT = 0.6;
+  function _filterDuplicates(ps) { var u=[ps[0]],lp=ps[0]; for(var i=1;i<ps.length;i++){var c=ps[i];if(lp[0]!==c[0]||lp[1]!==c[1])u.push(c);lp=c;} return u; }
+  function _sortByX(ps) { return ps.sort(function(a,b){return(a[0]-b[0])||(a[1]-b[1]);}); }
+  function _sqLength(a,b) { return Math.pow(b[0]-a[0],2)+Math.pow(b[1]-a[1],2); }
+  function _cos(o,a,b) { var as=[a[0]-o[0],a[1]-o[1]],bs=[b[0]-o[0],b[1]-o[1]]; return(as[0]*bs[0]+as[1]*bs[1])/Math.sqrt(_sqLength(o,a)*_sqLength(o,b)); }
+  function _intersect(seg,ps) { for(var i=0;i<ps.length-1;i++){var s=[ps[i],ps[i+1]];if(seg[0][0]===s[0][0]&&seg[0][1]===s[0][1]||seg[0][0]===s[1][0]&&seg[0][1]===s[1][1])continue;if(intersect(seg,s))return true;}return false; }
+  function _occupiedArea(ps) { var mnX=Infinity,mnY=Infinity,mxX=-Infinity,mxY=-Infinity; for(var i=ps.length-1;i>=0;i--){if(ps[i][0]<mnX)mnX=ps[i][0];if(ps[i][1]<mnY)mnY=ps[i][1];if(ps[i][0]>mxX)mxX=ps[i][0];if(ps[i][1]>mxY)mxY=ps[i][1];}return[mxX-mnX,mxY-mnY]; }
+  function _bBoxAround(e) { return[Math.min(e[0][0],e[1][0]),Math.min(e[0][1],e[1][1]),Math.max(e[0][0],e[1][0]),Math.max(e[0][1],e[1][1])]; }
+  function _midPoint(edge,innerPts,convex) {
+    var pt=null,a1c=MAX_CONCAVE_ANGLE_COS,a2c=MAX_CONCAVE_ANGLE_COS;
+    for(var i=0;i<innerPts.length;i++){var c1=_cos(edge[0],edge[1],innerPts[i]),c2=_cos(edge[1],edge[0],innerPts[i]);
+      if(c1>a1c&&c2>a2c&&!_intersect([edge[0],innerPts[i]],convex)&&!_intersect([edge[1],innerPts[i]],convex)){a1c=c1;a2c=c2;pt=innerPts[i];}}
+    return pt;
+  }
+  function _concave(convex,maxSqEdgeLen,maxSearchArea,g,skipList) {
+    var inserted=false;
+    for(var i=0;i<convex.length-1;i++){var edge=[convex[i],convex[i+1]],key=edge[0][0]+','+edge[0][1]+','+edge[1][0]+','+edge[1][1];
+      if(_sqLength(edge[0],edge[1])<maxSqEdgeLen||skipList.has(key))continue;
+      var sf=0,bb=_bBoxAround(edge),bw,bh,mp;
+      do{bb=g.extendBbox(bb,sf);bw=bb[2]-bb[0];bh=bb[3]-bb[1];mp=_midPoint(edge,g.rangePoints(bb),convex);sf++;}while(mp===null&&(maxSearchArea[0]>bw||maxSearchArea[1]>bh));
+      if(bw>=maxSearchArea[0]&&bh>=maxSearchArea[1])skipList.add(key);
+      if(mp!==null){convex.splice(i+1,0,mp);g.removePoint(mp);inserted=true;}}
+    if(inserted)return _concave(convex,maxSqEdgeLen,maxSearchArea,g,skipList);
+    return convex;
+  }
+  function hull(pointset, concavity, format) {
+    var maxEdgeLen=concavity||20;
+    var points=_filterDuplicates(_sortByX(formatUtil.toXy(pointset,format)));
+    if(points.length<4){var c=points.concat([points[0]]);return format?formatUtil.fromXy(c,format):c;}
+    var oa=_occupiedArea(points),msa=[oa[0]*MAX_SEARCH_BBOX_SIZE_PERCENT,oa[1]*MAX_SEARCH_BBOX_SIZE_PERCENT];
+    var cv=convexHull(points),inner=points.filter(function(p){return cv.indexOf(p)<0;});
+    var cs=Math.ceil(1/(points.length/(oa[0]*oa[1])));
+    var cc=_concave(cv,Math.pow(maxEdgeLen,2),msa,grid(inner,cs),new Set());
+    return format?formatUtil.fromXy(cc,format):cc;
+  }
+  return hull;
+})();
+</script>
+
+<!-- KLE stub (not used, ergogen checks for it) -->
+<script>window.kle = { deserialize: function() { return {}; } };</script>
+
+<!-- Global fixups for ergogen UMD -->
+<script>
+// browser.maker.js uses browserify which overwrites global `require` and registers
+// the module as "makerjs" internally. We extract it via browserify's require.
+window.makerjs = require('makerjs');
+window.jszip = window.JSZip;
+</script>
+
+<!-- Ergogen UMD bundle -->
+<script src="ergogen.js"></script>
+
+<!-- Points-based 3D renderer (separate module, no SVG parsing) -->
+<script type="module" src="render3d.js"></script>
+
+<!-- ═══════════════ Main Application ═══════════════ -->
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+'use strict';
+
+// ══════════════════════════════════════════════════════════════════
+// ERGOPAD → ERGOGEN CONVERTER (ported from ergopad_to_ergogen.py)
+// ══════════════════════════════════════════════════════════════════
+
+const MATRIX_COLUMNS = ['pinky', 'ring', 'middle', 'index', 'index_far'];
+const ERGOGEN_NAMES  = ['pinky', 'ring', 'middle', 'index', 'inner'];
+
+// Least-squares linear regression: returns slope m and intercept b for y = mx + b.
+// If invertXY is true, regresses X on Y (better for near-vertical columns),
+// then converts back to y = mx + b form. Matches ergopad's leastSquares().
+function leastSquaresLine(points, invertXY = false) {
+  const n = points.length;
+  let xs = points.map(p => p.x), ys = points.map(p => p.y);
+  if (invertXY) { [xs, ys] = [ys, xs]; }
+  const sx = xs.reduce((a, b) => a + b, 0);
+  const sy = ys.reduce((a, b) => a + b, 0);
+  const sxx = xs.reduce((a, x) => a + x * x, 0);
+  const sxy = xs.reduce((a, x, i) => a + x * ys[i], 0);
+  const denom = n * sxx - sx * sx;
+  if (Math.abs(denom) < 1e-12) return { m: 0, b: sy / n };
+  const slope = (n * sxy - sx * sy) / denom;
+  const intercept = (sy - slope * sx) / n;
+  if (invertXY) {
+    // Convert from x = slope*y + intercept  =>  y = (1/slope)*x - intercept/slope
+    if (Math.abs(slope) < 1e-12) return { m: 0, b: intercept };
+    return { m: 1 / slope, b: -intercept / slope };
+  }
+  return { m: slope, b: intercept };
+}
+
+// Project a point onto the line ax + by + c = 0 (standard form).
+function projectPointToLine(a, b, c, px, py) {
+  const denom = a * a + b * b;
+  return {
+    x: (b * (b * px - a * py) - a * c) / denom,
+    y: (a * (-b * px + a * py) - b * c) / denom,
+  };
+}
+
+// Fit a regression line through tap points. Returns: slope m, midpoint (cx,cy),
+// rotation angle in degrees, and distances between consecutive projected points.
+// Uses inverted regression for non-thumb columns (near-vertical).
+// Midpoint is the center of the projected range (like ergopad).
+function fitLine(points, isThumb = false) {
+  const n = points.length;
+  if (n === 0) return { angle: 0, cx: 0, cy: 0, m: 0, b: 0, distances: [] };
+  if (n === 1) return { angle: 0, cx: points[0].x, cy: points[0].y, m: 0, b: 0, distances: [] };
+  // Least-squares regression; invert for near-vertical (non-thumb) columns
+  const { m, b } = leastSquaresLine(points, !isThumb);
+  // Standard form: mx - y + b = 0  =>  a=m, b_coeff=-1, c=b
+  const projections = points.map(p => projectPointToLine(m, -1, b, p.x, p.y));
+  // Midpoint = center of projected X range, evaluated on the line
+  const projXs = projections.map(p => p.x);
+  const minX = Math.min(...projXs), maxX = Math.max(...projXs);
+  const midX = (minX + maxX) / 2;
+  const cx = midX;
+  const cy = m * midX + b;
+  // Angle: perpendicular to the slope => atan(m) + PI/2
+  // But we express as deviation from vertical for our axis system
+  const angle = Math.atan(m) * 180 / Math.PI;
+  // Distances between consecutive projected points (sorted by projection along line)
+  const projAlongLine = projections.map(p => p.x * Math.sqrt(1 + m * m));
+  projAlongLine.sort((a, b) => a - b);
+  const distances = [];
+  for (let i = 1; i < projAlongLine.length; i++) distances.push(Math.abs(projAlongLine[i] - projAlongLine[i - 1]));
+  return { angle, cx, cy, m, b, distances };
+}
+
+function analyzeColumn(points, isThumb = false) {
+  if (!points || !points.length) return null;
+  const { angle, cx, cy, m, b, distances } = fitLine(points, isThumb);
+  if (points.length < 2) {
+    return { center: [cx, cy], angle, padding: 18.0, nKeys: points.length };
+  }
+  // Use tap-spread CoG placement: project all points onto the regression line,
+  // compute center of gravity of upper/lower halves, derive padding from that.
+  // This matches the drawCanvas algorithm exactly.
+  const dirLen = Math.sqrt(1 + m * m);
+  const projections = points.map(p => projectPointToLine(m, -1, b, p.x, p.y));
+  const projScalars = projections.map(p => p.x / dirLen + p.y * m / dirLen);
+  const minProj = Math.min(...projScalars);
+  const maxProj = Math.max(...projScalars);
+  const midProj = (minProj + maxProj) / 2;
+  const halfSpan = (maxProj - minProj) / 2;
+  const upperScalars = projScalars.filter(s => s >= midProj);
+  const lowerScalars = projScalars.filter(s => s < midProj);
+  const avgUpper = upperScalars.length ? upperScalars.reduce((a, b) => a + b, 0) / upperScalars.length : midProj + halfSpan;
+  const avgLower = lowerScalars.length ? lowerScalars.reduce((a, b) => a + b, 0) / lowerScalars.length : midProj - halfSpan;
+  // Padding = half the span between lower and upper CoG (since 3 keys, 2 gaps)
+  const padding = (avgUpper - avgLower) / 2;
+  return { center: [cx, cy], angle, padding: padding > 0.01 ? padding : 18.0, nKeys: points.length };
+}
+
+function estimateScale(data, keySpacing) {
+  const allDist = [];
+  for (const col of Object.keys(data)) {
+    if (data[col].length < 2) continue;
+    const { distances } = fitLine(data[col], col === 'thumb');
+    allDist.push(...distances);
+  }
+  if (!allDist.length) return 1.0;
+  const avg = allDist.reduce((a,b)=>a+b,0) / allDist.length;
+  return avg < 0.01 ? 1.0 : avg / keySpacing;
+}
+
+function rd(v) { return Math.round(v * 100) / 100; }
+
+function ergopadToErgogen(data, mirrorDist, keySpacing, ppmOverride) {
+  mirrorDist = mirrorDist || 22;
+  keySpacing = keySpacing || 18;
+
+  // ── Step 1: Compute stage 1 key positions in canvas pixel space ──
+  // This replicates the drawCanvas tap-spread CoG algorithm exactly.
+  function computeStage1Keys(positions) {
+    const result = {};
+    const ALL_COLS = [...MATRIX_COLUMNS, 'thumb'];
+    ALL_COLS.forEach(colId => {
+      const pts = positions[colId];
+      if (!pts || pts.length < 2) return;
+      const isThumb = colId === 'thumb';
+      const fit = fitLine(pts, isThumb);
+      const m = fit.m, b = fit.b;
+      const dirLen = Math.sqrt(1 + m * m);
+      const projections = pts.map(p => projectPointToLine(m, -1, b, p.x, p.y));
+      const projScalars = projections.map(p => p.x / dirLen + p.y * m / dirLen);
+      const minProj = Math.min(...projScalars);
+      const maxProj = Math.max(...projScalars);
+      const midProj = (minProj + maxProj) / 2;
+      const halfSpan = (maxProj - minProj) / 2;
+      const upperScalars = projScalars.filter(s => s >= midProj);
+      const lowerScalars = projScalars.filter(s => s < midProj);
+      const avgUpper = upperScalars.length ? upperScalars.reduce((a, b) => a + b, 0) / upperScalars.length : midProj + halfSpan;
+      const avgLower = lowerScalars.length ? lowerScalars.reduce((a, b) => a + b, 0) / lowerScalars.length : midProj - halfSpan;
+      const keyScalars = [avgLower, midProj, avgUpper];
+      const canvasRotation = Math.PI / 2 + Math.atan(m);
+      const keys = keyScalars.map((s, i) => {
+        const ds = s - midProj;
+        const px = fit.cx + ds / dirLen;
+        const py = fit.cy + ds * m / dirLen;
+        return { x: px, y: py, canvasRotRad: canvasRotation };
+      });
+      result[colId] = keys; // [bottom, home, top]
+    });
+    return result;
+  }
+
+  // ── Step 2: Convert stage 1 positions to ergogen mm space (Y-up) ──
+  let ppm = (ppmOverride && ppmOverride > 0) ? ppmOverride : null;
+  if (!ppm) {
+    const flipped = {};
+    for (const col of Object.keys(data)) {
+      flipped[col] = data[col].map(p => ({ x: p.x, y: -p.y }));
+    }
+    ppm = estimateScale(flipped, keySpacing);
+    if (ppm <= 0) ppm = 1.0;
+  }
+
+  const stage1 = computeStage1Keys(data);
+
+  // Convert canvas positions to ergogen mm coords: ergo_x = canvas_x / ppm, ergo_y = -canvas_y / ppm
+  // Canvas rotation to ergogen rotation (degrees):
+  //   canvas: rotation = PI/2 + atan(m_canvas), where m_canvas is slope in canvas (Y-down) space
+  //   ergogen: Y-up, so the column angle = atan(m_flipped) where m_flipped = -m_canvas
+  //   In ergogen, rotation is CCW degrees from +Y axis.
+  //   The canvas rotation rad = PI/2 + atan(m). In ergogen (Y-flipped), the equivalent
+  //   rotation in degrees = -(canvasRotRad * 180 / PI) ... but we need to think about this carefully.
+  //
+  // Actually, let's compute the ergogen column angle directly:
+  //   In canvas space the direction along the column is (1/dirLen, m/dirLen).
+  //   In ergogen space (Y-flipped) this becomes (1/dirLen, -m/dirLen).
+  //   The ergogen rotation for the column axis: angle from +Y axis, measured CCW.
+  //   atan2(dx, dy) where (dx,dy) is the direction = atan2(1/dirLen, -m/dirLen) = atan2(1, -m) = PI - atan(m) ... in radians
+  //   But ergogen measures rotation as accumulated splay. The key insight: ergogen rotation r means
+  //   that the local Y axis (padding direction) points in direction (sin(r_rad), cos(r_rad)).
+  //
+  // For the 3-key column, padding advances along local +Y. In ergogen coords:
+  //   The column direction (bottom→top) in ergogen space needs to match.
+  //   bottom key = home - padding * (sin(r), cos(r))
+  //   top key = home + padding * (sin(r), cos(r))
+  //
+  // From stage 1 home and top keys (in ergogen mm coords), we can recover r and padding.
+
+  const ergoKeys = {}; // colId → {home: {x,y}, bottom: {x,y}, top: {x,y}, angleDeg: number, padding: number}
+  const ALL_COLS = [...MATRIX_COLUMNS, 'thumb'];
+  ALL_COLS.forEach(colId => {
+    const s1 = stage1[colId];
+    if (!s1) return;
+    // Convert all 3 stage 1 keys to ergogen mm space
+    const ergoMm = s1.map(k => ({ x: k.x / ppm, y: -k.y / ppm }));
+    // Sort by ergogen Y ascending: [0]=lowest Y (bottom), [2]=highest Y (top)
+    const sorted = [...ergoMm].sort((a, b) => a.y - b.y);
+    const bottom = sorted[0];
+    const home = sorted[1]; // middle Y = home
+    const top = sorted[2];
+
+    // Direction from bottom to top in ergogen mm space — should point roughly +Y (upward)
+    const dx = top.x - bottom.x;
+    const dy = top.y - bottom.y;
+    const span = Math.sqrt(dx * dx + dy * dy);
+    // Ergogen rotation r: padding shift is [0, padding] rotated by r, giving direction (-sin(r), cos(r)).
+    // To match actual direction (dx, dy): -sin(r) = dx/span, cos(r) = dy/span → r = atan2(-dx, dy)
+    const angleRad = Math.atan2(-dx, dy);
+    const angleDeg = angleRad * 180 / Math.PI;
+    // Per-row padding: project bottom→home and home→top distances along the column axis
+    // Column axis unit vector: (-sin(r), cos(r))
+    const axisX = -Math.sin(angleRad);
+    const axisY = Math.cos(angleRad);
+    const padBottom = (home.x - bottom.x) * axisX + (home.y - bottom.y) * axisY; // bottom→home
+    const padHome = (top.x - home.x) * axisX + (top.y - home.y) * axisY; // home→top
+
+    ergoKeys[colId] = { home, bottom, top, angleDeg, padBottom, padHome };
+  });
+
+  // ── Step 3: Reverse-engineer ergogen's placement algorithm ──
+  // Ergogen's algorithm for columns (from points.js):
+  //   zone_anchor starts at anchor.shift (e.g., [100, -100]), r=0
+  //   rotations = [{angle: 0, origin: zone_anchor.p}]  (from anchor r=0)
+  //   For column 0: zone_anchor.y += stagger; col_anchor = zone_anchor.clone()
+  //     If splay: push_rotation(rotations, splay, col_anchor.p)  (origin=[0,0] default)
+  //     running_anchor = col_anchor.clone(); apply all rotations; → this is the first key position
+  //     Rows advance by padding along rotated +Y
+  //   For column i>0: zone_anchor.x += spread; zone_anchor.y += stagger;
+  //     col_anchor = zone_anchor.clone()
+  //     If splay: push_rotation(rotations, splay, col_anchor.p)
+  //     running_anchor = col_anchor; apply all rotations; → first key position
+  //
+  // The anchor position [100, -100] is arbitrary. We need to find anchor + spread/stagger
+  // values such that after applying rotations, we get our desired positions.
+  //
+  // Strategy: simulate ergogen forward, starting from an anchor that places the first
+  // column's home key at the correct position. Then for each subsequent column, find
+  // the zone_anchor position (world coords before rotations) that produces the correct
+  // running_anchor position after rotations.
+
+  // Helper: rotate point around origin by angle (degrees)
+  function rotPt(px, py, angle, ox, oy) {
+    const rad = angle * Math.PI / 180;
+    const dx = px - ox, dy = py - oy;
+    return {
+      x: ox + dx * Math.cos(rad) - dy * Math.sin(rad),
+      y: oy + dx * Math.sin(rad) + dy * Math.cos(rad),
+    };
+  }
+
+  // Helper: un-rotate — given the result after rotation, find the original point
+  function unRotPt(rx, ry, angle, ox, oy) {
+    return rotPt(rx, ry, -angle, ox, oy);
+  }
+
+  // Simulate the rotation stack to find what zone_anchor position produces
+  // the desired running_anchor position after all accumulated rotations.
+  // rotations = [{angle, origin}, ...]
+  // running_anchor = zone_anchor rotated by all rotations
+  // We need: zone_anchor = un-rotate(desired, rotations in reverse)
+  function unRotateAll(desiredX, desiredY, rotations) {
+    let px = desiredX, py = desiredY;
+    for (let i = rotations.length - 1; i >= 0; i--) {
+      const r = rotations[i];
+      const un = unRotPt(px, py, r.angle, r.origin[0], r.origin[1]);
+      px = un.x;
+      py = un.y;
+    }
+    return { x: px, y: py };
+  }
+
+  // Forward: apply all rotations to a point
+  function applyRotations(px, py, rotations) {
+    let x = px, y = py;
+    for (const r of rotations) {
+      const p = rotPt(x, y, r.angle, r.origin[0], r.origin[1]);
+      x = p.x;
+      y = p.y;
+    }
+    return { x, y };
+  }
+
+  // Ergogen's push_rotation: applies all existing rotations to the origin before pushing
+  function pushRotation(rotations, angle, origin) {
+    let candidate = [...origin];
+    for (const r of rotations) {
+      const p = rotPt(candidate[0], candidate[1], r.angle, r.origin[0], r.origin[1]);
+      candidate = [p.x, p.y];
+    }
+    rotations.push({ angle, origin: candidate });
+  }
+
+  // Now simulate ergogen and compute spread/stagger/splay.
+  // IMPORTANT: ergogen places the FIRST ROW (bottom) at running_anchor,
+  // then advances by padding to place home, then top. So we need to target
+  // the BOTTOM key position for each column, not the home key.
+  //
+  // We work in absolute ergogen mm coordinates. The anchor is set to the first
+  // column's bottom position, and zone_anchor tracks the world-space position
+  // (before rotations) that ergogen maintains.
+  const columns = {};
+  const firstColId = MATRIX_COLUMNS.find(c => ergoKeys[c]);
+  if (!firstColId) return { meta: { engine: '4.1.0' }, points: { zones: {} } }; // no data
+  const anchorPos = ergoKeys[firstColId].bottom;
+  const anchorShift = [rd(anchorPos.x), rd(anchorPos.y)];
+
+  // Replicate ergogen's rotation stack, starting with the real anchor
+  const rotations = [];
+  let zoneAnchorX = anchorPos.x, zoneAnchorY = anchorPos.y;
+  // Initial rotation from anchor (r=0): pushed with origin at anchor position
+  rotations.push({ angle: 0, origin: [anchorPos.x, anchorPos.y] });
+
+  let firstCol = true;
+  const colParams = [];
+
+  MATRIX_COLUMNS.forEach((ergopadCol, i) => {
+    const ek = ergoKeys[ergopadCol];
+    if (!ek) return;
+    const ergogenName = ERGOGEN_NAMES[i];
+
+    const desiredBottom = ek.bottom;
+    const cumSplay = colParams.reduce((sum, p) => sum + p.splay, 0);
+    const splay = ek.angleDeg - cumSplay;
+
+    if (firstCol) {
+      // First column: zone_anchor = anchor. Running_anchor = anchor after rotations.
+      // With initial rotation {angle:0}, running_anchor = anchor = desiredBottom. ✓
+      if (Math.abs(splay) > 0.01) {
+        pushRotation(rotations, splay, [zoneAnchorX, zoneAnchorY]);
+      }
+      colParams.push({ spread: 0, stagger: 0, splay, padBottom: ek.padBottom, padHome: ek.padHome });
+      firstCol = false;
+    } else {
+      // Find zone_anchor (world coords) that after all rotations gives desiredBottom.
+      if (Math.abs(splay) < 0.01) {
+        const za = unRotateAll(desiredBottom.x, desiredBottom.y, rotations);
+        const spread = za.x - zoneAnchorX;
+        const stagger = za.y - zoneAnchorY;
+        zoneAnchorX = za.x;
+        zoneAnchorY = za.y;
+        colParams.push({ spread, stagger, splay: 0, padBottom: ek.padBottom, padHome: ek.padHome });
+      } else {
+        // With splay: iterate (splay origin depends on zone_anchor, which we're solving for)
+        let za = unRotateAll(desiredBottom.x, desiredBottom.y, rotations);
+
+        for (let iter = 0; iter < 20; iter++) {
+          // Simulate pushRotation: apply existing rotations to za to get splay origin
+          let candidate = [za.x, za.y];
+          for (const r of rotations) {
+            const p = rotPt(candidate[0], candidate[1], r.angle, r.origin[0], r.origin[1]);
+            candidate = [p.x, p.y];
+          }
+          const testRotations = rotations.map(r => ({ angle: r.angle, origin: [...r.origin] }));
+          testRotations.push({ angle: splay, origin: candidate });
+          const ra = applyRotations(za.x, za.y, testRotations);
+          const errX = desiredBottom.x - ra.x;
+          const errY = desiredBottom.y - ra.y;
+          if (Math.abs(errX) < 0.0001 && Math.abs(errY) < 0.0001) break;
+          za = unRotateAll(desiredBottom.x, desiredBottom.y, testRotations);
+        }
+
+        const spread = za.x - zoneAnchorX;
+        const stagger = za.y - zoneAnchorY;
+        zoneAnchorX = za.x;
+        zoneAnchorY = za.y;
+        pushRotation(rotations, splay, [zoneAnchorX, zoneAnchorY]);
+        colParams.push({ spread, stagger, splay, padBottom: ek.padBottom, padHome: ek.padHome });
+      }
+    }
+
+    const colDef = { key: { column_net: `C${i}` }, rows: {} };
+    const p = colParams[colParams.length - 1];
+    if (i > 0) {
+      colDef.key.spread = rd(p.spread);
+      colDef.key.stagger = rd(p.stagger);
+    }
+    if (Math.abs(p.splay) > 0.01) colDef.key.splay = rd(p.splay);
+    // Per-row padding: bottom.padding advances to home, home.padding advances to top
+    colDef.rows.bottom = { padding: rd(p.padBottom) };
+    colDef.rows.home = { padding: rd(p.padHome) };
+    colDef.rows.top = { padding: 0 };
+    columns[ergogenName] = colDef;
+  });
+
+  // ── Step 5: Build thumb zone ──
+  let thumbZone = null;
+  const thumbEk = ergoKeys.thumb;
+  const innerCol = ergoKeys.index_far;
+  if (thumbEk && innerCol) {
+    // Thumb anchor references matrix_inner_bottom. We need to find where that is.
+    // matrix_inner_bottom = inner column's bottom key position in ergogen space.
+    const innerBottom = innerCol.bottom;
+    const thumbHome = thumbEk.home;
+    const shiftX = rd(thumbHome.x - innerBottom.x);
+    const shiftY = rd(thumbHome.y - innerBottom.y);
+    const thumbSplay = thumbEk.angleDeg;
+    const nThumb = stage1.thumb ? stage1.thumb.length : 3;
+    const thumbCols = {};
+    if (nThumb <= 1) {
+      thumbCols.t_inner = { key: { column_net: `C${MATRIX_COLUMNS.length}`, splay: rd(thumbSplay), spread: keySpacing } };
+    } else {
+      const names = ['t_inner', 't_middle', 't_outer'];
+      for (let j = 0; j < Math.min(nThumb, 3); j++) {
+        const col = { key: { column_net: `C${MATRIX_COLUMNS.length + j}`, spread: keySpacing } };
+        if (j === 0 && Math.abs(thumbSplay) > 0.01) col.key.splay = rd(thumbSplay);
+        thumbCols[names[j]] = col;
+      }
+    }
+    thumbZone = { anchor: { ref: 'matrix_inner_bottom', shift: [shiftX, shiftY] }, columns: thumbCols, rows: { cluster: { row_net: 'R3' } } };
+  }
+
+  // ── Step 5b: Compute mirror distance dynamically ──
+  // Ensure at least 5mm (0.5cm) gap between the innermost key edges of the two halves.
+  // The mirror axis is at: inner_home.x + distance/2
+  // A mirrored key at X has its mirror at: 2*axis - X = 2*(inner_home.x + distance/2) - X = 2*inner_home.x + distance - X
+  // Gap between key at X_max and its mirror = 2*axis - 2*X_max = distance - 2*(X_max - inner_home.x)
+  // Edge-to-edge gap = gap_center - keycap_width = distance - 2*(X_max - inner_home.x) - keySpacing
+  // For 5mm edge gap: distance >= 2*(X_max - inner_home.x) + keySpacing + 5
+  const innerHome = ergoKeys.index_far ? ergoKeys.index_far.home : null;
+  let maxX = innerHome ? innerHome.x : 0;
+  // Check all matrix column key X positions
+  for (const colId of MATRIX_COLUMNS) {
+    const ek = ergoKeys[colId];
+    if (!ek) continue;
+    maxX = Math.max(maxX, ek.bottom.x, ek.home.x, ek.top.x);
+  }
+  // Check thumb key X positions (they often extend furthest)
+  if (thumbEk) {
+    maxX = Math.max(maxX, thumbEk.bottom.x, thumbEk.home.x, thumbEk.top.x);
+  }
+  const minGap = 5; // 5mm = 0.5cm minimum edge-to-edge gap
+  const computedMirrorDist = innerHome
+    ? Math.max(mirrorDist, rd(2 * (maxX - innerHome.x) + keySpacing + minGap))
+    : mirrorDist;
+
+  // ── Step 6: Assemble config ──
+  const config = {
+    meta: { engine: '4.1.0' },
+    units: { kx: keySpacing, ky: keySpacing, px: 'kx + 1', py: 'ky + 1' },
+    points: {
+      mirror: { ref: 'matrix_inner_home', distance: computedMirrorDist },
+      zones: {
+        matrix: {
+          anchor: { shift: anchorShift },
+          columns: columns,
+          rows: { bottom: { row_net: 'R2' }, home: { row_net: 'R1' }, top: { row_net: 'R0' } }
+        }
+      }
+    },
+    outlines: {
+      _keycaps: [{ what: 'rectangle', where: true, size: ['kx - 0.5', 'ky - 0.5'] }],
+      board: [
+        { what: 'rectangle', where: true, size: ['px + 4', 'py + 4'], bound: true, fillet: 8, asym: 'source' }
+      ],
+      switch_cutouts: [{ what: 'rectangle', where: true, size: [13.8, 13.8], bound: false, asym: 'source' }],
+      frame: [
+        { what: 'rectangle', where: true, size: ['px + 8', 'py + 8'], bound: true, fillet: 8, asym: 'source' }
+      ]
+    },
+    cases: {
+      bottom_plate: [{ what: 'outline', name: 'board', extrude: 1.0 }],
+      switch_plate: [
+        { what: 'outline', name: 'board', extrude: 1.2 },
+        { what: 'outline', name: 'switch_cutouts', extrude: 1.2, operation: 'subtract' }
+      ]
+    },
+    pcbs: {
+      keyboard: {
+        outlines: { main: { outline: 'board', layer: 'Edge.Cuts' } },
+        footprints: {
+          cherry_ulp: { what: 'cherry_ulp', where: true, params: { from: '{{column_net}}', to: '{{colrow}}', keycaps: true } },
+          diode: { what: 'diode', where: true, params: { from: '{{colrow}}', to: '{{row_net}}' }, adjust: { shift: [0, 5] } }
+        }
+      }
+    }
+  };
+  if (thumbZone) config.points.zones.thumb = thumbZone;
+
+  // Attach stage 1 key positions (ergogen mm space, before ergogen processing)
+  // These are the raw fitted-line positions: {colId: {bottom, home, top, angleDeg}}
+  config._stage1Keys = ergoKeys;
+  config._stage1Ppm = ppm;
+
+  return config;
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// ZMK SHIELD & TEST GENERATORS
+// ══════════════════════════════════════════════════════════════════
+
+// nice!nano v2 Pro Micro-compatible GPIO pins for keyboard matrix
+const NICE_NANO_ROW_PINS = [4, 5, 6, 7];        // R0-R3
+const NICE_NANO_COL_PINS = [19, 18, 15, 14, 16, 10, 9, 8]; // up to 8 columns per half
+
+// Default QWERTY keymap for 36 keys (3x5 + 3 thumb per half)
+const DEFAULT_KEYMAPS = {
+  layer0: [ // QWERTY
+    'Q','W','E','R','T',  'Y','U','I','O','P',
+    'A','S','D','F','G',  'H','J','K','L','SEMI',
+    'Z','X','C','V','B',  'N','M','COMMA','DOT','FSLH',
+                'LGUI','SPACE','TAB',  'RET','BSPC','RALT'
+  ],
+  layer1: [ // Numbers + Symbols
+    'N1','N2','N3','N4','N5',  'N6','N7','N8','N9','N0',
+    'EXCL','AT','HASH','DLLR','PRCNT',  'CARET','AMPS','STAR','LPAR','RPAR',
+    'GRAVE','TILDE','PIPE','BSLH','MINUS',  'EQUAL','LBKT','RBKT','LBRC','RBRC',
+                'TRANS','TRANS','TRANS',  'TRANS','TRANS','TRANS'
+  ],
+  layer2: [ // Nav + Function
+    'F1','F2','F3','F4','F5',  'F6','F7','F8','F9','F10',
+    'F11','F12','PSCRN','INS','DEL',  'LEFT','DOWN','UP','RIGHT','HOME',
+    'CAPS','NONE','NONE','NONE','NONE',  'END','PG_DN','PG_UP','NONE','NONE',
+                'TRANS','TRANS','TRANS',  'TRANS','TRANS','TRANS'
+  ]
+};
+
+function buildKeyPositionMap(points) {
+  const leftKeys = [], rightKeys = [];
+  for (const [name, pt] of Object.entries(points)) {
+    const colNet = pt.meta?.column_net || '';
+    const rowNet = pt.meta?.row_net || '';
+    if (!colNet || !rowNet) continue;
+    const colIdx = parseInt(colNet.replace('C', ''));
+    const rowIdx = parseInt(rowNet.replace('R', ''));
+    const zone = pt.meta?.zone?.name || 'matrix';
+    const mirrored = !!pt.meta?.mirrored;
+    const entry = { name, colIdx, rowIdx, zone, mirrored, x: pt.x, y: pt.y, r: pt.r };
+    if (mirrored) rightKeys.push(entry); else leftKeys.push(entry);
+  }
+  const sortFn = (a, b) => {
+    if (a.zone !== b.zone) return a.zone === 'matrix' ? -1 : 1;
+    if (a.rowIdx !== b.rowIdx) return a.rowIdx - b.rowIdx;
+    return a.colIdx - b.colIdx;
+  };
+  leftKeys.sort(sortFn);
+  rightKeys.sort(sortFn);
+  // Count columns per half
+  const leftCols = new Set(leftKeys.map(k => k.colIdx));
+  const rightCols = new Set(rightKeys.map(k => k.colIdx));
+  const nColsPerHalf = Math.max(leftCols.size, rightCols.size);
+  const nRows = new Set([...leftKeys, ...rightKeys].map(k => k.rowIdx)).size;
+  return { leftKeys, rightKeys, allKeys: [...leftKeys, ...rightKeys], nColsPerHalf, nRows };
+}
+
+function generateZmkShield(points, config) {
+  const map = buildKeyPositionMap(points);
+  const { leftKeys, rightKeys, nColsPerHalf, nRows } = map;
+  const totalCols = nColsPerHalf * 2;
+  const nKeys = leftKeys.length + rightKeys.length;
+
+  // Build matrix transform RC() map
+  // Left half: col indices as-is. Right half: col indices offset by nColsPerHalf, mirrored.
+  const rcEntries = [];
+  leftKeys.forEach(k => rcEntries.push({ row: k.rowIdx, col: k.colIdx, name: k.name }));
+  rightKeys.forEach(k => {
+    // Mirror: rightmost col becomes col nColsPerHalf, etc.
+    const mirroredCol = nColsPerHalf + (nColsPerHalf - 1 - k.colIdx);
+    rcEntries.push({ row: k.rowIdx, col: mirroredCol, name: k.name });
+  });
+
+  // Group by row for the transform map
+  const rowMap = {};
+  rcEntries.forEach(e => { if (!rowMap[e.row]) rowMap[e.row] = []; rowMap[e.row].push(e); });
+  Object.values(rowMap).forEach(arr => arr.sort((a, b) => a.col - b.col));
+
+  // Build transform map string
+  let transformLines = '';
+  const sortedRows = Object.keys(rowMap).map(Number).sort((a, b) => a - b);
+  sortedRows.forEach(row => {
+    const entries = rowMap[row];
+    const leftEntries = entries.filter(e => e.col < nColsPerHalf);
+    const rightEntries = entries.filter(e => e.col >= nColsPerHalf);
+    const leftRCs = leftEntries.map(e => `RC(${e.row},${e.col})`).join(' ');
+    const rightRCs = rightEntries.map(e => `RC(${e.row},${e.col})`).join(' ');
+    const gap = leftRCs && rightRCs ? '    ' : '';
+    transformLines += `            ${leftRCs}${gap}${rightRCs}\n`;
+  });
+
+  // Row pin strings
+  const rowPinLines = NICE_NANO_ROW_PINS.slice(0, nRows)
+    .map((p, i) => `            ${i > 0 ? ', ' : ''}<&pro_micro ${p} (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>`)
+    .join('\n');
+
+  // Column pin strings per half
+  const leftColPins = NICE_NANO_COL_PINS.slice(0, nColsPerHalf);
+  const rightColPins = [...leftColPins].reverse(); // mirrored
+
+  const leftColLines = leftColPins
+    .map((p, i) => `            ${i > 0 ? ', ' : ''}<&pro_micro ${p} GPIO_ACTIVE_HIGH>`)
+    .join('\n');
+  const rightColLines = rightColPins
+    .map((p, i) => `            ${i > 0 ? ', ' : ''}<&pro_micro ${p} GPIO_ACTIVE_HIGH>`)
+    .join('\n');
+
+  // ── keyboard.dtsi ──
+  const dtsi = `/*
+ * keyboard.dtsi — shared devicetree for split keyboard
+ * Generated by Keyboard Builder Wizard
+ */
+
+#include <dt-bindings/zmk/matrix_transform.h>
+
+/ {
+    chosen {
+        zmk,kscan = &kscan0;
+        zmk,matrix-transform = &default_transform;
+    };
+
+    kscan0: kscan0 {
+        compatible = "zmk,kscan-gpio-matrix";
+        diode-direction = "col2row";
+        wakeup-source;
+
+        row-gpios
+${rowPinLines}
+            ;
+    };
+
+    default_transform: keymap_transform0 {
+        compatible = "zmk,matrix-transform";
+        columns = <${totalCols}>;
+        rows = <${nRows}>;
+        map = <
+${transformLines}        >;
+    };
+};
+`;
+
+  // ── keyboard_left.overlay ──
+  const leftOverlay = `/*
+ * keyboard_left.overlay — left half
+ * Generated by Keyboard Builder Wizard
+ */
+
+#include "keyboard.dtsi"
+
+&kscan0 {
+    col-gpios
+${leftColLines}
+        ;
+};
+`;
+
+  // ── keyboard_right.overlay ──
+  const rightOverlay = `/*
+ * keyboard_right.overlay — right half
+ * Generated by Keyboard Builder Wizard
+ */
+
+#include "keyboard.dtsi"
+
+&default_transform {
+    col-offset = <${nColsPerHalf}>;
+};
+
+&kscan0 {
+    col-gpios
+${rightColLines}
+        ;
+};
+`;
+
+  // ── keyboard.keymap ──
+  // Adapt keymap to actual key count
+  function buildLayerBindings(layerKeys) {
+    const keys = layerKeys.slice(0, nKeys);
+    while (keys.length < nKeys) keys.push('NONE');
+    return keys.map(k => {
+      if (k === 'TRANS') return '&trans';
+      if (k === 'NONE') return '&none';
+      return `&kp ${k}`;
+    }).join(' ');
+  }
+
+  const keymap = `/*
+ * keyboard.keymap — default 3-layer keymap
+ * Generated by Keyboard Builder Wizard
+ */
+
+#include <behaviors.dtsi>
+#include <dt-bindings/zmk/keys.h>
+#include <dt-bindings/zmk/bt.h>
+
+/ {
+    keymap {
+        compatible = "zmk,keymap";
+
+        default_layer {
+            bindings = <${buildLayerBindings(DEFAULT_KEYMAPS.layer0)}>;
+        };
+
+        lower_layer {
+            bindings = <${buildLayerBindings(DEFAULT_KEYMAPS.layer1)}>;
+        };
+
+        raise_layer {
+            bindings = <${buildLayerBindings(DEFAULT_KEYMAPS.layer2)}>;
+        };
+    };
+};
+`;
+
+  // ── keyboard.conf ──
+  const conf = `# keyboard.conf — ZMK configuration
+# Generated by Keyboard Builder Wizard
+
+CONFIG_ZMK_SLEEP=y
+CONFIG_ZMK_IDLE_SLEEP_TIMEOUT=900000
+CONFIG_BT_CTLR_TX_PWR_PLUS_8=y
+CONFIG_ZMK_BATTERY_REPORTING=y
+`;
+
+  // ── Kconfig.shield ──
+  const kconfigShield = `config SHIELD_KEYBOARD_LEFT
+    def_bool $(shields_list_contains,keyboard_left)
+
+config SHIELD_KEYBOARD_RIGHT
+    def_bool $(shields_list_contains,keyboard_right)
+`;
+
+  // ── Kconfig.defconfig ──
+  const kconfigDefconfig = `if SHIELD_KEYBOARD_LEFT
+
+config ZMK_KEYBOARD_NAME
+    default "Keyboard"
+
+config ZMK_SPLIT_ROLE_CENTRAL
+    default y
+
+endif
+
+if SHIELD_KEYBOARD_LEFT || SHIELD_KEYBOARD_RIGHT
+
+config ZMK_SPLIT
+    default y
+
+endif
+`;
+
+  return { dtsi, leftOverlay, rightOverlay, keymap, conf, kconfigShield, kconfigDefconfig, map };
+}
+
+function generateTestSuite(points, config) {
+  const shield = generateZmkShield(points, config);
+  const { map } = shield;
+  const nKeys = map.allKeys.length;
+  const nColsPerHalf = map.nColsPerHalf;
+
+  // Build position-to-keycode mapping for layer 0
+  const keycodes = DEFAULT_KEYMAPS.layer0.slice(0, nKeys);
+  while (keycodes.length < nKeys) keycodes.push('NONE');
+
+  // RC positions for left then right keys (matching the transform)
+  const rcPositions = [];
+  map.leftKeys.forEach(k => rcPositions.push({ row: k.rowIdx, col: k.colIdx }));
+  map.rightKeys.forEach(k => rcPositions.push({ row: k.rowIdx, col: nColsPerHalf + (nColsPerHalf - 1 - k.colIdx) }));
+
+  // ── behavior_keymap.dtsi (shared) ──
+  const behaviorKeymap = shield.keymap;
+
+  // ── all-keys-register test ──
+  let mockEvents = '';
+  let expectedOutput = '';
+  rcPositions.forEach((rc, i) => {
+    const kc = keycodes[i];
+    if (kc === 'NONE' || kc === 'TRANS') return;
+    mockEvents += `        ZMK_MOCK_PRESS(${rc.row},${rc.col},10)\n`;
+    mockEvents += `        ZMK_MOCK_RELEASE(${rc.row},${rc.col},10)\n`;
+    expectedOutput += `kp_pressed: usage_page 0x07 keycode 0x${hidKeycode(kc)} implicit_mods 0x00 explicit_mods 0x00\n`;
+    expectedOutput += `kp_released: usage_page 0x07 keycode 0x${hidKeycode(kc)} implicit_mods 0x00 explicit_mods 0x00\n`;
+  });
+
+  const allKeysKeymap = `#include "../behavior_keymap.dtsi"
+
+&kscan0 {
+    events = <
+${mockEvents}    >;
+};
+`;
+  const allKeysPatterns = `s/.*hid_listener_keycode_//p\nd`;
+  const allKeysSnapshot = expectedOutput;
+
+  // ── layer-switch test ──
+  // Press thumb key (position for LGUI on layer0 → hold for layer 1) then press Q position → should get N1
+  const thumbIdx = map.leftKeys.findIndex(k => k.zone === 'thumb');
+  let layerSwitchKeymap = '', layerSwitchSnapshot = '';
+  if (thumbIdx >= 0) {
+    const thumbRC = rcPositions[thumbIdx];
+    const alphaRC = rcPositions[0]; // first key (Q → N1 on layer1)
+    const altKc = DEFAULT_KEYMAPS.layer1[0] || 'N1';
+    layerSwitchKeymap = `#include "../behavior_keymap.dtsi"
+
+&kscan0 {
+    events = <
+        ZMK_MOCK_PRESS(${thumbRC.row},${thumbRC.col},100)
+        ZMK_MOCK_PRESS(${alphaRC.row},${alphaRC.col},10)
+        ZMK_MOCK_RELEASE(${alphaRC.row},${alphaRC.col},10)
+        ZMK_MOCK_RELEASE(${thumbRC.row},${thumbRC.col},10)
+    >;
+};
+`;
+    layerSwitchSnapshot = `kp_pressed: usage_page 0x07 keycode 0x${hidKeycode(altKc)} implicit_mods 0x00 explicit_mods 0x00
+kp_released: usage_page 0x07 keycode 0x${hidKeycode(altKc)} implicit_mods 0x00 explicit_mods 0x00
+`;
+  }
+  const layerSwitchPatterns = `s/.*hid_listener_keycode_//p\nd`;
+
+  // ── matrix-ghosting test ──
+  // Press two keys on the same row simultaneously
+  const row0Keys = rcPositions.filter(rc => rc.row === 0);
+  let ghostingKeymap = '', ghostingSnapshot = '';
+  if (row0Keys.length >= 2) {
+    const k1 = row0Keys[0], k2 = row0Keys[1];
+    const kc1 = keycodes[rcPositions.indexOf(k1)];
+    const kc2 = keycodes[rcPositions.indexOf(k2)];
+    ghostingKeymap = `#include "../behavior_keymap.dtsi"
+
+&kscan0 {
+    events = <
+        ZMK_MOCK_PRESS(${k1.row},${k1.col},10)
+        ZMK_MOCK_PRESS(${k2.row},${k2.col},10)
+        ZMK_MOCK_RELEASE(${k1.row},${k1.col},10)
+        ZMK_MOCK_RELEASE(${k2.row},${k2.col},10)
+    >;
+};
+`;
+    ghostingSnapshot = `kp_pressed: usage_page 0x07 keycode 0x${hidKeycode(kc1)} implicit_mods 0x00 explicit_mods 0x00
+kp_pressed: usage_page 0x07 keycode 0x${hidKeycode(kc2)} implicit_mods 0x00 explicit_mods 0x00
+kp_released: usage_page 0x07 keycode 0x${hidKeycode(kc1)} implicit_mods 0x00 explicit_mods 0x00
+kp_released: usage_page 0x07 keycode 0x${hidKeycode(kc2)} implicit_mods 0x00 explicit_mods 0x00
+`;
+  }
+  const ghostingPatterns = `s/.*hid_listener_keycode_//p\nd`;
+
+  // ── Dockerfile ──
+  const dockerfile = `FROM docker.io/zmkfirmware/zmk-dev-arm:stable
+
+WORKDIR /workspace
+
+# Clone ZMK
+RUN git clone --depth 1 https://github.com/zmkfirmware/zmk.git /workspace/zmk && \\
+    cd /workspace/zmk && \\
+    west init -l app && \\
+    west update --narrow --fetch-opt=--depth=1
+
+# Copy shield files
+COPY boards/shields/keyboard/ /workspace/zmk-config/config/boards/shields/keyboard/
+
+# Copy test files
+COPY tests/ /workspace/zmk/app/tests/keyboard/
+
+# Build left half firmware (verification that it compiles)
+RUN cd /workspace/zmk && \\
+    west build -s app -b nice_nano_v2 -p \\
+    -- -DSHIELD=keyboard_left -DZMK_CONFIG=/workspace/zmk-config/config
+
+# Run native_posix tests
+RUN cd /workspace/zmk/app && \\
+    west test tests/keyboard/all-keys-register
+`;
+
+  // ── run_tests.sh ──
+  const runScript = `#!/bin/bash
+set -e
+
+echo "=== Building keyboard firmware test image ==="
+docker build -t keyboard-zmk-test .
+
+echo ""
+echo "=== Running all-keys-register test ==="
+docker run --rm keyboard-zmk-test \\
+    bash -c "cd /workspace/zmk/app && west test tests/keyboard/all-keys-register"
+
+echo ""
+echo "=== Running layer-switch test ==="
+docker run --rm keyboard-zmk-test \\
+    bash -c "cd /workspace/zmk/app && west test tests/keyboard/layer-switch"
+
+echo ""
+echo "=== Running matrix-ghosting test ==="
+docker run --rm keyboard-zmk-test \\
+    bash -c "cd /workspace/zmk/app && west test tests/keyboard/matrix-ghosting"
+
+echo ""
+echo "=== All tests passed ==="
+echo "Firmware binary: docker cp <container>:/workspace/zmk/build/zephyr/zmk.uf2 ."
+`;
+
+  // ── docker-compose.yml ──
+  const dockerCompose = `version: '3.8'
+services:
+  test:
+    build: .
+    command: >
+      bash -c "cd /workspace/zmk/app &&
+      west test tests/keyboard/all-keys-register &&
+      west test tests/keyboard/layer-switch &&
+      west test tests/keyboard/matrix-ghosting &&
+      echo '=== All tests passed ==='"
+
+  build-left:
+    build: .
+    command: >
+      bash -c "cd /workspace/zmk &&
+      west build -s app -b nice_nano_v2 -p
+      -- -DSHIELD=keyboard_left -DZMK_CONFIG=/workspace/zmk-config/config &&
+      cp build/zephyr/zmk.uf2 /output/keyboard_left.uf2"
+    volumes:
+      - ./output:/output
+
+  build-right:
+    build: .
+    command: >
+      bash -c "cd /workspace/zmk &&
+      west build -s app -b nice_nano_v2 -p
+      -- -DSHIELD=keyboard_right -DZMK_CONFIG=/workspace/zmk-config/config &&
+      cp build/zephyr/zmk.uf2 /output/keyboard_right.uf2"
+    volumes:
+      - ./output:/output
+`;
+
+  // ── README.md ──
+  const readme = `# ZMK Firmware & Hardware Emulation Tests
+
+Generated by the Keyboard Builder Wizard.
+
+## Quick Start
+
+\`\`\`bash
+# Run all tests (requires Docker)
+chmod +x run_tests.sh
+./run_tests.sh
+\`\`\`
+
+## What Gets Tested
+
+### 1. Firmware Compilation
+The Dockerfile builds the ZMK firmware for the nice!nano v2 targeting your exact
+keyboard matrix layout. If the shield definition has errors, this step fails.
+
+### 2. All Keys Register (native_posix)
+Simulates pressing and releasing every key position in sequence using ZMK's
+\`ZMK_MOCK_PRESS\`/\`ZMK_MOCK_RELEASE\` macros. Verifies each key produces the
+correct HID keycode. Runs as a native Linux binary — no QEMU needed.
+
+### 3. Layer Switching
+Holds a thumb key (layer toggle), presses an alpha key, and verifies the
+alternate layer keycode is emitted.
+
+### 4. Matrix Anti-Ghosting
+Presses two keys on the same row simultaneously and verifies both register
+independently without ghost keys.
+
+## How It Works
+
+ZMK's \`native_posix_64\` test framework compiles the firmware as a native Linux
+binary instead of targeting the nRF52840 MCU. Mock key events are injected via
+devicetree macros, and the HID keycode output is captured and compared against
+expected snapshots.
+
+This is the same approach the ZMK project uses for its own CI pipeline.
+
+## Building Firmware .uf2 Files
+
+\`\`\`bash
+# Build both halves
+docker compose run build-left
+docker compose run build-right
+
+# Flash: double-tap reset on nice!nano, drag .uf2 onto the USB drive
+ls output/keyboard_left.uf2 output/keyboard_right.uf2
+\`\`\`
+
+## File Structure
+
+\`\`\`
+boards/shields/keyboard/
+  keyboard.dtsi           # Shared: kscan matrix, transform
+  keyboard_left.overlay   # Left half column GPIOs
+  keyboard_right.overlay  # Right half column GPIOs + col-offset
+  keyboard.keymap         # 3-layer QWERTY keymap
+  keyboard.conf           # ZMK settings
+  Kconfig.shield          # Shield detection
+  Kconfig.defconfig       # Split defaults
+
+tests/
+  behavior_keymap.dtsi    # Shared keymap for tests
+  all-keys-register/      # Press every key, verify HID output
+  layer-switch/           # Thumb-hold layer test
+  matrix-ghosting/        # Simultaneous key anti-ghost test
+\`\`\`
+`;
+
+  return {
+    behaviorKeymap,
+    cases: {
+      'all-keys-register': { keymap: allKeysKeymap, patterns: allKeysPatterns, snapshot: allKeysSnapshot },
+      'layer-switch': { keymap: layerSwitchKeymap || '/* no thumb keys detected */', patterns: layerSwitchPatterns, snapshot: layerSwitchSnapshot },
+      'matrix-ghosting': { keymap: ghostingKeymap || '/* insufficient keys on same row */', patterns: ghostingPatterns, snapshot: ghostingSnapshot },
+    },
+    dockerfile,
+    runScript,
+    dockerCompose,
+    readme,
+    shield
+  };
+}
+
+// HID keycode lookup (USB HID Usage Tables, Keyboard page 0x07)
+function hidKeycode(zmkKey) {
+  const map = {
+    'A':'04','B':'05','C':'06','D':'07','E':'08','F':'09','G':'0A','H':'0B',
+    'I':'0C','J':'0D','K':'0E','L':'0F','M':'10','N':'11','O':'12','P':'13',
+    'Q':'14','R':'15','S':'16','T':'17','U':'18','V':'19','W':'1A','X':'1B',
+    'Y':'1C','Z':'1D','N1':'1E','N2':'1F','N3':'20','N4':'21','N5':'22',
+    'N6':'23','N7':'24','N8':'25','N9':'26','N0':'27','RET':'28','BSPC':'2A',
+    'TAB':'2B','SPACE':'2C','MINUS':'2D','EQUAL':'2E','LBKT':'2F','RBKT':'30',
+    'BSLH':'31','SEMI':'33','SQT':'34','GRAVE':'35','COMMA':'36','DOT':'37',
+    'FSLH':'38','CAPS':'39','F1':'3A','F2':'3B','F3':'3C','F4':'3D','F5':'3E',
+    'F6':'3F','F7':'40','F8':'41','F9':'42','F10':'43','F11':'44','F12':'45',
+    'PSCRN':'46','INS':'49','HOME':'4A','PG_UP':'4B','DEL':'4C','END':'4D',
+    'PG_DN':'4E','RIGHT':'4F','LEFT':'50','DOWN':'51','UP':'52',
+    'LGUI':'E3','RALT':'E6',
+    'EXCL':'1E','AT':'1F','HASH':'20','DLLR':'21','PRCNT':'22',
+    'CARET':'23','AMPS':'24','STAR':'25','LPAR':'26','RPAR':'27',
+    'TILDE':'35','PIPE':'31','LBRC':'2F','RBRC':'30',
+  };
+  return map[zmkKey] || '00';
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// BOM DATA (from BOM.md)
+// ══════════════════════════════════════════════════════════════════
+
+const BOM = [
+  { name: 'Phase 0: Electronics', total: 195, items: [
+    { qty: 36, component: 'Cherry MX ULP Tactile switch', price: 0.90, total: 32.40, url: 'https://keeb.supply/products/cherry-mx-ulp' },
+    { qty: 36, component: '1N4148W SOD-123 diode', price: 0.02, total: 0.72, url: 'https://www.lcsc.com/product-detail/C81598.html' },
+    { qty: 36, component: 'ULP keycap (15x15mm)', price: 1.50, total: 54, url: 'https://www.aliexpress.com/item/1005005578673316.html' },
+    { qty: 2, component: 'nice!nano v2 controller', price: 25, total: 50, url: 'https://nicekeyboards.com/nice-nano/' },
+    { qty: 2, component: 'Mill-Max 315 socket strip (12-pin)', price: 4, total: 16, url: 'https://splitkb.com/products/mill-max-low-profile-sockets' },
+    { qty: 2, component: '301230 LiPo battery (110mAh)', price: 3, total: 6, url: 'https://www.aliexpress.com/w/wholesale-301230-lipo.html' },
+    { qty: 2, component: 'MSK-12C02 power switch', price: 0.20, total: 0.40, url: 'https://www.lcsc.com/product-detail/C431541.html' },
+    { qty: 1, component: 'USB-C cable', price: 5, total: 5, url: '' },
+    { qty: 2, component: 'PCB (assembled, PCBA)', price: 15, total: 30, url: 'https://jlcpcb.com/pcb-assembly' },
+  ]},
+  { name: 'Phase 1: Mechanical', total: 35, items: [
+    { qty: 2, component: 'Bamboo plywood sheet 200x150x2mm', price: 6, total: 12, url: 'https://www.aliexpress.com/w/wholesale-bamboo-plywood-2mm.html' },
+    { qty: 1, component: 'Natural cork gasket sheet 0.5mm, A4', price: 5, total: 5, url: 'https://www.aliexpress.com/w/wholesale-cork-gasket-sheet-0.5mm.html' },
+    { qty: 1, component: 'M6 rod-end bearing (ball joint)', price: 3, total: 3, url: 'https://www.aliexpress.com/w/wholesale-m6-rod-end-bearing.html' },
+    { qty: 1, component: 'M6 thumb nut (locking)', price: 0.50, total: 0.50, url: 'https://www.aliexpress.com/w/wholesale-m6-thumb-nut.html' },
+    { qty: 2, component: 'M6 threaded rod stub 15mm', price: 0.30, total: 0.60, url: '' },
+    { qty: 2, component: 'Mounting plate (flat bracket)', price: 1, total: 2, url: '' },
+    { qty: 2, component: 'Braided steel cable 1.5mm x 250mm', price: 0.50, total: 1, url: 'https://www.amazon.com/s?k=braided+steel+cable+1.5mm' },
+    { qty: 2, component: 'Small turnbuckle (M3)', price: 1.50, total: 3, url: 'https://www.aliexpress.com/w/wholesale-small-turnbuckle-m3.html' },
+    { qty: 2, component: 'Quick-release clevis pin', price: 2.50, total: 5, url: 'https://www.aliexpress.com/w/wholesale-quick-release-clevis-pin.html' },
+    { qty: 2, component: 'Clevis bracket (recessed)', price: 1, total: 2, url: '' },
+    { qty: 4, component: 'Cable crimp eyelet', price: 0.20, total: 0.80, url: '' },
+  ]},
+  { name: 'Phase 2: Assembly Hardware', total: 2.80, items: [
+    { qty: 14, component: 'M2x5mm countersunk flat-head screw', price: 0.05, total: 0.70, url: 'https://www.aliexpress.com/w/wholesale-m2-5mm-countersunk-screw.html' },
+    { qty: 14, component: 'M2 heat-set brass threaded insert', price: 0.15, total: 2.10, url: 'https://www.aliexpress.com/w/wholesale-m2-heat-set-insert.html' },
+  ]}
+];
+
+
+// ══════════════════════════════════════════════════════════════════
+// GLOBAL STATE
+// ══════════════════════════════════════════════════════════════════
+
+const COLUMNS = [
+  { id: 'pinky',     label: 'Pinky',     color: '#A5FAFA' },
+  { id: 'ring',      label: 'Ring',      color: '#59BDBD' },
+  { id: 'middle',    label: 'Middle',    color: '#CF9393' },
+  { id: 'index',     label: 'Index',     color: '#9C9CB8' },
+  { id: 'index_far', label: 'Inner',     color: '#7474E8' },
+  { id: 'thumb',     label: 'Thumb',     color: '#aaa' },
+];
+
+const positions = {};
+COLUMNS.forEach(c => positions[c.id] = []);
+let activeColumn = 'middle';
+let currentPage = 1;
+let ergogenResults = null;
+let generatedConfig = null;
+
+// Expose state on window for testability
+window.positions = positions;
+window.ergogenResults = null;
+window.generatedConfig = null;
+
+// ══════════════════════════════════════════════════════════════════
+// WIZARD NAVIGATION
+// ══════════════════════════════════════════════════════════════════
+
+const pages = [null, document.getElementById('page1'), document.getElementById('page2'), document.getElementById('page3'), document.getElementById('page4')];
+const stepBtns = document.querySelectorAll('.step-btn');
+const btnBack = document.getElementById('btn-back');
+const btnNext = document.getElementById('btn-next');
+
+function goToPage(n) {
+  if (n < 1 || n > 4) return;
+  pages[currentPage].classList.remove('active');
+  currentPage = n;
+  pages[currentPage].classList.add('active');
+  stepBtns.forEach(s => { const sn = +s.dataset.step; s.classList.toggle('active', sn === n); s.classList.toggle('done', sn < n); });
+  btnBack.disabled = n === 1;
+  btnNext.disabled = (n === 1 && !canAdvance()) || n === 4;
+  btnNext.textContent = n === 4 ? 'Done' : 'Next';
+  if (n === 2) initPage2();
+  if (n === 3) renderBOM();
+  if (n === 4) initPage4();
+}
+
+function canAdvance() {
+  return COLUMNS.every(c => positions[c.id].length >= MIN_KEYS_PER_COL) && validationErrors.length === 0;
+}
+
+btnNext.addEventListener('click', () => { if (currentPage < 4 && (currentPage !== 1 || canAdvance())) goToPage(currentPage + 1); });
+btnBack.addEventListener('click', () => { if (currentPage > 1) goToPage(currentPage - 1); });
+stepBtns.forEach(s => s.addEventListener('click', () => { const sn = +s.dataset.step; if (sn < currentPage) goToPage(sn); }));
+
+
+// ══════════════════════════════════════════════════════════════════
+// PAGE 1: FINGER INPUT
+// ══════════════════════════════════════════════════════════════════
+
+const canvas = document.getElementById('tap-canvas');
+const ctx = canvas.getContext('2d');
+const toolbar = document.getElementById('col-toolbar');
+const hint = document.getElementById('canvas-hint');
+
+// Min keys required per column to define the line, no upper limit on taps.
+// More taps improve the fitted line accuracy. Ergogen uses at most 3 rows per column.
+const MIN_KEYS_PER_COL = 2;
+
+// ── Thumb mode state ──
+// Three thumb modes per REQ-L07: STRAIGHT, ROTATED, ERGOGEN
+let thumbMode = 'STRAIGHT';
+let thumbParams = { lineAngle: 0 }; // mode-specific parameters
+
+// ── Zoom state (REQ-L11) ──
+let zoomLevel = 1.0;
+const ZOOM_STEP = 0.1;
+const ZOOM_MIN = 0.3;
+const ZOOM_MAX = 5.0;
+
+// Build toolbar
+COLUMNS.forEach(c => {
+  const btn = document.createElement('div');
+  btn.className = 'col-btn' + (c.id === activeColumn ? ' active' : '');
+  btn.style.background = c.color;
+  btn.innerHTML = `${c.label}<span class="count">(0)</span>`;
+  btn.dataset.col = c.id;
+  btn.addEventListener('click', () => { activeColumn = c.id; updateToolbar(); });
+  toolbar.appendChild(btn);
+});
+const sep = document.createElement('div'); sep.className = 'sep'; toolbar.appendChild(sep);
+const resetColBtn = document.createElement('div'); resetColBtn.className = 'tool-btn'; resetColBtn.textContent = 'Reset Column';
+resetColBtn.addEventListener('click', () => { positions[activeColumn] = []; drawCanvas(); updateToolbar(); });
+toolbar.appendChild(resetColBtn);
+const resetAllBtn = document.createElement('div'); resetAllBtn.className = 'tool-btn'; resetAllBtn.textContent = 'Reset All';
+resetAllBtn.addEventListener('click', () => { COLUMNS.forEach(c => positions[c.id] = []); drawCanvas(); updateToolbar(); });
+toolbar.appendChild(resetAllBtn);
+const sep2 = document.createElement('div'); sep2.className = 'sep'; toolbar.appendChild(sep2);
+const tuneScaleBtn = document.createElement('div'); tuneScaleBtn.className = 'tool-btn'; tuneScaleBtn.textContent = 'Tune Scale';
+tuneScaleBtn.addEventListener('click', openScaleModal);
+toolbar.appendChild(tuneScaleBtn);
+// Thumb mode selector (REQ-L07)
+const sep3a = document.createElement('div'); sep3a.className = 'sep'; toolbar.appendChild(sep3a);
+const thumbModeLabel = document.createElement('span');
+thumbModeLabel.style.cssText = 'font-size:11px;color:#999;margin-right:2px;';
+thumbModeLabel.textContent = 'Thumb:';
+toolbar.appendChild(thumbModeLabel);
+['STRAIGHT','ROTATED','ERGOGEN'].forEach(mode => {
+  const btn = document.createElement('div');
+  btn.className = 'tool-btn thumb-mode-btn' + (mode === thumbMode ? ' active' : '');
+  btn.textContent = mode;
+  btn.dataset.mode = mode;
+  btn.style.cssText = mode === thumbMode ? 'background:#2a6abf;color:#fff;border-color:#4a8adf;' : '';
+  btn.addEventListener('click', () => {
+    thumbMode = mode;
+    // Update button styles
+    document.querySelectorAll('.thumb-mode-btn').forEach(b => {
+      b.style.background = b.dataset.mode === thumbMode ? '#2a6abf' : '#333';
+      b.style.color = b.dataset.mode === thumbMode ? '#fff' : '#ccc';
+      b.style.borderColor = b.dataset.mode === thumbMode ? '#4a8adf' : '#555';
+    });
+    drawCanvas(); // REQ-L07b: immediate redraw, taps preserved
+  });
+  toolbar.appendChild(btn);
+});
+const sep3 = document.createElement('div'); sep3.className = 'sep'; toolbar.appendChild(sep3);
+const exportBtn = document.createElement('div'); exportBtn.className = 'tool-btn'; exportBtn.textContent = 'Export';
+exportBtn.addEventListener('click', exportPositions);
+toolbar.appendChild(exportBtn);
+const loadBtn = document.createElement('div'); loadBtn.className = 'tool-btn'; loadBtn.textContent = 'Load';
+loadBtn.addEventListener('click', loadPositions);
+toolbar.appendChild(loadBtn);
+
+// ── Export / Load finger positions ──
+function computeExportSwitchPositions() {
+  // Compute switch positions in mm for export (REQ-L10 item b)
+  const ppm = currentScalePPM();
+  const ALL_COLS = [...MATRIX_COLUMNS, 'thumb'];
+  const computedSwitches = {};
+  const fittingAlgorithm = {};
+  ALL_COLS.forEach(colId => {
+    const pts = positions[colId];
+    if (!pts || pts.length < 2) return;
+    const isThumb = colId === 'thumb';
+    const fit = fitLine(pts, isThumb);
+    const m = fit.m, b = fit.b;
+    const dirLen = Math.sqrt(1 + m * m);
+    const projections = pts.map(p => projectPointToLine(m, -1, b, p.x, p.y));
+    const projScalars = projections.map(p => p.x / dirLen + p.y * m / dirLen);
+    const minProj = Math.min(...projScalars);
+    const maxProj = Math.max(...projScalars);
+    const midProj = (minProj + maxProj) / 2;
+    const halfSpan = (maxProj - minProj) / 2;
+    const upperScalars = projScalars.filter(s => s >= midProj);
+    const lowerScalars = projScalars.filter(s => s < midProj);
+    const avgUpper = upperScalars.length ? upperScalars.reduce((a, b) => a + b, 0) / upperScalars.length : midProj + halfSpan;
+    const avgLower = lowerScalars.length ? lowerScalars.reduce((a, b) => a + b, 0) / lowerScalars.length : midProj - halfSpan;
+    const keyScalars = [avgLower, midProj, avgUpper];
+    const canvasKeys = keyScalars.map(s => {
+      const ds = s - midProj;
+      return { x: fit.cx + ds / dirLen, y: fit.cy + ds * m / dirLen };
+    });
+    // Convert to ergogen mm space (flip Y)
+    const ergoMm = canvasKeys.map(k => ({ x: k.x / ppm, y: -k.y / ppm }));
+    const sorted = [...ergoMm].sort((a, b) => a.y - b.y);
+    const dx = sorted[2].x - sorted[0].x, dy = sorted[2].y - sorted[0].y;
+    const angleRad = Math.atan2(-dx, dy);
+    const angleDeg = angleRad * 180 / Math.PI;
+    computedSwitches[colId] = sorted.map((k, i) => ({
+      center: { x: k.x, y: k.y },
+      rotation: angleDeg,
+      size: { w: 13.8, h: 13.8 },
+      label: ['bottom', 'home', 'top'][i],
+    }));
+    fittingAlgorithm[colId] = isThumb ? thumbMode : 'regression-line';
+  });
+  return { computedSwitches, fittingAlgorithm };
+}
+
+function exportPositions() {
+  const { computedSwitches, fittingAlgorithm } = computeExportSwitchPositions();
+  const currentThumbParams = Object.assign({}, thumbParams);
+  if (thumbMode === 'STRAIGHT' && computedSwitches.thumb) {
+    currentThumbParams.lineAngle = computedSwitches.thumb[0].rotation;
+  }
+  const data = {
+    positions,
+    computedSwitches,
+    fittingAlgorithm,
+    thumbMode,
+    thumbParams: currentThumbParams,
+    calibratedPPM: currentScalePPM(),
+    canvasWidth: canvas.width,
+    canvasHeight: canvas.height,
+  };
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'finger-positions.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function loadPositions() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.style.display = 'none';
+  document.body.appendChild(input);
+  input.addEventListener('change', () => {
+    const file = input.files[0];
+    if (!file) { document.body.removeChild(input); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if (!data.positions) throw new Error('No positions found in file');
+        // Scale positions if canvas dimensions differ
+        const scaleX = (data.canvasWidth && data.canvasWidth > 0) ? canvas.width / data.canvasWidth : 1;
+        const scaleY = (data.canvasHeight && data.canvasHeight > 0) ? canvas.height / data.canvasHeight : 1;
+        // Restore positions for all known columns
+        COLUMNS.forEach(col => {
+          if (Array.isArray(data.positions[col.id])) {
+            positions[col.id] = data.positions[col.id].map(p => ({
+              x: p.x * scaleX,
+              y: p.y * scaleY,
+            }));
+          }
+        });
+        // Restore calibrated PPM if present, scaled to current canvas
+        if (typeof data.calibratedPPM === 'number' && data.calibratedPPM > 0) {
+          calibratedPPM = data.calibratedPPM * ((scaleX + scaleY) / 2);
+          localStorage.setItem('keyboard_wizard_ppm', String(calibratedPPM));
+        }
+        // Restore thumb mode and params (REQ-L07a)
+        if (data.thumbMode && ['STRAIGHT','ROTATED','ERGOGEN'].includes(data.thumbMode)) {
+          thumbMode = data.thumbMode;
+          document.querySelectorAll('.thumb-mode-btn').forEach(b => {
+            b.style.background = b.dataset.mode === thumbMode ? '#2a6abf' : '#333';
+            b.style.color = b.dataset.mode === thumbMode ? '#fff' : '#ccc';
+            b.style.borderColor = b.dataset.mode === thumbMode ? '#4a8adf' : '#555';
+          });
+        }
+        if (data.thumbParams) thumbParams = data.thumbParams;
+        computeErgogenPreview();
+        drawCanvas();
+        updateToolbar();
+      } catch (e) {
+        alert('Failed to load positions: ' + e.message);
+      }
+      document.body.removeChild(input);
+    };
+    reader.readAsText(file);
+  });
+  input.click();
+}
+
+// ── Tune Scale (calibrated pixels-per-mm) ──
+let calibratedPPM = null; // null = auto-estimate from tap distances; number = user-calibrated
+
+// Load from localStorage
+const storedPPM = localStorage.getItem('keyboard_wizard_ppm');
+if (storedPPM !== null) {
+  const v = parseFloat(storedPPM);
+  if (v > 0 && isFinite(v)) calibratedPPM = v;
+}
+
+function openScaleModal() {
+  const modal = document.getElementById('scale-modal');
+  const input = document.getElementById('scale-mm-input');
+  const display = document.getElementById('ppm-display');
+  modal.classList.add('open');
+  input.value = '';
+  if (calibratedPPM) {
+    display.textContent = `Current: ${calibratedPPM.toFixed(2)} px/mm (calibrated)`;
+  } else {
+    const auto = currentScalePPM();
+    display.textContent = `Current: ${auto.toFixed(2)} px/mm (auto-estimated)`;
+  }
+  input.focus();
+}
+
+document.getElementById('scale-ok-btn').addEventListener('click', () => {
+  const input = document.getElementById('scale-mm-input');
+  const refLine = document.getElementById('scale-ref-line');
+  const mm = parseFloat(input.value);
+  if (mm > 0 && isFinite(mm)) {
+    const refPx = refLine.clientWidth;
+    calibratedPPM = refPx / mm;
+    localStorage.setItem('keyboard_wizard_ppm', String(calibratedPPM));
+  }
+  document.getElementById('scale-modal').classList.remove('open');
+  drawCanvas();
+});
+
+document.getElementById('scale-reset-btn').addEventListener('click', () => {
+  calibratedPPM = null;
+  localStorage.removeItem('keyboard_wizard_ppm');
+  document.getElementById('scale-modal').classList.remove('open');
+  drawCanvas();
+});
+
+// Close modal on overlay click
+document.getElementById('scale-modal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+});
+
+function updateToolbar() {
+  document.querySelectorAll('#col-toolbar .col-btn').forEach(b => {
+    const cid = b.dataset.col;
+    b.classList.toggle('active', cid === activeColumn);
+    b.querySelector('.count').textContent = `(${positions[cid].length})`;
+  });
+  const show = !COLUMNS.some(c => positions[c.id].length > 0);
+  hint.classList.toggle('hidden', !show);
+  btnNext.disabled = !canAdvance();
+}
+
+function resizeCanvas() {
+  const wrap = canvas.parentElement;
+  canvas.width = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+  drawCanvas();
+}
+window.addEventListener('resize', resizeCanvas);
+setTimeout(resizeCanvas, 50);
+
+canvas.addEventListener('pointerdown', e => {
+  const rect = canvas.getBoundingClientRect();
+  const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+  const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+  positions[activeColumn].push({ x, y });
+  drawCanvas();
+  updateToolbar();
+});
+
+// ── Zoom keyboard shortcuts (REQ-L11) ──
+// Uses '[' and ']' keys which do not interfere with browser or other website shortcuts.
+// Scale tuning PPM updates on 1:1 ratio with zoom level if it was specified earlier.
+document.addEventListener('keydown', e => {
+  if (currentPage !== 1) return;
+  // Ignore if user is typing in an input
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  let handled = false;
+  if (e.key === ']' || e.key === '=') {
+    zoomLevel = Math.min(ZOOM_MAX, zoomLevel + ZOOM_STEP);
+    handled = true;
+  } else if (e.key === '[' || e.key === '-') {
+    zoomLevel = Math.max(ZOOM_MIN, zoomLevel - ZOOM_STEP);
+    handled = true;
+  }
+  if (handled) {
+    e.preventDefault();
+    // Update PPM proportionally (REQ-L11: 1:1 ratio with zoom level if scale was specified)
+    if (calibratedPPM !== null && calibratedPPM > 0) {
+      // Recompute from base: basePPM * zoomLevel
+      // Store the base PPM on first zoom action
+      if (!window._basePPM) window._basePPM = calibratedPPM;
+      calibratedPPM = window._basePPM * zoomLevel;
+      localStorage.setItem('keyboard_wizard_ppm', String(calibratedPPM));
+    }
+    drawCanvas();
+  }
+});
+
+// ── Validation state ──
+let validationErrors = [];
+let validationWarnings = [];
+let ergogenPreviewKeys = []; // computed preview of where ergogen would place keys
+
+// Compute the scale factor (pixels per mm).
+// Uses calibrated value if available, otherwise auto-estimates from tap distances.
+function currentScalePPM() {
+  if (calibratedPPM !== null && calibratedPPM > 0) return calibratedPPM;
+  const flipped = {};
+  for (const col of Object.keys(positions)) {
+    flipped[col] = positions[col].map(p => ({ x: p.x, y: -p.y }));
+  }
+  const ppm = estimateScale(flipped, 18);
+  return ppm > 0 ? ppm : 1.0;
+}
+
+// Validate key positions: overlap detection and spacing checks
+function validatePositions() {
+  validationErrors = [];
+  validationWarnings = [];
+
+  // With the current tap model, raw taps are calibration data for the
+  // regression line — not 1:1 key positions. Overlap and spacing checks
+  // on raw taps are not meaningful. Instead, validate that each column
+  // has enough taps for a reliable fit.
+  COLUMNS.forEach(col => {
+    const pts = positions[col.id];
+    if (pts.length === 1) {
+      validationWarnings.push({
+        type: 'insufficient_taps',
+        keys: [{ x: pts[0].x, y: pts[0].y, col: col.id, label: col.label, rowIdx: 0, color: col.color }],
+        msg: `${col.label}: needs at least 2 taps to define the column line`
+      });
+    }
+  });
+}
+
+// After ergogen runs, compare derived key positions with ergogen output.
+// With the tap-regression model, raw taps are calibration data — the
+// meaningful comparison is between the 3 derived key positions and
+// ergogen's output. This is a stub for now; the ergogen preview overlay
+// already shows the comparison visually.
+function validateAgainstErgogen() {
+  // Visual comparison via ergogenPreviewKeys overlay is sufficient.
+}
+
+// Compute where ergogen would place keys given current tap data, in canvas pixel space.
+// This reconstructs the column layout from ergopadToErgogen parameters to preview
+// the actual key positions ergogen will produce.
+function computeErgogenPreview() {
+  ergogenPreviewKeys = [];
+  const hasEnough = COLUMNS.every(c => positions[c.id].length >= 2);
+  if (!hasEnough) return;
+
+  const ppm = currentScalePPM();
+  if (ppm <= 0) return;
+
+  // Run the actual ergopadToErgogen conversion, then simulate ergogen placement.
+  // This ensures the preview matches what ergogen will actually produce.
+  const config = ergopadToErgogen(positions, 22, 18, ppm);
+  const matrixZone = config.points && config.points.zones && config.points.zones.matrix;
+  if (!matrixZone) return;
+
+  const anchor = matrixZone.anchor.shift;
+  const columns = matrixZone.columns;
+  const colNames = Object.keys(columns);
+  const rowNames = ['bottom', 'home', 'top'];
+
+  // Simulate ergogen's exact placement algorithm (same as validate-stages.js)
+  function simRotPt(px, py, angleDeg, ox, oy) {
+    const rad = angleDeg * Math.PI / 180;
+    const dx = px - ox, dy = py - oy;
+    return { x: ox + dx * Math.cos(rad) - dy * Math.sin(rad), y: oy + dx * Math.sin(rad) + dy * Math.cos(rad) };
+  }
+  function simPushRotation(rots, angle, origin) {
+    let candidate = [...origin];
+    for (const r of rots) {
+      const p = simRotPt(candidate[0], candidate[1], r.angle, r.origin[0], r.origin[1]);
+      candidate = [p.x, p.y];
+    }
+    rots.push({ angle, origin: candidate });
+  }
+
+  const zoneAnchor = { x: anchor[0], y: anchor[1] };
+  const rotations = [{ angle: 0, origin: [zoneAnchor.x, zoneAnchor.y] }];
+  let firstCol = true;
+
+  colNames.forEach((colName, ci) => {
+    const colDef = columns[colName];
+    const key = colDef.key || {};
+    const colRows = colDef.rows || {};
+    const spread = key.spread || 0;
+    const stagger = key.stagger || 0;
+    const splay = key.splay || 0;
+    // Per-row padding from config (fallback to key.padding or 18)
+    const rowPaddings = [
+      (colRows.bottom && colRows.bottom.padding != null) ? colRows.bottom.padding : (key.padding || 18),
+      (colRows.home && colRows.home.padding != null) ? colRows.home.padding : (key.padding || 18),
+      (colRows.top && colRows.top.padding != null) ? colRows.top.padding : 0,
+    ];
+
+    if (!firstCol) { zoneAnchor.x += spread; }
+    zoneAnchor.y += stagger;
+
+    if (Math.abs(splay) > 0.001) {
+      simPushRotation(rotations, splay, [zoneAnchor.x, zoneAnchor.y]);
+    }
+
+    let runX = zoneAnchor.x, runY = zoneAnchor.y, runR = 0;
+    for (const r of rotations) {
+      const p = simRotPt(runX, runY, r.angle, r.origin[0], r.origin[1]);
+      runX = p.x; runY = p.y; runR += r.angle;
+    }
+
+    const colId = MATRIX_COLUMNS[ci] || colName;
+    for (let ri = 0; ri < 3; ri++) {
+      // Convert ergogen mm → canvas: canvasX = x * ppm, canvasY = -y * ppm
+      ergogenPreviewKeys.push({
+        col: colId,
+        label: COLUMNS.find(c => c.id === colId)?.label || colId,
+        color: COLUMNS.find(c => c.id === colId)?.color || '#888',
+        row: ri, rowName: rowNames[ri] || `row${ri}`,
+        x: runX * ppm, y: -runY * ppm,
+        angleDeg: runR,
+      });
+      // Advance by this row's padding along rotated +Y
+      const padRad = runR * Math.PI / 180;
+      runX += -rowPaddings[ri] * Math.sin(padRad);
+      runY += rowPaddings[ri] * Math.cos(padRad);
+    }
+    firstCol = false;
+  });
+
+  // Thumb: not yet simulated through ergogen's ref anchor system
+  // Show approximate positions from stage 1 analysis for preview
+  const thumbPts = positions.thumb;
+  if (thumbPts && thumbPts.length >= 2) {
+    const fit = fitLine(thumbPts, true);
+    const m = fit.m, b = fit.b;
+    const dirLen = Math.sqrt(1 + m * m);
+    const projections = thumbPts.map(p => projectPointToLine(m, -1, b, p.x, p.y));
+    const projScalars = projections.map(p => p.x / dirLen + p.y * m / dirLen);
+    const minProj = Math.min(...projScalars), maxProj = Math.max(...projScalars);
+    const midProj = (minProj + maxProj) / 2;
+    const halfSpan = (maxProj - minProj) / 2;
+    const upperScalars = projScalars.filter(s => s >= midProj);
+    const lowerScalars = projScalars.filter(s => s < midProj);
+    const avgUpper = upperScalars.length ? upperScalars.reduce((a, b) => a + b, 0) / upperScalars.length : midProj + halfSpan;
+    const avgLower = lowerScalars.length ? lowerScalars.reduce((a, b) => a + b, 0) / lowerScalars.length : midProj - halfSpan;
+    const keyScalars = [avgLower, midProj, avgUpper];
+    for (let k = 0; k < 3; k++) {
+      const ds = keyScalars[k] - midProj;
+      const px = fit.cx + ds / dirLen;
+      const py = fit.cy + ds * m / dirLen;
+      ergogenPreviewKeys.push({
+        col: 'thumb', label: 'Thumb', color: '#aaa',
+        row: k, rowName: `thumb${k}`,
+        x: px, y: py,
+        angleDeg: Math.atan(m) * 180 / Math.PI,
+      });
+    }
+  }
+}
+
+function drawCanvas() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // Draw grid
+  ctx.strokeStyle = '#1a1a1a';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < canvas.width; x += 50) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke(); }
+  for (let y = 0; y < canvas.height; y += 50) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke(); }
+
+  // Run validation
+  validatePositions();
+
+  // Build set of error key positions for highlighting
+  const errorKeySet = new Set();
+  validationErrors.forEach(e => {
+    e.keys.forEach(k => errorKeySet.add(`${k.x},${k.y}`));
+  });
+  const warningKeySet = new Set();
+  validationWarnings.forEach(w => {
+    w.keys.forEach(k => warningKeySet.add(`${k.x},${k.y}`));
+  });
+
+  const ppm = currentScalePPM();
+  const keyWidthPx = 17 * ppm;   // 17mm keycap, matching ergopad
+  const rectHalf = keyWidthPx / 2;
+
+  COLUMNS.forEach(col => {
+    const pts = positions[col.id];
+    if (!pts.length) return;
+    const isActive = col.id === activeColumn;
+    const isThumb = col.id === 'thumb';
+
+    // Draw small dots at ALL raw tap positions (calibration points)
+    pts.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, isActive ? 6 : 4, 0, Math.PI * 2);
+      ctx.fillStyle = col.color + (isActive ? '99' : '55');
+      ctx.fill();
+      ctx.strokeStyle = col.color + (isActive ? 'cc' : '77');
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    });
+
+    if (pts.length < 2) return;
+
+    // Least-squares regression line through all taps (ergopad algorithm)
+    const fit = fitLine(pts, isThumb);
+    const m = fit.m, b = fit.b;
+    const dirLen = Math.sqrt(1 + m * m);
+
+    // Project all taps onto the regression line
+    const projections = pts.map(p => projectPointToLine(m, -1, b, p.x, p.y));
+    // Scalar projection along the line direction (signed distance from origin)
+    const projScalars = projections.map(p => p.x / dirLen + p.y * m / dirLen);
+    const minProj = Math.min(...projScalars);
+    const maxProj = Math.max(...projScalars);
+    const midProj = (minProj + maxProj) / 2;
+    const halfSpan = (maxProj - minProj) / 2;
+
+    // Draw regression line
+    const lineLen = halfSpan + 60;
+    const ldx = lineLen / dirLen, ldy = lineLen * m / dirLen;
+    ctx.beginPath();
+    ctx.moveTo(fit.cx - ldx, fit.cy - ldy);
+    ctx.lineTo(fit.cx + ldx, fit.cy + ldy);
+    ctx.strokeStyle = col.color + '33';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 5]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Draw projected points on the line (small red dots, like ergopad aux lines)
+    projections.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#ff000044';
+      ctx.fill();
+    });
+
+    // Place 3 keys along the regression line using tap positions:
+    // - Center key at the midpoint (center of projected range, like ergopad)
+    // - Top and bottom keys at the centers of gravity of the upper/lower halves
+    //   of the projected points. If the span is too small, fall back to even spacing.
+    // This way adding distant taps spreads the keys out naturally.
+    const upperScalars = projScalars.filter(s => s >= midProj);
+    const lowerScalars = projScalars.filter(s => s < midProj);
+    const avgUpper = upperScalars.length ? upperScalars.reduce((a, b) => a + b, 0) / upperScalars.length : midProj + halfSpan;
+    const avgLower = lowerScalars.length ? lowerScalars.reduce((a, b) => a + b, 0) / lowerScalars.length : midProj - halfSpan;
+
+    // The 3 key positions as scalar projections along the line
+    const nKeys = 3;
+    const keyScalars = [avgLower, midProj, avgUpper];
+
+    // Rotation: perpendicular to regression line, matching ergopad:
+    // group.rotation = Math.PI / 2 + Math.atan(trendline.m)
+    const rotation = Math.PI / 2 + Math.atan(m);
+
+    // Draw exactly 3 switch rectangles
+    for (let k = 0; k < nKeys; k++) {
+      const ds = keyScalars[k] - midProj;
+      const px = fit.cx + ds / dirLen;
+      const py = fit.cy + ds * m / dirLen;
+
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.rotate(rotation);
+      ctx.strokeStyle = col.color + '88';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([]);
+      ctx.strokeRect(-rectHalf, -rectHalf, rectHalf * 2, rectHalf * 2);
+      ctx.restore();
+    }
+  });
+
+  // Draw error lines between overlapping pairs
+  validationErrors.forEach(e => {
+    if (e.keys.length === 2) {
+      const [a, b] = e.keys;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.strokeStyle = '#ff333388';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([3, 3]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // Midpoint label
+      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      const distMm = (e.dist / ppm).toFixed(1);
+      ctx.font = '11px -apple-system, sans-serif';
+      ctx.fillStyle = '#ff5555';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${distMm}mm`, mx, my - 6);
+    }
+  });
+
+  // Draw validation summary below toolbar
+  updateValidationDisplay();
+}
+
+function updateValidationDisplay() {
+  let msgEl = document.getElementById('validation-msg');
+  if (!msgEl) {
+    msgEl = document.createElement('div');
+    msgEl.id = 'validation-msg';
+    msgEl.style.cssText = 'padding:6px 12px;font-size:12px;line-height:1.5;max-height:80px;overflow-y:auto;';
+    const canvasWrap = document.querySelector('#page1 .canvas-wrap');
+    canvasWrap.parentElement.insertBefore(msgEl, canvasWrap);
+  }
+
+  const totalKeys = COLUMNS.reduce((sum, c) => sum + positions[c.id].length, 0);
+
+  if (validationErrors.length > 0) {
+    msgEl.style.background = '#3a1a1a';
+    msgEl.style.borderBottom = '1px solid #663333';
+    msgEl.style.color = '#ff8888';
+    const msgs = validationErrors.map(e => e.msg);
+    msgEl.innerHTML = `<strong>Position errors (${validationErrors.length}):</strong> ` + msgs.join(' | ');
+  } else if (validationWarnings.length > 0) {
+    msgEl.style.background = '#3a3a1a';
+    msgEl.style.borderBottom = '1px solid #666633';
+    msgEl.style.color = '#ffcc66';
+    const msgs = validationWarnings.map(w => w.msg);
+    msgEl.innerHTML = `<strong>Warnings (${validationWarnings.length}):</strong> ` + msgs.join(' | ');
+  } else if (totalKeys >= 2) {
+    msgEl.style.background = '#1a3a1a';
+    msgEl.style.borderBottom = '1px solid #336633';
+    msgEl.style.color = '#88cc88';
+    msgEl.innerHTML = `<strong>Layout OK</strong> — ${totalKeys} taps across ${COLUMNS.filter(c => positions[c.id].length >= 2).length} columns`;
+  } else {
+    msgEl.style.background = 'transparent';
+    msgEl.style.borderBottom = 'none';
+    msgEl.innerHTML = '';
+  }
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// PAGE 2: 3D PREVIEW — REALISTIC RENDERING
+// ══════════════════════════════════════════════════════════════════
+
+let scene, camera, renderer, controls;
+let leftHalf, rightHalf, cablesGroup, hingeGroup, batteryGroup;
+let hingeX = 0, hingeZ = 0, hingeCenterY = 0;
+let clipPlaneLeft, clipPlaneRight;
+let page2Initialized = false;
+let explodedView = false, showLabels = false;
+let labelSprites = [];
+let groundPlane;
+// Key press state
+const pressedKeys = new Map();
+const PRESS_DEPTH = 1.8, PRESS_DOWN_MS = 80, PRESS_UP_MS = 140;
+let keycapMeshL = null, keycapMeshR = null;
+let keycapBaseL = null, keycapBaseR = null;
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+let hoveredObj = null;
+
+// Layer Z positions (set during build3DScene, used by exploded view)
+let Z_SWITCH_PLATE = 0, Z_CORK_UPPER = 0, Z_PCB = 0, Z_CORK_LOWER = 0;
+
+function initPage2() {
+  const loading = document.getElementById('loading');
+  loading.style.display = 'block';
+  setTimeout(async () => {
+    try {
+      generatedConfig = ergopadToErgogen(positions, 22, 18, calibratedPPM);
+      window.generatedConfig = generatedConfig;
+      const yamlStr = jsyaml.dump(generatedConfig, { sortKeys: false, lineWidth: 200 });
+      ergogenResults = await ergogen.process(yamlStr, { debug: true, svg: true });
+      window.ergogenResults = ergogenResults;
+      loading.style.display = 'none';
+      // Build points-based renderer (replaces old SVG-based build3DScene)
+      try {
+        const newContainer = document.getElementById('viewport-new');
+        window._newSceneCtrl = window.buildNewScene(ergogenResults, generatedConfig, newContainer);
+      } catch(e2) { console.error('render3d error:', e2); }
+    } catch(e) {
+      loading.textContent = 'Error: ' + e.message;
+      console.error(e);
+    }
+  }, 50);
+}
+
+// ── Procedural Texture Generators ──
+
+function generateWoodTexture(w, h) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d');
+
+  // Rich bamboo base with warm tones
+  const bgGrad = g.createLinearGradient(0, 0, w * 0.3, h);
+  bgGrad.addColorStop(0, '#b8923c');
+  bgGrad.addColorStop(0.2, '#c9a050');
+  bgGrad.addColorStop(0.5, '#d4aa55');
+  bgGrad.addColorStop(0.8, '#c49845');
+  bgGrad.addColorStop(1, '#b08535');
+  g.fillStyle = bgGrad;
+  g.fillRect(0, 0, w, h);
+
+  // Broad tonal variation across board (simulates sapwood/heartwood transition)
+  for (let p = 0; p < 12; p++) {
+    const px = Math.random() * w, py = Math.random() * h;
+    const pr = 80 + Math.random() * 200;
+    const grad = g.createRadialGradient(px, py, 0, px, py, pr);
+    const isDark = Math.random() > 0.5;
+    grad.addColorStop(0, isDark ? 'rgba(130, 85, 30, 0.15)' : 'rgba(210, 170, 80, 0.12)');
+    grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, w, h);
+  }
+
+  // Wood grain — flowing parallel lines with natural waviness
+  for (let i = 0; i < 400; i++) {
+    const y = (i / 400) * h + (Math.random() - 0.5) * 4;
+    const lw = 0.4 + Math.random() * 1.5;
+    const isDark = Math.random() > 0.35;
+    const r = isDark ? 90 + Math.random() * 40 : 160 + Math.random() * 40;
+    const gg = isDark ? 60 + Math.random() * 30 : 120 + Math.random() * 30;
+    const b = isDark ? 20 + Math.random() * 20 : 60 + Math.random() * 20;
+    const alpha = isDark ? 0.3 + Math.random() * 0.35 : 0.15 + Math.random() * 0.2;
+    g.strokeStyle = `rgba(${r|0}, ${gg|0}, ${b|0}, ${alpha})`;
+    g.lineWidth = lw;
+    g.beginPath();
+    const phase = Math.random() * 20;
+    const freq1 = 0.004 + Math.random() * 0.008;
+    const freq2 = 0.015 + Math.random() * 0.02;
+    const amp1 = 2 + Math.random() * 5;
+    const amp2 = 0.5 + Math.random() * 2;
+    for (let x = 0; x < w; x += 2) {
+      const wobble = Math.sin(x * freq1 + phase) * amp1 + Math.sin(x * freq2 + phase * 3) * amp2;
+      if (x === 0) g.moveTo(x, y + wobble); else g.lineTo(x, y + wobble);
+    }
+    g.stroke();
+  }
+
+  // Prominent growth ring arcs (characteristic of bamboo cross-grain cut)
+  for (let ring = 0; ring < 6; ring++) {
+    const ry = (ring + 0.3 + Math.random() * 0.4) / 6 * h;
+    const ringW = 1.5 + Math.random() * 2.5;
+    g.strokeStyle = `rgba(100, 65, 20, ${0.25 + Math.random() * 0.2})`;
+    g.lineWidth = ringW;
+    g.beginPath();
+    const arcPhase = Math.random() * 5;
+    for (let x = 0; x < w; x += 2) {
+      const curve = Math.sin(x * 0.002 + arcPhase) * 15;
+      if (x === 0) g.moveTo(x, ry + curve); else g.lineTo(x, ry + curve);
+    }
+    g.stroke();
+    // Light edge above ring
+    g.strokeStyle = `rgba(220, 190, 120, 0.12)`;
+    g.lineWidth = 0.8;
+    g.beginPath();
+    for (let x = 0; x < w; x += 2) {
+      const curve = Math.sin(x * 0.002 + arcPhase) * 15;
+      if (x === 0) g.moveTo(x, ry + curve - ringW); else g.lineTo(x, ry + curve - ringW);
+    }
+    g.stroke();
+  }
+
+  // Bamboo node bands (thicker, darker horizontal marks)
+  const nNodes = 2 + Math.floor(Math.random() * 2);
+  for (let n = 0; n < nNodes; n++) {
+    const ny = (n + 0.5 + (Math.random() - 0.5) * 0.4) / nNodes * h;
+    const nodeW = 3 + Math.random() * 4;
+    const grad = g.createLinearGradient(0, ny - nodeW, 0, ny + nodeW);
+    grad.addColorStop(0, 'rgba(90, 55, 15, 0)');
+    grad.addColorStop(0.3, 'rgba(90, 55, 15, 0.3)');
+    grad.addColorStop(0.5, 'rgba(70, 40, 10, 0.4)');
+    grad.addColorStop(0.7, 'rgba(90, 55, 15, 0.3)');
+    grad.addColorStop(1, 'rgba(90, 55, 15, 0)');
+    g.fillStyle = grad;
+    g.fillRect(0, ny - nodeW, w, nodeW * 2);
+  }
+
+  // Fine pores and fiber detail
+  for (let s = 0; s < 300; s++) {
+    const sx = Math.random() * w, sy = Math.random() * h;
+    const sw = 0.5 + Math.random() * 2;
+    const sh = 0.3 + Math.random() * 0.8;
+    g.fillStyle = `rgba(70, 45, 15, ${0.1 + Math.random() * 0.15})`;
+    g.fillRect(sx, sy, sw, sh);
+  }
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+
+  // Normal map — pronounced grain relief
+  const nc = document.createElement('canvas'); nc.width = 512; nc.height = 512;
+  const ng = nc.getContext('2d');
+  ng.fillStyle = '#8080ff'; ng.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 300; i++) {
+    const ny = (i / 300) * 512;
+    const phase = Math.random() * 10;
+    const isDark = Math.random() > 0.4;
+    const nVal = isDark ? 105 + Math.random() * 20 : 145 + Math.random() * 15;
+    const alpha = isDark ? 0.08 + Math.random() * 0.1 : 0.04 + Math.random() * 0.06;
+    ng.strokeStyle = `rgba(${nVal|0}, ${nVal|0}, 255, ${alpha})`;
+    ng.lineWidth = 0.5 + Math.random() * 1.5;
+    ng.beginPath();
+    for (let x = 0; x < 512; x += 2) {
+      const wb = Math.sin(x * 0.012 + phase) * 2 + Math.sin(x * 0.003 + i * 0.4) * 3;
+      if (x === 0) ng.moveTo(x, ny + wb); else ng.lineTo(x, ny + wb);
+    }
+    ng.stroke();
+  }
+  const normalTex = new THREE.CanvasTexture(nc);
+  normalTex.wrapS = normalTex.wrapT = THREE.RepeatWrapping;
+
+  // Roughness map: grain-aligned variation (lower = glossier between grains)
+  const rc = document.createElement('canvas'); rc.width = 256; rc.height = 256;
+  const rg = rc.getContext('2d');
+  rg.fillStyle = '#777'; rg.fillRect(0, 0, 256, 256); // base roughness ~0.47
+  for (let i = 0; i < 150; i++) {
+    const ry = (i / 150) * 256;
+    const isDark = Math.random() > 0.5;
+    rg.strokeStyle = isDark ? `rgba(100, 100, 100, 0.2)` : `rgba(180, 180, 180, 0.15)`;
+    rg.lineWidth = 0.5 + Math.random() * 1.5;
+    rg.beginPath();
+    for (let x = 0; x < 256; x += 2) {
+      const wb = Math.sin(x * 0.02 + i * 0.6) * 1.5;
+      if (x === 0) rg.moveTo(x, ry + wb); else rg.lineTo(x, ry + wb);
+    }
+    rg.stroke();
+  }
+  const roughTex = new THREE.CanvasTexture(rc);
+  roughTex.wrapS = roughTex.wrapT = THREE.RepeatWrapping;
+  return { map: tex, roughnessMap: roughTex, normalMap: normalTex };
+}
+
+function generateCorkTexture(w, h) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  g.fillStyle = '#c29a6b'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 600; i++) {
+    const px = Math.random() * w, py = Math.random() * h;
+    const r = 0.5 + Math.random() * 2.5;
+    const b = Math.floor(140 + Math.random() * 60);
+    g.fillStyle = `rgba(${b}, ${b - 30}, ${b - 60}, ${0.2 + Math.random() * 0.3})`;
+    g.beginPath(); g.ellipse(px, py, r, r * (0.6 + Math.random() * 0.8), Math.random() * Math.PI, 0, Math.PI * 2); g.fill();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return { map: tex };
+}
+
+function generatePCBTexture(w, h, points, svgBBox) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  // Solder mask — dark green
+  g.fillStyle = '#145214'; g.fillRect(0, 0, w, h);
+  // Fiberglass weave
+  g.globalAlpha = 0.06;
+  g.strokeStyle = '#1a7a1a';
+  for (let i = 0; i < w; i += 2) {
+    g.beginPath(); g.moveTo(i, 0); g.lineTo(i, h); g.stroke();
+    g.beginPath(); g.moveTo(0, i); g.lineTo(w, i); g.stroke();
+  }
+  g.globalAlpha = 1;
+  // Scale: map svgBBox to canvas
+  const bw = svgBBox.max.x - svgBBox.min.x, bh = svgBBox.max.y - svgBBox.min.y;
+  const sx = w / bw, sy = h / bh;
+  function toCanvas(px, py) {
+    return [(px - svgBBox.min.x) * sx, (py - svgBBox.min.y) * sy];
+  }
+  // Draw copper traces + pads at each key position
+  const ptArr = Object.values(points);
+  ptArr.forEach(pt => {
+    const [cx, cy] = toCanvas(pt.x, -pt.y); // ergogen y-up → SVG y-down
+    const rad = -pt.r * Math.PI / 180;
+    g.save(); g.translate(cx, cy); g.rotate(rad);
+    // Copper pads (gold)
+    g.fillStyle = '#b08030';
+    g.fillRect(-0.65 * sx - 0.35 * sx, 2.3 * sy - 1.7 * sy, 0.7 * sx, 3.4 * sy);
+    g.fillRect(1.8 * sx - 0.35 * sx, 2.3 * sy - 1.7 * sy, 0.7 * sx, 3.4 * sy);
+    // Ground pads
+    g.fillStyle = '#907030';
+    g.fillRect(-6.2 * sx - 0.8 * sx, -3.9 * sy - 1.9 * sy, 1.6 * sx, 3.8 * sy);
+    g.fillRect(6.2 * sx - 0.8 * sx, 0 - 1.3 * sy, 1.6 * sx, 2.6 * sy);
+    // Silkscreen outline (white)
+    g.strokeStyle = 'rgba(255,255,255,0.25)'; g.lineWidth = 0.5;
+    g.strokeRect(-7.1 * sx, -6.4 * sy, 14.2 * sx, 12.8 * sy);
+    // Traces
+    g.strokeStyle = '#906830'; g.lineWidth = 0.3 * sx;
+    g.beginPath(); g.moveTo(0, 4 * sy); g.lineTo(0, 7 * sy); g.stroke();
+    g.restore();
+  });
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+  return { map: tex };
+}
+
+function generateBrushedMetalTexture(w, h) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  g.fillStyle = '#b0b0b5'; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < h; i++) {
+    const v = 160 + Math.floor(Math.random() * 40);
+    g.strokeStyle = `rgb(${v},${v},${v + 5})`;
+    g.lineWidth = 0.3 + Math.random() * 0.4;
+    g.beginPath(); g.moveTo(0, i); g.lineTo(w, i); g.stroke();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  return { map: tex };
+}
+
+// ── Rounded rectangle Shape helper ──
+function roundedRectShape(w, h, r) {
+  const s = new THREE.Shape();
+  s.moveTo(-w/2 + r, -h/2);
+  s.lineTo(w/2 - r, -h/2);
+  s.quadraticCurveTo(w/2, -h/2, w/2, -h/2 + r);
+  s.lineTo(w/2, h/2 - r);
+  s.quadraticCurveTo(w/2, h/2, w/2 - r, h/2);
+  s.lineTo(-w/2 + r, h/2);
+  s.quadraticCurveTo(-w/2, h/2, -w/2, h/2 - r);
+  s.lineTo(-w/2, -h/2 + r);
+  s.quadraticCurveTo(-w/2, -h/2, -w/2 + r, -h/2);
+  return s;
+}
+
+// ── Build main 3D scene (complete rewrite) ──
+
+function build3DScene() {
+  const viewport = document.getElementById('viewport');
+  if (renderer) { viewport.removeChild(renderer.domElement); renderer.dispose(); }
+
+  const w = viewport.clientWidth, h = viewport.clientHeight;
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0d0d0f);
+
+  // ── Renderer: PBR, shadows, high quality ──
+  renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+  renderer.setSize(w, h);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.0;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.localClippingEnabled = true;
+  viewport.appendChild(renderer.domElement);
+
+  // ── Environment for metallic reflections ──
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  pmrem.dispose();
+
+  // ── Camera ──
+  camera = new THREE.PerspectiveCamera(35, w / h, 0.1, 5000);
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.06;
+  controls.minDistance = 50;
+  controls.maxDistance = 1200;
+
+  // ── Lighting: soft studio setup with contact shadows ──
+  const hemi = new THREE.HemisphereLight(0xc8d4f0, 0x2a2a30, 0.4);
+  scene.add(hemi);
+
+  const keyLight = new THREE.DirectionalLight(0xfff5e0, 1.4);
+  keyLight.position.set(120, -80, 250);
+  keyLight.castShadow = true;
+  keyLight.shadow.mapSize.set(2048, 2048);
+  keyLight.shadow.camera.near = 1;
+  keyLight.shadow.camera.far = 800;
+  keyLight.shadow.camera.left = -250;
+  keyLight.shadow.camera.right = 250;
+  keyLight.shadow.camera.top = 250;
+  keyLight.shadow.camera.bottom = -250;
+  keyLight.shadow.bias = -0.001;
+  keyLight.shadow.radius = 4;
+  scene.add(keyLight);
+
+  const fillLight = new THREE.DirectionalLight(0xd0e0ff, 0.5);
+  fillLight.position.set(-100, 60, 120);
+  scene.add(fillLight);
+
+  const rimLight = new THREE.DirectionalLight(0xffffff, 0.3);
+  rimLight.position.set(0, 120, -80);
+  scene.add(rimLight);
+
+  // Subtle warm accent from below
+  const underLight = new THREE.PointLight(0xffcc88, 0.15, 400);
+  underLight.position.set(0, 0, -30);
+  scene.add(underLight);
+
+  // ── Parse SVGs ──
+  const boardSvg = ergogenResults.outlines.board.svg;
+  const switchSvg = ergogenResults.outlines.switch_cutouts.svg;
+  const loader = new SVGLoader();
+  const boardShapes = [];
+  loader.parse(boardSvg).paths.forEach(p => boardShapes.push(...SVGLoader.createShapes(p)));
+  const switchShapes = [];
+  loader.parse(switchSvg).paths.forEach(p => switchShapes.push(...SVGLoader.createShapes(p)));
+  if (!boardShapes.length) { console.error('No board shapes'); return; }
+
+  // Build switch plate shape (board outline with switch cutouts subtracted)
+  const switchPlateShapes = [];
+  loader.parse(boardSvg).paths.forEach(p => {
+    SVGLoader.createShapes(p).forEach(s => {
+      switchShapes.forEach(cutout => s.holes.push(new THREE.Path(cutout.getPoints(4))));
+      switchPlateShapes.push(s);
+    });
+  });
+
+  // Frame shape (slightly larger than board, for wooden surround)
+  let frameSvg = null;
+  if (ergogenResults.outlines.frame) frameSvg = ergogenResults.outlines.frame.svg;
+  const frameShapes = [];
+  if (frameSvg) {
+    loader.parse(frameSvg).paths.forEach(p => frameShapes.push(...SVGLoader.createShapes(p)));
+    // Subtract board from frame to make surround
+  }
+
+  // ── Textures ──
+  const woodTex = generateWoodTexture(1024, 1024);
+  const corkTex = generateCorkTexture(512, 512);
+  const metalTex = generateBrushedMetalTexture(512, 1024);
+
+  // ── PBR Materials (Apple-quality finishes) ──
+  const bambooMat = new THREE.MeshStandardMaterial({
+    map: woodTex.map, roughnessMap: woodTex.roughnessMap, normalMap: woodTex.normalMap,
+    normalScale: new THREE.Vector2(0.7, 0.7),
+    roughness: 0.4, metalness: 0.0, envMapIntensity: 0.8
+  });
+  const bambooSideMat = bambooMat.clone();
+  const corkMat = new THREE.MeshStandardMaterial({ map: corkTex.map, roughness: 0.95, metalness: 0.0 });
+  const steelMat = new THREE.MeshStandardMaterial({
+    map: metalTex.map, roughness: 0.25, metalness: 0.9, envMapIntensity: 1.2
+  });
+  const brassMat = new THREE.MeshStandardMaterial({ color: 0xb5a642, roughness: 0.3, metalness: 0.95, envMapIntensity: 1.0 });
+  const copperMat = new THREE.MeshStandardMaterial({ color: 0xb87333, roughness: 0.35, metalness: 0.92 });
+
+  // Keycap: very slightly warm dark grey, soft-touch feel
+  const keycapMat = new THREE.MeshStandardMaterial({ color: 0x303032, roughness: 0.78, metalness: 0.0 });
+  const keycapHoverMat = new THREE.MeshStandardMaterial({ color: 0x404045, roughness: 0.7, metalness: 0.0, emissive: 0x1a1a2a, emissiveIntensity: 0.5 });
+  const switchMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1e, roughness: 0.45, metalness: 0.0 });
+  const diodeMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5, metalness: 0.15 });
+  const battMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.55, metalness: 0.1 });
+  const blackMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.6, metalness: 0.0 });
+  const redMat = new THREE.MeshStandardMaterial({ color: 0xcc2222, roughness: 0.4, metalness: 0.2 });
+  const goldMat = new THREE.MeshStandardMaterial({ color: 0xffd700, roughness: 0.25, metalness: 0.95 });
+
+  // nice!nano PCB: dark black with slight sheen
+  const nanoPcbMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.6, metalness: 0.15 });
+
+  // USB-C port: chrome
+  const chromeMat = new THREE.MeshStandardMaterial({ color: 0xd0d0d0, roughness: 0.15, metalness: 0.98, envMapIntensity: 1.5 });
+
+  // Cable: dark braided steel
+  const cableMat = new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.35, metalness: 0.7 });
+
+  // ── Layer stack thicknesses (mm) ──
+  const Z_BOTTOM = 0;
+  const T_BOTTOM_PLATE = 1.0;     // bamboo bottom plate
+  const T_CORK_LOWER = 0.5;       // cork gasket
+  const T_PCB = 1.6;              // FR-4 PCB
+  const T_CORK_UPPER = 0.5;       // cork gasket
+  const T_SWITCH_PLATE = 1.2;     // bamboo switch plate
+  const T_FRAME = T_BOTTOM_PLATE + T_CORK_LOWER + T_PCB + T_CORK_UPPER + T_SWITCH_PLATE; // 4.8mm
+
+  Z_CORK_LOWER = Z_BOTTOM + T_BOTTOM_PLATE;
+  Z_PCB = Z_CORK_LOWER + T_CORK_LOWER;
+  Z_CORK_UPPER = Z_PCB + T_PCB;
+  Z_SWITCH_PLATE = Z_CORK_UPPER + T_CORK_UPPER;
+  const Z_SWITCH_PLATE_TOP = Z_SWITCH_PLATE + T_SWITCH_PLATE;
+  const Z_SWITCH_BASE = Z_SWITCH_PLATE_TOP;
+  const Z_KEYCAP = Z_SWITCH_BASE + 3.5;
+  const Z_STEM = Z_SWITCH_BASE + 2.5;
+  const Z_PCB_TOP = Z_PCB + T_PCB;
+  const Z_DIODE = Z_PCB_TOP + 0.6;
+
+  // ── Extrude helper ──
+  function extrudeLayer(shapes, depth, material, zOff, bevel) {
+    const grp = new THREE.Group();
+    const opts = { depth, bevelEnabled: !!bevel, ...(bevel || {}) };
+    shapes.forEach(shape => {
+      const geo = new THREE.ExtrudeGeometry(shape, opts);
+      const m = new THREE.Mesh(geo, material);
+      m.position.z = zOff;
+      m.castShadow = true;
+      m.receiveShadow = true;
+      grp.add(m);
+    });
+    return grp;
+  }
+
+  // ── Build complete keyboard (both halves as one group, then split) ──
+  const boardGroup = new THREE.Group();
+
+  // Bottom plate — bamboo 1mm with chamfer
+  boardGroup.add(extrudeLayer(boardShapes, T_BOTTOM_PLATE, bambooMat, Z_BOTTOM,
+    { bevelEnabled: true, bevelThickness: 0.3, bevelSize: 0.3, bevelSegments: 2 }));
+
+  // Cork gasket lower
+  boardGroup.add(extrudeLayer(boardShapes, T_CORK_LOWER, corkMat, Z_CORK_LOWER));
+
+  // PCB (FR-4 green) — placeholder, material replaced after bbox calc
+  const pcbLayer = extrudeLayer(boardShapes, T_PCB, corkMat, Z_PCB);
+  boardGroup.add(pcbLayer);
+
+  // Cork gasket upper
+  boardGroup.add(extrudeLayer(boardShapes, T_CORK_UPPER, corkMat, Z_CORK_UPPER));
+
+  // Switch plate — bamboo with cutouts + chamfer
+  boardGroup.add(extrudeLayer(switchPlateShapes, T_SWITCH_PLATE, bambooSideMat, Z_SWITCH_PLATE,
+    { bevelEnabled: true, bevelThickness: 0.2, bevelSize: 0.2, bevelSegments: 1 }));
+
+  // Frame surround (wooden walls around the edge)
+  if (frameShapes.length) {
+    // Frame is the larger outline; we subtract the board from it to get the surround
+    const frameWithHoleShapes = [];
+    loader.parse(frameSvg).paths.forEach(p => {
+      SVGLoader.createShapes(p).forEach(fs => {
+        boardShapes.forEach(bs => fs.holes.push(new THREE.Path(bs.getPoints(12))));
+        frameWithHoleShapes.push(fs);
+      });
+    });
+    if (frameWithHoleShapes.length) {
+      boardGroup.add(extrudeLayer(frameWithHoleShapes, T_FRAME, bambooMat.clone(), Z_BOTTOM,
+        { bevelEnabled: true, bevelThickness: 0.4, bevelSize: 0.4, bevelSegments: 2 }));
+    }
+  }
+
+  // ── Compute bbox and center ──
+  const bbox = new THREE.Box3().setFromObject(boardGroup);
+  const center = new THREE.Vector3(); bbox.getCenter(center);
+  // Hinge is at the right edge of the left half (mirror axis)
+  hingeX = bbox.max.x;
+  hingeZ = center.z;
+  hingeCenterY = center.y;
+
+  // ── PCB texture ──
+  // PCB texture uses only left-half points (right half is mirrored)
+  const leftPts = {};
+  for (const [name, pt] of Object.entries(ergogenResults.points)) {
+    if (!pt.meta?.mirrored) leftPts[name] = pt;
+  }
+  const pcbTex = generatePCBTexture(1024, 1024, leftPts, bbox);
+  const pcbMat = new THREE.MeshStandardMaterial({ map: pcbTex.map, roughness: 0.65, metalness: 0.08 });
+  pcbLayer.traverse(obj => { if (obj.isMesh) obj.material = pcbMat; });
+
+  // ── Per-key components (InstancedMesh) ──
+  const pts = ergogenResults.points;
+  const ptEntries = Object.entries(pts);
+  const leftPtEntries = ptEntries.filter(([, p]) => !p.meta?.mirrored);
+  const rightPtEntries = ptEntries.filter(([, p]) => !!p.meta?.mirrored);
+
+  // Geometries
+  const switchGeo = new THREE.ExtrudeGeometry(roundedRectShape(14.2, 12.8, 0.8), { depth: 3.5, bevelEnabled: true, bevelThickness: 0.15, bevelSize: 0.15, bevelSegments: 1 });
+  const keycapGeo = new THREE.ExtrudeGeometry(roundedRectShape(14, 14, 1.5), { depth: 1.2, bevelEnabled: true, bevelThickness: 0.4, bevelSize: 0.4, bevelSegments: 3 });
+  const stemGeo = new THREE.CylinderGeometry(1.0, 1.0, 1.5, 8);
+  stemGeo.rotateX(Math.PI / 2);
+  const diodeGeo = new THREE.BoxGeometry(2.7, 1.6, 1.2);
+  const diodeLeadGeo = new THREE.BoxGeometry(0.4, 0.3, 0.8);
+
+  const nLeftKeys = leftPtEntries.length;
+  const switchInst = new THREE.InstancedMesh(switchGeo, switchMat, nLeftKeys);
+  switchInst.castShadow = true;
+  const keycapInst = new THREE.InstancedMesh(keycapGeo, keycapMat, nLeftKeys);
+  keycapInst.castShadow = true;
+  keycapInst.receiveShadow = true;
+  const stemInst = new THREE.InstancedMesh(stemGeo, steelMat.clone(), nLeftKeys);
+  const diodeInst = new THREE.InstancedMesh(diodeGeo, diodeMat, nLeftKeys);
+  const diodeLeadInst = new THREE.InstancedMesh(diodeLeadGeo, steelMat.clone(), nLeftKeys * 2);
+
+  const keycapBaseMatrices = new Float32Array(nLeftKeys * 16);
+
+  // ── Coordinate conversion ──
+  // Outlines use asym:'source' so SVG only contains left-half keys.
+  // Compute offset from switch cutout centroids (left-half only) vs left-half point positions.
+  let offX = 0, offY = 0;
+  if (switchShapes.length > 0 && leftPtEntries.length > 0) {
+    const cutoutBbox = new THREE.Box3();
+    switchShapes.forEach(s => {
+      const pts2 = s.getPoints(8);
+      pts2.forEach(p2 => cutoutBbox.expandByPoint(new THREE.Vector3(p2.x, p2.y, 0)));
+    });
+    const cutoutCenter = new THREE.Vector3(); cutoutBbox.getCenter(cutoutCenter);
+    const ptXs = leftPtEntries.map(([, p]) => p.x);
+    const ptYs = leftPtEntries.map(([, p]) => -p.y);
+    const ptCx = ptXs.reduce((a, b) => a + b, 0) / leftPtEntries.length;
+    const ptCy = ptYs.reduce((a, b) => a + b, 0) / leftPtEntries.length;
+    offX = cutoutCenter.x - ptCx;
+    offY = cutoutCenter.y - ptCy;
+  }
+
+  const dummy = new THREE.Object3D();
+
+  leftPtEntries.forEach(([name, pt], i) => {
+    const sx = pt.x + offX;
+    const sy = -pt.y + offY;
+    // Rotation: ergogen rotation is CCW degrees. In SVG (Y-down) space, negate it.
+    const sr = -pt.r * Math.PI / 180;
+
+    // Switch housing (centered on key position, sitting on switch plate)
+    // roundedRectShape is already centered at origin, so no offset needed
+    const m4 = new THREE.Matrix4();
+    m4.makeTranslation(sx, sy, Z_SWITCH_BASE);
+    const rot = new THREE.Matrix4().makeRotationZ(sr);
+    m4.multiply(rot);
+    switchInst.setMatrixAt(i, m4);
+
+    // Keycap (on top of switch, centered)
+    // roundedRectShape is already centered at origin, so no offset needed
+    const m4k = new THREE.Matrix4();
+    m4k.makeTranslation(sx, sy, Z_KEYCAP);
+    m4k.multiply(rot);
+    keycapInst.setMatrixAt(i, m4k);
+    m4k.toArray(keycapBaseMatrices, i * 16);
+
+    // Stem (centered)
+    dummy.position.set(sx, sy, Z_STEM);
+    dummy.rotation.set(0, 0, sr);
+    dummy.scale.set(1, 1, 1);
+    dummy.updateMatrix();
+    stemInst.setMatrixAt(i, dummy.matrix);
+
+    // Diode on PCB (offset 5mm below key in local coords)
+    const dox = sx + 5 * Math.sin(sr);
+    const doy = sy + 5 * Math.cos(sr);
+    dummy.position.set(dox, doy, Z_DIODE);
+    dummy.rotation.set(0, 0, sr);
+    dummy.updateMatrix();
+    diodeInst.setMatrixAt(i, dummy.matrix);
+
+    // Diode leads
+    dummy.position.set(dox - 1.8 * Math.cos(sr), doy + 1.8 * Math.sin(sr), Z_DIODE - 0.2);
+    dummy.rotation.set(0, 0, 0);
+    dummy.updateMatrix();
+    diodeLeadInst.setMatrixAt(i * 2, dummy.matrix);
+    dummy.position.set(dox + 1.8 * Math.cos(sr), doy - 1.8 * Math.sin(sr), Z_DIODE - 0.2);
+    dummy.updateMatrix();
+    diodeLeadInst.setMatrixAt(i * 2 + 1, dummy.matrix);
+  });
+
+  [switchInst, keycapInst, stemInst, diodeInst, diodeLeadInst].forEach(inst => {
+    inst.instanceMatrix.needsUpdate = true;
+    boardGroup.add(inst);
+  });
+
+  // ── Key letter labels ──
+  // Map ergogen point names to QWERTY keymap positions and render on keycaps
+  const keyMap = buildKeyPositionMap(pts);
+  const zmkToLabel = {
+    'Q':'Q','W':'W','E':'E','R':'R','T':'T','Y':'Y','U':'U','I':'I','O':'O','P':'P',
+    'A':'A','S':'S','D':'D','F':'F','G':'G','H':'H','J':'J','K':'K','L':'L',
+    'SEMI':';','Z':'Z','X':'X','C':'C','V':'V','B':'B','N':'N','M':'M',
+    'COMMA':',','DOT':'.','FSLH':'/','LGUI':'\u2318','SPACE':'\u2423','TAB':'\u21e5',
+    'RET':'\u21b5','BSPC':'\u232b','RALT':'Alt'
+  };
+  const labelTexCache = {};
+  function makeLabelTex(letter) {
+    if (labelTexCache[letter]) return labelTexCache[letter];
+    const lc = document.createElement('canvas'); lc.width = 128; lc.height = 128;
+    const lg = lc.getContext('2d');
+    lg.clearRect(0, 0, 128, 128);
+    lg.fillStyle = '#cccccc';
+    lg.font = 'bold 56px -apple-system, "Segoe UI", sans-serif';
+    lg.textAlign = 'center';
+    lg.textBaseline = 'middle';
+    lg.fillText(letter, 64, 64);
+    const t = new THREE.CanvasTexture(lc);
+    t.needsUpdate = true;
+    labelTexCache[letter] = t;
+    return t;
+  }
+  const labelGeo = new THREE.PlaneGeometry(13, 13);
+  const labelZ = Z_KEYCAP + 1.7;
+  // Map keys to correct keymap positions.
+  // DEFAULT_KEYMAPS.layer0 layout: rows interleaved (5 left + 5 right per row), then 3+3 thumb.
+  // Left half keys: row0 cols 0-4, row1 cols 0-4, row2 cols 0-4, thumb cols 0-2
+  // Right half keys: row0 cols 0-4, row1 cols 0-4, row2 cols 0-4, thumb cols 0-2
+  const layer0 = DEFAULT_KEYMAPS.layer0;
+  const nColsHalf = 5;
+  function getKeymapLabel(key) {
+    const isRight = key.mirrored;
+    const isThumb = key.zone !== 'matrix';
+    let idx;
+    if (isThumb) {
+      // Thumb keys: indices 30-32 (left), 33-35 (right)
+      const thumbBase = nColsHalf * 2 * 3; // 30
+      idx = thumbBase + (isRight ? nColsHalf - 2 : 0) + key.colIdx - (isThumb ? Math.min(...keyMap.allKeys.filter(k2 => k2.zone !== 'matrix' && k2.mirrored === key.mirrored).map(k2 => k2.colIdx)) : 0);
+      // Simpler: thumb keys sorted by colIdx within their half
+      const thumbKeys = (isRight ? keyMap.rightKeys : keyMap.leftKeys).filter(k2 => k2.zone !== 'matrix');
+      const thumbIdx = thumbKeys.indexOf(key);
+      idx = thumbBase + (isRight ? 3 : 0) + thumbIdx;
+    } else {
+      // Matrix: rowIdx 0 = top (R0), 1 = home (R1), 2 = bottom (R2)
+      const row = key.rowIdx;
+      idx = row * (nColsHalf * 2) + (isRight ? nColsHalf : 0) + key.colIdx;
+    }
+    if (idx < 0 || idx >= layer0.length) return null;
+    const zmk = layer0[idx];
+    return zmkToLabel[zmk] || zmk;
+  }
+  // Labels are added to separate groups (not boardGroup) to avoid mirrored text
+  // on the right half. They are attached to leftHalf/rightHalf after the split.
+  const leftLabelGroup = new THREE.Group();
+  const rightLabelGroup = new THREE.Group();
+  keyMap.leftKeys.forEach((k) => {
+    const label = getKeymapLabel(k);
+    if (!label) return;
+    const tex = makeLabelTex(label);
+    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false });
+    const lm = new THREE.Mesh(labelGeo, mat);
+    const pt2 = pts[k.name];
+    if (!pt2) return;
+    const sx2 = pt2.x + offX;
+    const sy2 = -pt2.y + offY;
+    const sr2 = -pt2.r * Math.PI / 180;
+    lm.position.set(sx2, sy2, labelZ);
+    lm.rotation.set(0, 0, sr2);
+    leftLabelGroup.add(lm);
+  });
+  // Right-half labels: match each right key to its left counterpart and store
+  // for mirror placement after the split (when hingeX is known).
+  const rightLabelData = [];
+  keyMap.rightKeys.forEach((k) => {
+    const label = getKeymapLabel(k);
+    if (!label) return;
+    // Find matching left key (same zone, colIdx, rowIdx)
+    const leftMatch = keyMap.leftKeys.find(lk => lk.zone === k.zone && lk.colIdx === k.colIdx && lk.rowIdx === k.rowIdx);
+    if (!leftMatch) return;
+    const lpt = pts[leftMatch.name];
+    if (!lpt) return;
+    const sx2 = lpt.x + offX;
+    const sy2 = -lpt.y + offY;
+    const sr2 = -lpt.r * Math.PI / 180;
+    rightLabelData.push({ label, leftSx: sx2, leftSy: sy2, leftSr: sr2 });
+  });
+
+  // ── nice!nano v2 controllers (proper position, visible USB-C) ──
+  function createNiceNano(posX, posY, usbFacingRight) {
+    const grp = new THREE.Group();
+    // PCB body 18×33×1.6mm
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(18, 33, 1.6),
+      nanoPcbMat
+    );
+    body.castShadow = true;
+    grp.add(body);
+
+    // Components on top (small IC packages)
+    const icGeo = new THREE.BoxGeometry(4, 4, 0.8);
+    const ic = new THREE.Mesh(icGeo, blackMat);
+    ic.position.set(0, 4, 1.2); grp.add(ic);
+    const ic2 = new THREE.Mesh(new THREE.BoxGeometry(3, 2.5, 0.6), blackMat);
+    ic2.position.set(-4, -6, 1.1); grp.add(ic2);
+
+    // USB-C port: 8.94 × 7.5 × 3.26mm, flush with one edge
+    const usbBody = new THREE.Mesh(
+      new THREE.BoxGeometry(8.94, 7.5, 3.26),
+      chromeMat
+    );
+    usbBody.castShadow = true;
+    // USB-C receptacle insert (dark opening)
+    const usbHole = new THREE.Mesh(
+      new THREE.BoxGeometry(7.0, 2.0, 2.0),
+      new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.9, metalness: 0.0 })
+    );
+    usbHole.position.set(0, -3.0, 0);
+    usbBody.add(usbHole);
+
+    // Position USB-C at the inner edge (facing the hinge/center)
+    usbBody.position.set(0, -33 / 2, 2.5);
+    if (usbFacingRight) usbBody.position.y = -33 / 2;
+    grp.add(usbBody);
+
+    // Gold pads along edges (12 per side)
+    const padGeo = new THREE.BoxGeometry(1.0, 0.5, 0.05);
+    for (let j = 0; j < 12; j++) {
+      const lp = new THREE.Mesh(padGeo, goldMat);
+      lp.position.set(-8.5, -13 + j * 2.54, 0.825); grp.add(lp);
+      const rp = new THREE.Mesh(padGeo, goldMat);
+      rp.position.set(8.5, -13 + j * 2.54, 0.825); grp.add(rp);
+    }
+
+    // Reset button (tiny)
+    const btnGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.4, 8);
+    btnGeo.rotateX(Math.PI / 2);
+    const btn = new THREE.Mesh(btnGeo, new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.5, metalness: 0.5 }));
+    btn.position.set(5, -12, 1.1); grp.add(btn);
+
+    grp.position.set(posX, posY, Z_PCB_TOP + 0.8);
+    // Rotate so USB faces the inner edge
+    if (usbFacingRight) grp.rotation.z = Math.PI;
+    return grp;
+  }
+
+  // Place nice!nano near the inner edge of the left half (right half is mirrored)
+  const nanoLeftX = hingeX - 20;
+  const nanoY = center.y + 5;
+  boardGroup.add(createNiceNano(nanoLeftX, nanoY, false));
+
+  // ── Batteries (under PCB, between bottom plate and PCB) ──
+  batteryGroup = new THREE.Group();
+  function addBattery(bx, by) {
+    const bg = new THREE.Group();
+    // LiPo pouch cell: 30×12×3mm, blue label with silver edges
+    const battBody = new THREE.Mesh(new THREE.BoxGeometry(12, 30, 3), battMat);
+    battBody.castShadow = true;
+    bg.add(battBody);
+    // Wires to nice!nano (red + black)
+    const wireRad = 0.25;
+    [{ color: redMat, dx: -2 }, { color: blackMat, dx: 2 }].forEach(w => {
+      const points = [
+        new THREE.Vector3(w.dx, -15, 0),
+        new THREE.Vector3(w.dx, -18, 1),
+        new THREE.Vector3(w.dx, -20, 2),
+      ];
+      const curve = new THREE.CatmullRomCurve3(points);
+      const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 8, wireRad, 6), w.color);
+      bg.add(tube);
+    });
+    bg.position.set(bx, by, Z_CORK_LOWER + T_CORK_LOWER / 2 + 1.5);
+    return bg;
+  }
+  batteryGroup.add(addBattery(hingeX - 35, center.y - 10));
+  boardGroup.add(batteryGroup);
+
+  // ── M2 screws and heat-set inserts ──
+  const screwPositions = [];
+  const bx0 = bbox.min.x + 10, bx1 = bbox.max.x - 10;
+  const by0 = bbox.min.y + 10, by1 = bbox.max.y - 10;
+  const bmx = (bbox.min.x + bbox.max.x) / 2, bmy = center.y;
+  [[bx0, by0], [bx0, by1], [bx0, bmy], [bx1, by0], [bx1, by1], [bx1, bmy], [bmx, by0]].forEach(([x, y]) => screwPositions.push({ x, y }));
+
+  const screwHeadGeo = new THREE.CylinderGeometry(2, 1, 1, 16);
+  screwHeadGeo.rotateX(Math.PI / 2);
+  const screwShaftGeo = new THREE.CylinderGeometry(1, 1, T_FRAME, 8);
+  screwShaftGeo.rotateX(Math.PI / 2);
+  const insertGeo = new THREE.CylinderGeometry(1.6, 1.6, 3, 16);
+  insertGeo.rotateX(Math.PI / 2);
+  const nScrews = screwPositions.length;
+
+  const screwHeadInst = new THREE.InstancedMesh(screwHeadGeo, chromeMat.clone(), nScrews);
+  screwHeadInst.castShadow = true;
+  const screwShaftInst = new THREE.InstancedMesh(screwShaftGeo, steelMat.clone(), nScrews);
+  const insertInst = new THREE.InstancedMesh(insertGeo, brassMat, nScrews);
+
+  screwPositions.forEach((sp, i) => {
+    dummy.position.set(sp.x, sp.y, Z_SWITCH_PLATE_TOP + 0.5);
+    dummy.rotation.set(0, 0, 0); dummy.scale.set(1, 1, 1);
+    dummy.updateMatrix();
+    screwHeadInst.setMatrixAt(i, dummy.matrix);
+    dummy.position.z = Z_BOTTOM + T_FRAME / 2;
+    dummy.updateMatrix();
+    screwShaftInst.setMatrixAt(i, dummy.matrix);
+    dummy.position.z = Z_BOTTOM + 1.5;
+    dummy.updateMatrix();
+    insertInst.setMatrixAt(i, dummy.matrix);
+  });
+  [screwHeadInst, screwShaftInst, insertInst].forEach(inst => {
+    inst.instanceMatrix.needsUpdate = true;
+    boardGroup.add(inst);
+  });
+
+  // ── Split into left/right halves ──
+  // boardGroup contains only the left half (source/unmirrored).
+  // Left half: wrap boardGroup in a group for fold animation control.
+  leftHalf = new THREE.Group();
+  leftHalf.add(boardGroup);
+  // Right half: clone boardGroup into a sub-group, mirror all geometry within it.
+  rightHalf = new THREE.Group();
+  const rightContent = boardGroup.clone(true);
+  // Apply mirror transform to the content sub-group (preserved during fold animation)
+  rightContent.applyMatrix4(new THREE.Matrix4().makeTranslation(-hingeX, 0, 0));
+  rightContent.applyMatrix4(new THREE.Matrix4().makeScale(-1, 1, 1));
+  rightContent.applyMatrix4(new THREE.Matrix4().makeTranslation(hingeX, 0, 0));
+  rightContent.traverse(obj => {
+    if (obj.isMesh || obj.isInstancedMesh) {
+      obj.material = obj.material.clone();
+      obj.material.side = THREE.DoubleSide;
+    }
+  });
+  rightHalf.add(rightContent);
+
+  // ── Add key letter labels (separate from boardGroup to avoid mirrored text) ──
+  leftHalf.add(leftLabelGroup);
+  // Right-half labels: mirror left positions around hingeX, flip rotation
+  rightLabelData.forEach(({ label, leftSx, leftSy, leftSr }) => {
+    const tex = makeLabelTex(label);
+    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false });
+    const lm = new THREE.Mesh(labelGeo, mat);
+    const mirroredX = 2 * hingeX - leftSx;
+    lm.position.set(mirroredX, leftSy, labelZ);
+    lm.rotation.set(0, 0, -leftSr); // mirror rotation
+    rightLabelGroup.add(lm);
+  });
+  rightHalf.add(rightLabelGroup);
+
+  scene.add(leftHalf);
+  scene.add(rightHalf);
+
+  // Clip planes (not used for geometry splitting but kept for potential fold overlap)
+  clipPlaneLeft = new THREE.Plane(new THREE.Vector3(1, 0, 0), -hingeX);
+  clipPlaneRight = new THREE.Plane(new THREE.Vector3(-1, 0, 0), hingeX);
+
+  // Store keycap refs for interaction
+  leftHalf.traverse(obj => { if (obj.isInstancedMesh && obj.geometry === keycapGeo) keycapMeshL = obj; });
+  rightHalf.traverse(obj => { if (obj.isInstancedMesh && obj.geometry === keycapGeo) keycapMeshR = obj; });
+  keycapBaseL = new Float32Array(keycapBaseMatrices);
+  keycapBaseR = new Float32Array(keycapBaseMatrices);
+
+  // ── Ball joint hinge (attached to halves, moves with fold) ──
+  // Hinge spans the gap between the two halves. Compute dimensions from bbox.
+  hingeGroup = new THREE.Group();
+  const hy = center.y;
+  const hz = center.z;
+  const halfBoardW = (bbox.max.x - bbox.min.x) / 2;
+  // Rod should reach from center into each half (~60% of half-width)
+  const rodLen = Math.max(15, halfBoardW * 0.35);
+  const rodOffset = rodLen / 2 + 5; // center of rod from hinge center
+  const flangeOffset = rodOffset + rodLen / 2 + 3; // flange just beyond rod end
+  const barrelLen = Math.max(20, rodOffset * 0.6); // barrel width at center
+
+  // Main barrel — polished steel cylinder
+  const barrelGeo = new THREE.CylinderGeometry(4, 4, barrelLen, 32);
+  barrelGeo.rotateZ(Math.PI / 2);
+  const barrel = new THREE.Mesh(barrelGeo, chromeMat.clone());
+  barrel.position.set(hingeX, hy, hz);
+  barrel.castShadow = true;
+  hingeGroup.add(barrel);
+
+  // Ball inside (visible at gaps)
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(3.5, 32, 32), copperMat);
+  ball.position.set(hingeX, hy, hz);
+  hingeGroup.add(ball);
+
+  // Rod stubs going into each half
+  const rodGeo2 = new THREE.CylinderGeometry(2.5, 2.5, rodLen, 12);
+  rodGeo2.rotateZ(Math.PI / 2);
+  const rodL = new THREE.Mesh(rodGeo2, steelMat.clone());
+  rodL.position.set(hingeX - rodOffset, hy, hz); rodL.castShadow = true;
+  hingeGroup.add(rodL);
+  const rodR = new THREE.Mesh(rodGeo2, steelMat.clone());
+  rodR.position.set(hingeX + rodOffset, hy, hz); rodR.castShadow = true;
+  hingeGroup.add(rodR);
+
+  // Mounting flanges
+  const flangeGeo = new THREE.BoxGeometry(6, 12, T_FRAME);
+  const flangeL = new THREE.Mesh(flangeGeo, steelMat.clone());
+  flangeL.position.set(hingeX - flangeOffset, hy, hz); flangeL.castShadow = true;
+  hingeGroup.add(flangeL);
+  const flangeR = new THREE.Mesh(flangeGeo, steelMat.clone());
+  flangeR.position.set(hingeX + flangeOffset, hy, hz); flangeR.castShadow = true;
+  hingeGroup.add(flangeR);
+
+  // Thumb locking nut
+  const tnutGeo = new THREE.CylinderGeometry(5, 5, 3, 6);
+  const tnut = new THREE.Mesh(tnutGeo, brassMat.clone());
+  tnut.position.set(hingeX, hy - 8, hz);
+  tnut.rotation.x = Math.PI / 2;
+  tnut.castShadow = true;
+  hingeGroup.add(tnut);
+  scene.add(hingeGroup);
+
+  // ── Cables (braided steel, connected to keyboard edges) ──
+  // Cables span from left half outer edge to right half outer edge (mirrored)
+  cablesGroup = new THREE.Group();
+  const cableZ2 = Z_SWITCH_PLATE_TOP + 1;
+  const cYtop = bbox.min.y + (bbox.max.y - bbox.min.y) * 0.2;
+  const cYbot = bbox.min.y + (bbox.max.y - bbox.min.y) * 0.8;
+  const rightEdgeX = 2 * hingeX - bbox.min.x; // mirrored left edge
+
+  [cYtop, cYbot].forEach(cy => {
+    const cPoints = [
+      new THREE.Vector3(bbox.min.x + 6, cy, cableZ2),
+      new THREE.Vector3(bbox.min.x + (hingeX - bbox.min.x) * 0.5, cy, cableZ2 - 2),
+      new THREE.Vector3(hingeX, cy, cableZ2 - 3),
+      new THREE.Vector3(rightEdgeX - (hingeX - bbox.min.x) * 0.5, cy, cableZ2 - 2),
+      new THREE.Vector3(rightEdgeX - 6, cy, cableZ2),
+    ];
+    const curve = new THREE.CatmullRomCurve3(cPoints);
+    const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 48, 0.6, 8, false), cableMat);
+    tube.castShadow = true;
+    cablesGroup.add(tube);
+
+    // Turnbuckle at center
+    const tbGeo = new THREE.CylinderGeometry(2, 2, 16, 12);
+    tbGeo.rotateZ(Math.PI / 2);
+    const tb = new THREE.Mesh(tbGeo, chromeMat.clone());
+    tb.position.set(hingeX, cy, cableZ2 - 3); tb.castShadow = true;
+    cablesGroup.add(tb);
+
+    // Clevis pins at attachment points
+    [bbox.min.x + 6, rightEdgeX - 6].forEach(px => {
+      const pinGeo = new THREE.CylinderGeometry(1.2, 1.2, 4, 8);
+      const pin = new THREE.Mesh(pinGeo, chromeMat.clone());
+      pin.position.set(px, cy, cableZ2); pin.castShadow = true;
+      cablesGroup.add(pin);
+    });
+  });
+  scene.add(cablesGroup);
+
+  // Ground plane removed — keyboard floats in space
+
+  // ── Labels (sprite text) ──
+  labelSprites = [];
+  function addLabel(text, x, y, z) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'rgba(0,0,0,0)'; ctx.fillRect(0, 0, 256, 64);
+    ctx.font = '600 22px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center';
+    ctx.fillText(text, 128, 38);
+    const tex = new THREE.CanvasTexture(canvas);
+    const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 0.85 });
+    const sprite = new THREE.Sprite(spriteMat);
+    sprite.position.set(x, y, z);
+    sprite.scale.set(40, 10, 1);
+    sprite.visible = false;
+    scene.add(sprite);
+    labelSprites.push(sprite);
+    return sprite;
+  }
+  addLabel('Bamboo Bottom Plate', hingeX, bbox.min.y - 8, Z_BOTTOM + T_BOTTOM_PLATE / 2);
+  addLabel('Cork Gasket', hingeX, bbox.min.y - 8, Z_CORK_LOWER + T_CORK_LOWER / 2);
+  addLabel('FR-4 PCB', hingeX, bbox.min.y - 8, Z_PCB + T_PCB / 2);
+  addLabel('Switch Plate', hingeX, bbox.min.y - 8, Z_SWITCH_PLATE + T_SWITCH_PLATE / 2);
+  addLabel('Cherry MX ULP', hingeX, bbox.min.y - 8, Z_KEYCAP);
+  addLabel('nice!nano v2', nanoLeftX, bbox.min.y - 8, Z_PCB_TOP + 4);
+  addLabel('Ball Joint Hinge', hingeX, hy + 20, hz + 8);
+  addLabel('LiPo Battery', hingeX - 35, bbox.min.y - 8, Z_CORK_LOWER + 3);
+
+  // ── Camera position (3/4 top-down, slightly from front) ──
+  // Full keyboard spans both halves: left edge = bbox.min.x, right edge = rightEdgeX
+  const fullWidth = rightEdgeX - bbox.min.x;
+  const fullHeight = bbox.max.y - bbox.min.y;
+  const maxDim = Math.max(fullWidth, fullHeight);
+  camera.position.set(hingeX + maxDim * 0.15, center.y - maxDim * 0.6, maxDim * 0.7);
+  controls.target.set(hingeX, center.y, Z_SWITCH_PLATE_TOP / 2);
+  controls.update();
+
+  document.getElementById('fold-slider').value = 180;
+  document.getElementById('fold-val').textContent = '180';
+  document.getElementById('butterfly-slider').value = 0;
+  document.getElementById('butterfly-val').textContent = '0';
+  document.getElementById('butterfly-limit').textContent = '(max 45\u00b0)';
+
+  // ── Interactions ──
+  renderer.domElement.addEventListener('pointerdown', onKeyPress);
+  renderer.domElement.addEventListener('pointermove', onHover);
+
+  if (!page2Initialized) {
+    page2Initialized = true;
+    animate();
+  }
+}
+
+// ── Key press ──
+function onKeyPress(event) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const targets = [keycapMeshL, keycapMeshR].filter(Boolean);
+  const hits = raycaster.intersectObjects(targets);
+  if (!hits.length) return;
+  const hit = hits[0];
+  const id = hit.instanceId;
+  const mesh = hit.object;
+  const bases = mesh === keycapMeshL ? keycapBaseL : keycapBaseR;
+  const key = `${mesh.id}_${id}`;
+  if (pressedKeys.has(key)) return;
+  pressedKeys.set(key, { id, mesh, bases, progress: 0, dir: 'down', t0: performance.now() });
+}
+
+// ── Hover highlight ──
+function onHover(event) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const targets = [keycapMeshL, keycapMeshR].filter(Boolean);
+  const hits = raycaster.intersectObjects(targets);
+  renderer.domElement.style.cursor = hits.length ? 'pointer' : '';
+}
+
+function updateKeyPresses() {
+  const now = performance.now();
+  for (const [key, st] of pressedKeys) {
+    const elapsed = now - st.t0;
+    if (st.dir === 'down') {
+      st.progress = Math.min(1, elapsed / PRESS_DOWN_MS);
+      if (st.progress >= 1) { st.dir = 'up'; st.t0 = now; }
+    } else {
+      st.progress = Math.max(0, 1 - elapsed / PRESS_UP_MS);
+      if (st.progress <= 0) {
+        const bm = new THREE.Matrix4(); bm.fromArray(st.bases, st.id * 16);
+        st.mesh.setMatrixAt(st.id, bm);
+        st.mesh.instanceMatrix.needsUpdate = true;
+        pressedKeys.delete(key); continue;
+      }
+    }
+    const ease = st.progress * (2 - st.progress);
+    const bm = new THREE.Matrix4(); bm.fromArray(st.bases, st.id * 16);
+    const pos = new THREE.Vector3(), quat = new THREE.Quaternion(), scl = new THREE.Vector3();
+    bm.decompose(pos, quat, scl);
+    pos.z -= PRESS_DEPTH * ease;
+    st.mesh.setMatrixAt(st.id, new THREE.Matrix4().compose(pos, quat, scl));
+    st.mesh.instanceMatrix.needsUpdate = true;
+  }
+}
+
+// ── Fold mechanism ──
+function applyFold(angleDeg) {
+  if (!leftHalf || !rightHalf) return;
+  const halfRad = (angleDeg * Math.PI / 180) / 2;
+  const pivot = new THREE.Vector3(hingeX, hingeCenterY, hingeZ);
+  const yAxis = new THREE.Vector3(0, 1, 0);
+
+  // Keys fold TOGETHER (inward): left half rotates -Y, right half rotates +Y
+  // This makes the keycap surfaces face each other when fully folded.
+  leftHalf.position.set(0, 0, 0);
+  leftHalf.quaternion.identity();
+  if (angleDeg > 0) {
+    const leftOffset = new THREE.Vector3(-hingeX, -hingeCenterY, -hingeZ);
+    leftHalf.position.copy(leftOffset.clone().applyAxisAngle(yAxis, -halfRad).sub(leftOffset));
+    leftHalf.quaternion.setFromAxisAngle(yAxis, -halfRad);
+  }
+
+  rightHalf.position.set(0, 0, 0);
+  rightHalf.quaternion.identity();
+  if (angleDeg > 0) {
+    const rightOffset = new THREE.Vector3(-hingeX, -hingeCenterY, -hingeZ);
+    rightHalf.position.copy(rightOffset.clone().applyAxisAngle(yAxis, halfRad).sub(rightOffset));
+    rightHalf.quaternion.setFromAxisAngle(yAxis, halfRad);
+  }
+
+  // Articulate hinge components
+  if (hingeGroup) {
+    hingeGroup.children.forEach(child => {
+      if (!child.userData._origPos) {
+        child.userData._origPos = child.position.clone();
+        child.userData._origQuat = child.quaternion.clone();
+      }
+      child.position.copy(child.userData._origPos);
+      child.quaternion.copy(child.userData._origQuat);
+    });
+
+    if (angleDeg > 0) {
+      hingeGroup.children.forEach(child => {
+        const origX = child.userData._origPos.x;
+        if (origX < hingeX - 2) {
+          const p = child.position.clone().sub(pivot);
+          p.applyAxisAngle(yAxis, -halfRad);
+          child.position.copy(p.add(pivot));
+          const q = new THREE.Quaternion().setFromAxisAngle(yAxis, -halfRad);
+          child.quaternion.premultiply(q);
+        } else if (origX > hingeX + 2) {
+          const p = child.position.clone().sub(pivot);
+          p.applyAxisAngle(yAxis, halfRad);
+          child.position.copy(p.add(pivot));
+          const q = new THREE.Quaternion().setFromAxisAngle(yAxis, halfRad);
+          child.quaternion.premultiply(q);
+        }
+      });
+    }
+  }
+
+  // Cables only visible when flat
+  if (cablesGroup) cablesGroup.visible = angleDeg === 0 && document.getElementById('show-cables').checked;
+}
+
+// ── Toolbar handlers ──
+document.getElementById('fold-slider').addEventListener('input', e => {
+  const v = +e.target.value;
+  document.getElementById('fold-val').textContent = v;
+  applyFold(v);
+});
+document.getElementById('show-cables').addEventListener('change', e => {
+  if (cablesGroup) cablesGroup.visible = e.target.checked && +document.getElementById('fold-slider').value === 180;
+});
+document.getElementById('show-hinge').addEventListener('change', e => {
+  if (hingeGroup) hingeGroup.visible = e.target.checked;
+});
+document.getElementById('show-battery').addEventListener('change', e => {
+  if (batteryGroup) batteryGroup.visible = e.target.checked;
+});
+document.getElementById('show-exploded').addEventListener('change', e => {
+  explodedView = e.target.checked;
+  applyExplodedView(explodedView);
+});
+document.getElementById('show-labels').addEventListener('change', e => {
+  showLabels = e.target.checked;
+  labelSprites.forEach(s => s.visible = showLabels);
+});
+
+function applyExplodedView(on) {
+  if (!leftHalf || !rightHalf) return;
+  // In exploded view, separate layers vertically
+  const gap = on ? 12 : 0;
+  // We traverse each half and shift Z based on layer index
+  [leftHalf, rightHalf].forEach(half => {
+    half.traverse(obj => {
+      if (!obj.isMesh && !obj.isInstancedMesh) return;
+      // Use original Z to determine layer offset
+      if (!obj.userData._origZ && obj.userData._origZ !== 0) {
+        obj.userData._origZ = obj.position.z;
+      }
+      const origZ = obj.userData._origZ;
+      let layerIdx = 0;
+      if (origZ >= Z_SWITCH_PLATE) layerIdx = 4;
+      else if (origZ >= Z_CORK_UPPER) layerIdx = 3;
+      else if (origZ >= Z_PCB) layerIdx = 2;
+      else if (origZ >= Z_CORK_LOWER) layerIdx = 1;
+      obj.position.z = origZ + layerIdx * gap;
+    });
+  });
+}
+
+// ── Animation loop ──
+function animate() {
+  requestAnimationFrame(animate);
+  updateKeyPresses();
+  if (controls) controls.update();
+  if (renderer && scene && camera) renderer.render(scene, camera);
+}
+
+window.addEventListener('resize', () => {
+  if (!renderer) return;
+  const vp = document.getElementById('viewport');
+  const w = vp.clientWidth, h = vp.clientHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+});
+
+
+// Forward toolbar events to renderer
+function updateButterflyLimit() {
+  if (!window._newSceneCtrl) return;
+  const foldVal = +document.getElementById('fold-slider').value;
+  const maxB = window._newSceneCtrl.getMaxButterflyDeg(foldVal);
+  const bSlider = document.getElementById('butterfly-slider');
+  const bLimit = document.getElementById('butterfly-limit');
+  bSlider.max = maxB;
+  if (+bSlider.value > maxB) {
+    bSlider.value = maxB;
+    document.getElementById('butterfly-val').textContent = maxB;
+    window._newSceneCtrl.applyButterfly(maxB);
+  }
+  bLimit.textContent = maxB < 45 ? `(max ${maxB}\u00b0 at fold ${foldVal}\u00b0)` : `(max ${maxB}\u00b0)`;
+}
+document.getElementById('fold-slider').addEventListener('input', () => {
+  if (!window._newSceneCtrl) return;
+  const v = +document.getElementById('fold-slider').value;
+  document.getElementById('fold-val').textContent = v;
+  window._newSceneCtrl.applyFold(v);
+  updateButterflyLimit();
+});
+document.getElementById('butterfly-slider').addEventListener('input', () => {
+  if (!window._newSceneCtrl) return;
+  const v = +document.getElementById('butterfly-slider').value;
+  document.getElementById('butterfly-val').textContent = v;
+  window._newSceneCtrl.applyButterfly(v);
+});
+document.getElementById('show-cables').addEventListener('change', () => {
+  if (window._newSceneCtrl) window._newSceneCtrl.setCablesVisible(document.getElementById('show-cables').checked && +document.getElementById('fold-slider').value === 180);
+});
+document.getElementById('show-hinge').addEventListener('change', () => {
+  if (window._newSceneCtrl) window._newSceneCtrl.setHingeVisible(document.getElementById('show-hinge').checked);
+});
+document.getElementById('show-battery').addEventListener('change', () => {
+  if (window._newSceneCtrl) window._newSceneCtrl.setBatteryVisible(document.getElementById('show-battery').checked);
+});
+document.getElementById('show-exploded').addEventListener('change', () => {
+  if (window._newSceneCtrl) window._newSceneCtrl.applyExplodedView(document.getElementById('show-exploded').checked);
+});
+document.getElementById('show-labels').addEventListener('change', () => {
+  if (window._newSceneCtrl) window._newSceneCtrl.setLabelsVisible(document.getElementById('show-labels').checked);
+});
+
+document.getElementById('show-axes').addEventListener('change', () => {
+  if (window._newSceneCtrl) window._newSceneCtrl.setAxesVisible(document.getElementById('show-axes').checked);
+});
+
+// R26-R29: Per-layer visibility toggles
+['keycaps', 'switchPlate', 'corkUpper', 'pcb', 'corkLower', 'bottomPlate'].forEach(layerId => {
+  document.getElementById('layer-' + layerId).addEventListener('change', (e) => {
+    if (window._newSceneCtrl) window._newSceneCtrl.setLayerVisible(layerId, e.target.checked);
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════
+// PAGE 3: BOM
+// ══════════════════════════════════════════════════════════════════
+
+function renderBOM() {
+  const el = document.getElementById('bom-content');
+  let html = '';
+  let grand = 0;
+  BOM.forEach(phase => {
+    html += `<h2>${phase.name}</h2>`;
+    html += '<table><tr><th>Qty</th><th>Component</th><th>Unit Price</th><th>Total</th></tr>';
+    phase.items.forEach(item => {
+      const link = item.url ? `<a href="${item.url}" target="_blank" rel="noopener">${item.component}</a>` : item.component;
+      html += `<tr><td>${item.qty}</td><td>${link}</td><td>&euro;${item.price.toFixed(2)}</td><td>&euro;${item.total.toFixed(2)}</td></tr>`;
+    });
+    html += `</table><div class="phase-total">Subtotal: &euro;${phase.total.toFixed(2)}</div>`;
+    grand += phase.total;
+  });
+  html += `<div class="grand-total">Grand Total: &euro;${grand.toFixed(2)}</div>`;
+  el.innerHTML = html;
+}
+
+document.getElementById('btn-download').addEventListener('click', async () => {
+  if (!ergogenResults) { alert('No design generated yet. Go back to step 2.'); return; }
+  const zip = new JSZip();
+  const outlines = ergogenResults.outlines;
+  for (const [name, content] of Object.entries(outlines)) {
+    if (content && typeof content === 'object') {
+      if (content.svg) zip.file(`outlines/${name}.svg`, content.svg);
+      if (content.dxf) zip.file(`outlines/${name}.dxf`, content.dxf);
+    }
+  }
+  if (generatedConfig) {
+    zip.file('config.yaml', jsyaml.dump(generatedConfig, { sortKeys: false }));
+  }
+  // Add ZMK shield and test files
+  if (ergogenResults.points) {
+    const shield = generateZmkShield(ergogenResults.points, generatedConfig);
+    const tests = generateTestSuite(ergogenResults.points, generatedConfig);
+    // Shield files
+    zip.file('zmk/boards/shields/keyboard/keyboard.dtsi', shield.dtsi);
+    zip.file('zmk/boards/shields/keyboard/keyboard_left.overlay', shield.leftOverlay);
+    zip.file('zmk/boards/shields/keyboard/keyboard_right.overlay', shield.rightOverlay);
+    zip.file('zmk/boards/shields/keyboard/keyboard.keymap', shield.keymap);
+    zip.file('zmk/boards/shields/keyboard/keyboard.conf', shield.conf);
+    zip.file('zmk/boards/shields/keyboard/Kconfig.shield', shield.kconfigShield);
+    zip.file('zmk/boards/shields/keyboard/Kconfig.defconfig', shield.kconfigDefconfig);
+    // Test files
+    zip.file('zmk/tests/behavior_keymap.dtsi', tests.behaviorKeymap);
+    for (const [name, files] of Object.entries(tests.cases)) {
+      zip.file(`zmk/tests/${name}/native_posix_64.keymap`, files.keymap);
+      zip.file(`zmk/tests/${name}/events.patterns`, files.patterns);
+      zip.file(`zmk/tests/${name}/keycode_events.snapshot`, files.snapshot);
+    }
+    // Docker / runner
+    zip.file('zmk/Dockerfile', tests.dockerfile);
+    zip.file('zmk/run_tests.sh', tests.runScript);
+    zip.file('zmk/docker-compose.yml', tests.dockerCompose);
+    zip.file('zmk/README.md', tests.readme);
+  }
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'keyboard-design.zip';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+
+// ══════════════════════════════════════════════════════════════════
+// PAGE 4: FIRMWARE & TEST
+// ══════════════════════════════════════════════════════════════════
+
+let page4Initialized = false;
+
+function initPage4() {
+  if (!ergogenResults || !ergogenResults.points) return;
+  const el = document.getElementById('firmware-content');
+
+  const shield = generateZmkShield(ergogenResults.points, generatedConfig);
+  const tests = generateTestSuite(ergogenResults.points, generatedConfig);
+  const { map } = shield;
+  const nKeys = map.allKeys.length;
+
+  // ── File browser ──
+  const files = [
+    { name: 'keyboard.dtsi', content: shield.dtsi },
+    { name: 'keyboard_left.overlay', content: shield.leftOverlay },
+    { name: 'keyboard_right.overlay', content: shield.rightOverlay },
+    { name: 'keyboard.keymap', content: shield.keymap },
+    { name: 'keyboard.conf', content: shield.conf },
+    { name: 'Kconfig.shield', content: shield.kconfigShield },
+    { name: 'Kconfig.defconfig', content: shield.kconfigDefconfig },
+    { name: 'Dockerfile', content: tests.dockerfile },
+    { name: 'run_tests.sh', content: tests.runScript },
+  ];
+
+  let html = '<h2>ZMK Shield Files</h2>';
+  html += `<p style="color:#aaa;font-size:13px;margin-bottom:12px;">${nKeys} keys detected (${map.leftKeys.length} left + ${map.rightKeys.length} right), ${map.nColsPerHalf} columns per half, ${map.nRows} rows</p>`;
+
+  // File tabs
+  html += '<div class="file-tabs">';
+  files.forEach((f, i) => {
+    html += `<div class="file-tab${i === 0 ? ' active' : ''}" data-file="${i}">${f.name}</div>`;
+  });
+  html += '</div>';
+  html += '<div class="file-content">';
+  files.forEach((f, i) => {
+    const escaped = f.content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    html += `<pre id="file-pre-${i}" style="display:${i === 0 ? 'block' : 'none'}">${escaped}</pre>`;
+  });
+  html += '</div>';
+
+  // ── Keymap visualization ──
+  html += '<h2>Keymap Visualization</h2>';
+  html += '<div class="layer-tabs">';
+  ['Layer 0: QWERTY', 'Layer 1: Numbers', 'Layer 2: Nav'].forEach((name, i) => {
+    html += `<div class="layer-tab${i === 0 ? ' active' : ''}" data-layer="${i}">${name}</div>`;
+  });
+  html += '</div>';
+
+  const layers = [DEFAULT_KEYMAPS.layer0, DEFAULT_KEYMAPS.layer1, DEFAULT_KEYMAPS.layer2];
+  layers.forEach((layer, li) => {
+    html += `<div class="keymap-grid" id="keymap-layer-${li}" style="display:${li === 0 ? 'block' : 'none'}">`;
+    const keysPerRow = map.nColsPerHalf;
+    // Matrix rows (left + right)
+    const matrixRows = new Set();
+    map.leftKeys.filter(k => k.zone === 'matrix').forEach(k => matrixRows.add(k.rowIdx));
+    const sortedMatRows = [...matrixRows].sort((a, b) => a - b);
+
+    let keyIdx = 0;
+    sortedMatRows.forEach(row => {
+      html += '<div class="keymap-row">';
+      // Left half keys for this row
+      const leftInRow = map.leftKeys.filter(k => k.zone === 'matrix' && k.rowIdx === row).sort((a,b) => a.colIdx - b.colIdx);
+      leftInRow.forEach(k => {
+        const label = (layer[keyIdx] || '').replace('TRANS','--').replace('NONE','');
+        html += `<div class="keymap-key">${label}</div>`;
+        keyIdx++;
+      });
+      // Gap
+      html += '<div class="keymap-key spacer"></div>';
+      // Right half keys for this row
+      const rightInRow = map.rightKeys.filter(k => k.zone === 'matrix' && k.rowIdx === row).sort((a,b) => a.colIdx - b.colIdx);
+      rightInRow.forEach(k => {
+        const label = (layer[keyIdx] || '').replace('TRANS','--').replace('NONE','');
+        html += `<div class="keymap-key">${label}</div>`;
+        keyIdx++;
+      });
+      html += '</div>';
+    });
+
+    // Thumb row
+    const leftThumbs = map.leftKeys.filter(k => k.zone === 'thumb').sort((a,b) => a.colIdx - b.colIdx);
+    const rightThumbs = map.rightKeys.filter(k => k.zone === 'thumb').sort((a,b) => a.colIdx - b.colIdx);
+    if (leftThumbs.length || rightThumbs.length) {
+      html += '<div class="keymap-row">';
+      // Spacers to push thumbs to center
+      for (let s = 0; s < keysPerRow - leftThumbs.length; s++) html += '<div class="keymap-key spacer"></div>';
+      leftThumbs.forEach(k => {
+        const label = (layer[keyIdx] || '').replace('TRANS','--').replace('NONE','');
+        html += `<div class="keymap-key thumb">${label}</div>`;
+        keyIdx++;
+      });
+      html += '<div class="keymap-key spacer"></div>';
+      rightThumbs.forEach(k => {
+        const label = (layer[keyIdx] || '').replace('TRANS','--').replace('NONE','');
+        html += `<div class="keymap-key thumb">${label}</div>`;
+        keyIdx++;
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+  });
+
+  // ── Test info ──
+  html += '<h2>Hardware Emulation Tests</h2>';
+  html += '<div class="test-info">';
+  html += '<h3>native_posix verification (no QEMU needed)</h3>';
+  html += '<p style="font-size:13px;color:#ccc;margin-bottom:8px;">ZMK firmware compiles to a native Linux binary. Mock key events are injected and HID output is verified against expected snapshots.</p>';
+  html += '<ul class="test-list">';
+  html += `<li><strong>all-keys-register</strong> — press/release all ${nKeys} keys, verify HID keycodes</li>`;
+  html += '<li><strong>layer-switch</strong> — hold thumb key, verify alternate layer keycode</li>';
+  html += '<li><strong>matrix-ghosting</strong> — simultaneous same-row presses, verify no ghost keys</li>';
+  html += '</ul>';
+  html += '<h3 style="margin-top:12px;">Run tests</h3>';
+  html += '<pre>cd zmk\nchmod +x run_tests.sh\n./run_tests.sh    # requires Docker</pre>';
+  html += '<p style="font-size:12px;color:#888;margin-top:8px;">Tests and shield files are included in the ZIP download from step 3.</p>';
+  html += '</div>';
+
+  // ── Download button ──
+  html += '<div class="download-row">';
+  html += '<button id="btn-download-zmk">Download ZMK Config + Tests (.zip)</button>';
+  html += '</div>';
+
+  el.innerHTML = html;
+
+  // Wire up file tabs
+  el.querySelectorAll('.file-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      el.querySelectorAll('.file-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const idx = tab.dataset.file;
+      el.querySelectorAll('.file-content pre').forEach((p, i) => p.style.display = i === +idx ? 'block' : 'none');
+    });
+  });
+
+  // Wire up layer tabs
+  el.querySelectorAll('.layer-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      el.querySelectorAll('.layer-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const li = tab.dataset.layer;
+      el.querySelectorAll('.keymap-grid').forEach((g, i) => g.style.display = i === +li ? 'block' : 'none');
+    });
+  });
+
+  // Wire up download button
+  el.querySelector('#btn-download-zmk').addEventListener('click', async () => {
+    const zip = new JSZip();
+    // Shield files
+    zip.file('boards/shields/keyboard/keyboard.dtsi', shield.dtsi);
+    zip.file('boards/shields/keyboard/keyboard_left.overlay', shield.leftOverlay);
+    zip.file('boards/shields/keyboard/keyboard_right.overlay', shield.rightOverlay);
+    zip.file('boards/shields/keyboard/keyboard.keymap', shield.keymap);
+    zip.file('boards/shields/keyboard/keyboard.conf', shield.conf);
+    zip.file('boards/shields/keyboard/Kconfig.shield', shield.kconfigShield);
+    zip.file('boards/shields/keyboard/Kconfig.defconfig', shield.kconfigDefconfig);
+    // Test files
+    zip.file('tests/behavior_keymap.dtsi', tests.behaviorKeymap);
+    for (const [name, tfiles] of Object.entries(tests.cases)) {
+      zip.file(`tests/${name}/native_posix_64.keymap`, tfiles.keymap);
+      zip.file(`tests/${name}/events.patterns`, tfiles.patterns);
+      zip.file(`tests/${name}/keycode_events.snapshot`, tfiles.snapshot);
+    }
+    zip.file('Dockerfile', tests.dockerfile);
+    zip.file('run_tests.sh', tests.runScript);
+    zip.file('docker-compose.yml', tests.dockerCompose);
+    zip.file('README.md', tests.readme);
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'keyboard-zmk.zip';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════════
+updateToolbar();
+
+// Expose functions on window for testability / browser control
+window.goToPage = goToPage;
+window.computeErgogenPreview = computeErgogenPreview;
+window.drawCanvas = drawCanvas;
+window.updateToolbar = updateToolbar;
+</script>
+</body>
+</html>

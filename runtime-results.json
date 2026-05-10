@@ -1,0 +1,96 @@
+{
+  "timestamp": "2026-05-08T21:35:17.004Z",
+  "example": "examples/extended/finger-positions (another copy).json",
+  "summary": {
+    "total": 12,
+    "pass": 12,
+    "fail": 0
+  },
+  "results": {
+    "L01": {
+      "status": "PASS",
+      "details": "Canvas click registered — tap count=1, toolbar has 6 column buttons, no fatal JS errors",
+      "method": "AUTO",
+      "timestamp": "2026-05-08T21:34:24.024Z"
+    },
+    "L06": {
+      "status": "PASS",
+      "details": "Load button present: \"Load\", visible, file inputs: 0",
+      "method": "AUTO",
+      "timestamp": "2026-05-08T21:34:24.036Z"
+    },
+    "L10": {
+      "status": "PASS",
+      "details": "Export button present: \"Export\", visible",
+      "method": "AUTO",
+      "timestamp": "2026-05-08T21:34:24.045Z"
+    },
+    "R03": {
+      "status": "PASS",
+      "details": "All layers present: bottom(8), cork_low(2), pcb(17), cork_up(2), switchPlate(54), keycaps(72). Total: 145 meshes, 80507 vertices",
+      "method": "AUTO",
+      "timestamp": "2026-05-08T21:34:45.190Z"
+    },
+    "R04": {
+      "status": "PASS",
+      "details": "Exploded view: 5.8x Z-separation, 10 labels, 7 material bands, 23 distinct colors",
+      "method": "AUTO",
+      "timestamp": "2026-05-08T21:34:46.685Z"
+    },
+    "S08": {
+      "status": "PASS",
+      "details": "All 5 layers found: bottomPlate, corkLower, pcb, corkUpper, switchPlate. 12 distinct Z levels in stack region",
+      "method": "AUTO",
+      "timestamp": "2026-05-08T21:34:48.166Z"
+    },
+    "S09": {
+      "status": "PASS",
+      "details": "Multi-layer stack: 11 distinct Z-levels spanning 5.1mm (Z: 0.0 to 5.1). 101 board meshes. Levels: [0.0, 1.0, 1.5, 2.4, 2.8, 3.1, 3.6, 3.9, 4.7, 5.0, 5.1]",
+      "method": "AUTO",
+      "timestamp": "2026-05-08T21:34:49.640Z"
+    },
+    "R06": {
+      "status": "PASS",
+      "details": "Hinge articulates: 4/13 components moved, max delta=18.4mm, halves articulated=true",
+      "method": "AUTO",
+      "timestamp": "2026-05-08T21:34:51.180Z"
+    },
+    "R09": {
+      "status": "PASS",
+      "details": "6 cables visible at fold=0° (cablesGroup.visible=true)",
+      "method": "AUTO",
+      "timestamp": "2026-05-08T21:34:52.665Z"
+    },
+    "R12": {
+      "status": "PASS",
+      "details": "36 key label planes with canvas textures found (of 36 total planes). Sprites: 10",
+      "method": "AUTO",
+      "timestamp": "2026-05-08T21:34:54.149Z"
+    },
+    "R14": {
+      "status": "PASS",
+      "details": "Fold direction is INWARD at 160°. Left normal X=0.98 (→right), right normal X=-0.98 (→left). Dot=-0.94",
+      "method": "AUTO",
+      "timestamp": "2026-05-08T21:34:55.679Z"
+    },
+    "DG-01": {
+      "status": "PASS",
+      "details": "12 outline meshes, 60960 vertices (smooth). [AI] Screenshot saved for human review: /home/a/git/git/keyboard/wip/runtime-screenshots/dg01-board-outline.png",
+      "method": "AI",
+      "timestamp": "2026-05-08T21:35:07.829Z"
+    }
+  },
+  "consoleErrorCount": 0,
+  "screenshots": [
+    "dg01-board-outline.png",
+    "page1-toolbar.png",
+    "page2-3d-final.png",
+    "page2-3d-initial.png",
+    "r17-purple-outlines.png",
+    "r17r18-stage1-outlines.png",
+    "r19-fold0.png",
+    "r20-fold180.png",
+    "r20-fold270.png",
+    "topdown-view.png"
+  ]
+}

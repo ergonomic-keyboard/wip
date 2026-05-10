@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Keyboard Hinge Mechanisms</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #1a1a2e; color: #e0e0e0; overflow: hidden; }
+
+  #ui {
+    position: absolute; top: 0; left: 0; width: 300px; height: 100vh;
+    background: rgba(20, 20, 40, 0.95); padding: 16px; overflow-y: auto;
+    border-right: 1px solid #333; z-index: 10;
+  }
+  h1 { font-size: 15px; margin-bottom: 10px; color: #fff; }
+  h2 { font-size: 12px; margin: 12px 0 5px; color: #aaa; text-transform: uppercase; letter-spacing: 1px; }
+  .tabs { display: flex; gap: 3px; margin-bottom: 10px; flex-wrap: wrap; }
+  .tab {
+    flex: 1; min-width: 65px; padding: 7px 4px; border: 1px solid #444; background: transparent;
+    color: #aaa; cursor: pointer; font-size: 10px; border-radius: 4px; text-align: center;
+  }
+  .tab:hover { border-color: #666; color: #fff; }
+  .tab.active { background: #2a4a7f; border-color: #4a7fcf; color: #fff; }
+  .slider-group { margin: 8px 0; }
+  .slider-group label { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px; color: #bbb; }
+  .slider-group label span { color: #4a9fff; font-weight: 600; }
+  input[type="range"] { width: 100%; height: 5px; -webkit-appearance: none; background: #333; border-radius: 3px; outline: none; }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #4a9fff; cursor: pointer; }
+  .cb { margin: 5px 0; display: flex; align-items: center; gap: 6px; font-size: 11px; color: #bbb; }
+  .cb input { accent-color: #4a9fff; }
+  .desc { margin-top: 10px; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 5px; font-size: 10px; line-height: 1.5; color: #999; }
+  .desc strong { color: #ccc; }
+
+  #canvas-container { position: absolute; top: 0; left: 300px; right: 0; bottom: 0; }
+  .view-hint { position: absolute; bottom: 8px; right: 8px; font-size: 10px; color: #444; z-index: 5; pointer-events: none; }
+
+  /* ── Top-right numbered legend overlay ── */
+  #part-legend {
+    position: absolute; top: 12px; right: 12px; z-index: 5;
+    background: rgba(15, 15, 30, 0.88); border: 1px solid #333; border-radius: 6px;
+    padding: 10px 14px; pointer-events: none; min-width: 180px;
+  }
+  #part-legend h3 { font-size: 11px; color: #888; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.8px; }
+  .pl-row { display: flex; align-items: center; gap: 8px; margin: 3px 0; font-size: 11px; color: #ccc; }
+  .pl-dot {
+    width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; color: #000; flex-shrink: 0;
+  }
+  .pl-line { width: 24px; height: 0; border-top: 1px solid #666; flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<div id="ui">
+  <h1>Keyboard Hinge Mechanisms</h1>
+  <div class="tabs">
+    <button class="tab active" data-mech="A">A: Turnbuckle + Hirth</button>
+    <button class="tab" data-mech="B">B: Oarlock + Bolt</button>
+    <button class="tab" data-mech="C">C: Gimbal</button>
+    <button class="tab" data-mech="D">D: Ball + Cam</button>
+  </div>
+
+  <h2>Fold Axis</h2>
+  <div class="slider-group">
+    <label>Tent Angle <span id="fold-val">30</span>&deg;</label>
+    <input type="range" id="fold-slider" min="0" max="90" value="30">
+  </div>
+  <h2>Butterfly Axis</h2>
+  <div class="slider-group">
+    <label>Butterfly Angle <span id="butterfly-val">15</span>&deg;</label>
+    <input type="range" id="butterfly-slider" min="0" max="45" value="15">
+  </div>
+
+  <div class="cb"><input type="checkbox" id="exploded-check"><label for="exploded-check">Exploded view</label></div>
+  <div class="cb"><input type="checkbox" id="cables-check" checked><label for="cables-check">Show hook cables</label></div>
+
+  <h2>Camera</h2>
+  <div class="tabs" style="margin-bottom:6px">
+    <button class="tab cam-btn" data-cam="perspective">3/4</button>
+    <button class="tab cam-btn" data-cam="top">Top</button>
+    <button class="tab cam-btn" data-cam="front">Front</button>
+    <button class="tab cam-btn" data-cam="back">Back</button>
+  </div>
+
+  <div class="desc mech-panel" data-for="A">
+    <strong>A — Turnbuckle + Hirth:</strong><br>
+    Angled rods meet at center eye on belly-to-screen axis. Turnbuckle sets fold angle. Hirth half-moon discs (flat pizza on back) lock butterfly. Butterfly nut clamps teeth. Magnet for quick-release.
+  </div>
+  <div class="desc mech-panel" data-for="B" style="display:none">
+    <strong>B — Oarlock + Bolt-draw:</strong><br>
+    Central hinge rod. Oarlock eyes at each half's edge. Draw bolt runs front-to-back (Z-to-W left, M-to-O right). Rotating grip draws rod end-nut for butterfly. Continuous adjustment.
+  </div>
+  <div class="desc mech-panel" data-for="C" style="display:none">
+    <strong>C — Gimbal:</strong><br>
+    Outer ring = fold axis, inner ring = butterfly axis. Each axis has its own thumb screw. Two separate lock operations required.
+  </div>
+  <div class="desc mech-panel" data-for="D" style="display:none">
+    <strong>D — Ball + Cam Lever:</strong><br>
+    Ball-and-socket for both axes. Cam lever (flip to lock). Simpler but friction-based — may drift under typing force on lap.
+  </div>
+</div>
+
+<div id="canvas-container">
+  <div class="view-hint">Drag to orbit &middot; Scroll to zoom &middot; Right-drag to pan</div>
+  <div id="part-legend"></div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ── Scene ──
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1a2e);
+scene.fog = new THREE.Fog(0x1a1a2e, 400, 600);
+
+const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 800);
+camera.position.set(0, 150, 250);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.shadowMap.enabled = true;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+container.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.target.set(0, 15, 0);
+
+// ── Lights ──
+scene.add(new THREE.AmbientLight(0x404060, 0.8));
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+dirLight.position.set(80, 150, 100);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.set(2048, 2048);
+dirLight.shadow.camera.left = -200; dirLight.shadow.camera.right = 200;
+dirLight.shadow.camera.top = 200; dirLight.shadow.camera.bottom = -200;
+scene.add(dirLight);
+const fill = new THREE.DirectionalLight(0x8888ff, 0.4);
+fill.position.set(-60, 80, -40);
+scene.add(fill);
+
+// ── Ground ──
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(600, 600),
+  new THREE.MeshStandardMaterial({ color: 0x222233, roughness: 0.9 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// ── Materials ──
+const matBamboo = new THREE.MeshStandardMaterial({ color: 0xd4a574, roughness: 0.6 });
+const matKey = new THREE.MeshStandardMaterial({ color: 0xf0e0c8, roughness: 0.4 });
+const matMetal = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.3, metalness: 0.8 });
+const matRod = new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.25, metalness: 0.85 });
+const matRodRed = new THREE.MeshStandardMaterial({ color: 0xcc4444, roughness: 0.3, metalness: 0.7 });
+const matGreen = new THREE.MeshStandardMaterial({ color: 0x44aa44, roughness: 0.3, metalness: 0.6 });
+const matYellow = new THREE.MeshStandardMaterial({ color: 0xdddd44, roughness: 0.3, metalness: 0.6 });
+const matBlue = new THREE.MeshStandardMaterial({ color: 0x4488cc, roughness: 0.2, metalness: 0.5 });
+const matPurple = new THREE.MeshStandardMaterial({ color: 0xaa44cc, roughness: 0.3, metalness: 0.6 });
+const matCable = new THREE.MeshStandardMaterial({ color: 0xcc6644, roughness: 0.5, metalness: 0.3 });
+const matGimbalOuter = new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 0.3, metalness: 0.8 });
+const matGimbalInner = new THREE.MeshStandardMaterial({ color: 0xcc4444, roughness: 0.3, metalness: 0.7 });
+const matBall = new THREE.MeshStandardMaterial({ color: 0xcc4444, roughness: 0.15, metalness: 0.9 });
+
+// ── Dims ──
+const HW = 80, HD = 110, HH = 4.8;
+const ROD_ANGLE = 15 * Math.PI / 180;
+
+// ══════════════════════════════
+// NUMBERED DOT SPRITE SYSTEM
+// ══════════════════════════════
+
+// Creates a small colored sphere with a number texture as a sprite child
+// Returns { mesh, spriteNumber } — add mesh to scene
+function makeNumberedMarker(num, color, size) {
+  size = size || 3;
+  const sphere = new THREE.Mesh(
+    new THREE.SphereGeometry(size, 12, 12),
+    new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.85 })
+  );
+
+  // Create number sprite
+  const canvas = document.createElement('canvas');
+  canvas.width = 64; canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#000';
+  ctx.font = 'bold 44px Arial';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(String(num), 32, 34);
+  const tex = new THREE.CanvasTexture(canvas);
+  const spriteMat = new THREE.SpriteMaterial({ map: tex, depthTest: false });
+  const sprite = new THREE.Sprite(spriteMat);
+  sprite.scale.set(size * 2.5, size * 2.5, 1);
+  sphere.add(sprite);
+
+  return sphere;
+}
+
+// ══════════════════════════════
+// LEGEND DATA PER MECHANISM
+// ══════════════════════════════
+
+const legendData = {
+  A: [
+    { num: 1, color: '#d4a574', label: 'Keyboard halves (bamboo)' },
+    { num: 2, color: '#888888', label: 'Angled hinge rod (L)' },
+    { num: 3, color: '#888888', label: 'Angled hinge rod (R)' },
+    { num: 4, color: '#888888', label: 'Center hinge eye' },
+    { num: 5, color: '#44aa44', label: 'Turnbuckle adjustment rod' },
+    { num: 6, color: '#4488cc', label: 'Quick-release magnet' },
+    { num: 7, color: '#44aa44', label: 'Hirth half-moon disc (flat on back)' },
+    { num: 8, color: '#dddd44', label: 'Butterfly nut (clamps teeth)' },
+    { num: 9, color: '#cc6644', label: 'Hooked cable with turnbuckle' },
+  ],
+  B: [
+    { num: 1, color: '#d4a574', label: 'Keyboard halves (bamboo)' },
+    { num: 2, color: '#888888', label: 'Fold hinge rod (Z axis)' },
+    { num: 3, color: '#44aa44', label: 'Oarlock eye' },
+    { num: 4, color: '#cc4444', label: 'Oarlock rod (through eye)' },
+    { num: 5, color: '#aa44cc', label: 'Rod end nut (stopper)' },
+    { num: 6, color: '#dddd44', label: 'Draw bolt + grip (front-to-back)' },
+    { num: 7, color: '#cc6644', label: 'Hooked cable with turnbuckle' },
+  ],
+  C: [
+    { num: 1, color: '#d4a574', label: 'Keyboard halves (bamboo)' },
+    { num: 2, color: '#777777', label: 'Outer gimbal ring (fold axis)' },
+    { num: 3, color: '#cc4444', label: 'Inner gimbal ring (butterfly axis)' },
+    { num: 4, color: '#dddd44', label: 'Thumb screw (fold)' },
+    { num: 5, color: '#dddd44', label: 'Thumb screw (butterfly)' },
+    { num: 6, color: '#cc6644', label: 'Hooked cable with turnbuckle' },
+  ],
+  D: [
+    { num: 1, color: '#d4a574', label: 'Keyboard halves (bamboo)' },
+    { num: 2, color: '#cc4444', label: 'Ball (2-axis rotation)' },
+    { num: 3, color: '#888888', label: 'Socket housing' },
+    { num: 4, color: '#dddd44', label: 'Cam lever (flip to lock)' },
+    { num: 5, color: '#cc6644', label: 'Hooked cable with turnbuckle' },
+  ],
+};
+
+function updateLegendPanel(mechKey) {
+  const el = document.getElementById('part-legend');
+  const items = legendData[mechKey];
+  let html = '<h3>Parts</h3>';
+  for (const it of items) {
+    html += `<div class="pl-row"><div class="pl-dot" style="background:${it.color}">${it.num}</div><div class="pl-line"></div><span>${it.label}</span></div>`;
+  }
+  el.innerHTML = html;
+}
+updateLegendPanel('A');
+
+// ══════════════════════════════
+// HELPERS
+// ══════════════════════════════
+
+function buildHalf(parent, side) {
+  const body = new THREE.Mesh(new THREE.BoxGeometry(HW, HH, HD), matBamboo);
+  body.position.set(side * HW / 2, HH / 2, 0);
+  body.castShadow = true;
+  parent.add(body);
+  for (let col = 0; col < 6; col++) {
+    for (let row = 0; row < 3; row++) {
+      const k = new THREE.Mesh(new THREE.BoxGeometry(9, 1.2, 11), matKey);
+      k.position.set(side === -1 ? -(7 + col * 12.5) : (7 + col * 12.5), HH + 0.6, -33 + row * 22);
+      parent.add(k);
+    }
+  }
+  // Number marker "1" on the keyboard body
+  const m = makeNumberedMarker(1, 0xd4a574);
+  m.position.set(side * HW / 2, HH + 5, 0);
+  parent.add(m);
+}
+
+function buildCableGroup(markerNum) {
+  const group = new THREE.Group();
+  const cableZ = [-30, 25];
+  const cableLen = HW * 2 + 30;
+  for (const z of cableZ) {
+    const cg = new THREE.Group();
+    const rod = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, cableLen, 8), matCable);
+    rod.rotation.z = Math.PI / 2;
+    cg.add(rod);
+    for (const hs of [-1, 1]) {
+      const hv = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 10, 8), matCable);
+      hv.position.set(hs * (cableLen / 2 + 5), 0, 0);
+      cg.add(hv);
+      const ht = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 8, 8), matCable);
+      ht.rotation.z = Math.PI / 2;
+      ht.position.set(hs * (cableLen / 2 + 5), 5, 0);
+      cg.add(ht);
+      const b = new THREE.Mesh(new THREE.SphereGeometry(2, 8, 8), matMetal);
+      b.position.set(hs * (cableLen / 2 + 1), 5, 0);
+      cg.add(b);
+    }
+    const tb = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 14, 6), matMetal);
+    tb.rotation.z = Math.PI / 2;
+    cg.add(tb);
+    cg.position.set(0, -HH / 2 - 3, z);
+    group.add(cg);
+  }
+  // Marker on one cable
+  const m = makeNumberedMarker(markerNum, 0xcc6644);
+  m.position.set(40, -HH / 2 - 3, -30);
+  group.add(m);
+  return group;
+}
+
+// ══════════════════════════════════════════
+// MECHANISM A: Turnbuckle + Hirth
+// ══════════════════════════════════════════
+
+const mechA = new THREE.Group();
+const mechA_L = new THREE.Group();
+const mechA_R = new THREE.Group();
+const mechA_center = new THREE.Group();
+const mechA_cables = buildCableGroup(9);
+
+function buildMechA() {
+  buildHalf(mechA_L, -1);
+  buildHalf(mechA_R, +1);
+
+  // Angled hinge rods
+  const rodLen = 25;
+  for (const side of [-1, 1]) {
+    const rod = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, rodLen, 12), matMetal);
+    rod.rotation.z = side * (Math.PI / 2 - ROD_ANGLE);
+    rod.position.set(side * (rodLen / 2) * Math.cos(ROD_ANGLE), HH / 2 + (rodLen / 2) * Math.sin(ROD_ANGLE), 0);
+    const marker = makeNumberedMarker(side === -1 ? 2 : 3, 0x888888, 2.5);
+    marker.position.set(0, rodLen * 0.35, 0);
+    rod.add(marker);
+    if (side === -1) mechA_L.add(rod);
+    else mechA_R.add(rod);
+  }
+
+  // Center eye
+  const eyeY = HH / 2 + rodLen * Math.sin(ROD_ANGLE);
+  const eyeOuter = new THREE.Mesh(new THREE.TorusGeometry(4, 1.5, 12, 24), matMetal);
+  eyeOuter.rotation.y = Math.PI / 2;
+  eyeOuter.position.set(0, eyeY, 0);
+  mechA_center.add(eyeOuter);
+  const m4 = makeNumberedMarker(4, 0x888888, 2.5);
+  m4.position.set(0, eyeY + 8, 0);
+  mechA_center.add(m4);
+
+  // Hinge pin
+  const pin = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 20, 12), matRod);
+  pin.rotation.x = Math.PI / 2;
+  pin.position.set(0, eyeY, 0);
+  mechA_center.add(pin);
+
+  // Turnbuckle (green)
+  const tbY = HH / 2 - 6, tbLen = 35;
+  const tbRod = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, tbLen, 8), matGreen);
+  tbRod.rotation.z = Math.PI / 2;
+  tbRod.position.set(0, tbY, 0);
+  mechA_center.add(tbRod);
+  const tbBody = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 12, 8), matGreen);
+  tbBody.rotation.z = Math.PI / 2;
+  tbBody.position.set(0, tbY, 0);
+  mechA_center.add(tbBody);
+  const m5 = makeNumberedMarker(5, 0x44aa44, 2.5);
+  m5.position.set(0, tbY - 6, 0);
+  mechA_center.add(m5);
+
+  // Attachment spheres
+  for (const side of [-1, 1]) {
+    const a = new THREE.Mesh(new THREE.SphereGeometry(2.5, 8, 8), matGreen);
+    a.position.set(side * tbLen / 2, tbY, 0);
+    mechA_center.add(a);
+  }
+
+  // Quick-release magnet
+  const mag = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 3, 16), matBlue);
+  mag.position.set(0, eyeY, 12);
+  mechA_center.add(mag);
+  const m6 = makeNumberedMarker(6, 0x4488cc, 2.5);
+  m6.position.set(0, eyeY + 6, 16);
+  mechA_center.add(m6);
+
+  // Hirth half-moon discs (flat pizza on back)
+  const HR = 30;
+  for (const side of [-1, 1]) {
+    const hg = new THREE.Group();
+    const shape = new THREE.Shape();
+    shape.absarc(0, 0, HR, -Math.PI / 2, Math.PI / 2, false);
+    shape.lineTo(0, -HR);
+    const disc = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: 2, bevelEnabled: false }), matGreen);
+    disc.rotation.x = -Math.PI / 2;
+    if (side === 1) disc.rotation.z = Math.PI;
+    hg.add(disc);
+    for (let i = 0; i < 12; i++) {
+      const ang = (-Math.PI / 2) + (Math.PI / 12) * (i + 0.5);
+      const t = new THREE.Mesh(new THREE.BoxGeometry(HR * 0.8, 1.5, 2), matGreen);
+      t.position.set(Math.cos(ang) * HR * 0.6, -1, Math.sin(ang) * HR * 0.6);
+      t.rotation.y = -ang;
+      hg.add(t);
+    }
+    hg.position.set(side * 5, -1, 0);
+    if (side === -1) {
+      mechA_L.add(hg);
+      const m7 = makeNumberedMarker(7, 0x44aa44, 2.5);
+      m7.position.set(-15, -4, 0);
+      mechA_L.add(m7);
+    } else {
+      mechA_R.add(hg);
+    }
+  }
+
+  // Butterfly nut
+  const ng = new THREE.Group();
+  const cb = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 18, 8), matYellow);
+  cb.rotation.z = Math.PI / 2;
+  ng.add(cb);
+  for (const w of [-1, 1]) {
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(3, 8, 2), matYellow);
+    wing.position.set(10, w * 4, 0);
+    ng.add(wing);
+  }
+  ng.position.set(0, -3, 0);
+  mechA_center.add(ng);
+  const m8 = makeNumberedMarker(8, 0xdddd44, 2.5);
+  m8.position.set(16, -3, 0);
+  mechA_center.add(m8);
+
+  mechA.add(mechA_L);
+  mechA.add(mechA_R);
+  mechA.add(mechA_center);
+  mechA.add(mechA_cables);
+}
+
+// ══════════════════════════════════════════
+// MECHANISM B: Oarlock + Bolt-draw
+// ══════════════════════════════════════════
+
+const mechB = new THREE.Group();
+const mechB_L = new THREE.Group();
+const mechB_R = new THREE.Group();
+const mechB_center = new THREE.Group();
+const mechB_cables = buildCableGroup(7);
+
+function buildMechB() {
+  buildHalf(mechB_L, -1);
+  buildHalf(mechB_R, +1);
+
+  // Fold hinge rod
+  const hLen = 20;
+  const hr = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, hLen, 12), matMetal);
+  hr.rotation.x = Math.PI / 2;
+  hr.position.set(0, HH / 2, 0);
+  mechB_center.add(hr);
+  const mb2 = makeNumberedMarker(2, 0x888888, 2.5);
+  mb2.position.set(0, HH / 2 + 6, 0);
+  mechB_center.add(mb2);
+
+  // Oarlock eyes
+  for (const side of [-1, 1]) {
+    const eye = new THREE.Mesh(new THREE.TorusGeometry(4, 1.2, 8, 20), matGreen);
+    eye.rotation.y = Math.PI / 2;
+    eye.position.set(side * 2, HH / 2, 0);
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 6, 8), matGreen);
+    stem.rotation.z = Math.PI / 2;
+    stem.position.set(side * 6, HH / 2, 0);
+    if (side === -1) {
+      mechB_L.add(eye); mechB_L.add(stem);
+      const mb3 = makeNumberedMarker(3, 0x44aa44, 2.5);
+      mb3.position.set(-2, HH / 2 + 8, 0);
+      mechB_L.add(mb3);
+    } else {
+      mechB_R.add(eye); mechB_R.add(stem);
+    }
+  }
+
+  // Oarlock rods + end nuts
+  for (const rz of [-15, 15]) {
+    const rLen = HW * 2 + 20;
+    const rod = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, rLen, 8), matRodRed);
+    rod.rotation.z = Math.PI / 2;
+    rod.position.set(0, HH / 2, rz);
+    mechB_center.add(rod);
+    for (const es of [-1, 1]) {
+      const nut = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, 3, 6), matPurple);
+      nut.rotation.z = Math.PI / 2;
+      nut.position.set(es * (rLen / 2 + 2), HH / 2, rz);
+      mechB_center.add(nut);
+    }
+  }
+  const mb4 = makeNumberedMarker(4, 0xcc4444, 2.5);
+  mb4.position.set(50, HH / 2 + 5, -15);
+  mechB_center.add(mb4);
+  const mb5 = makeNumberedMarker(5, 0xaa44cc, 2.5);
+  mb5.position.set(-95, HH / 2 + 5, 15);
+  mechB_center.add(mb5);
+
+  // Draw bolts (front-to-back, Z axis)
+  for (const side of [-1, 1]) {
+    const bLen = HD * 0.7;
+    const bg = new THREE.Group();
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, bLen, 8), matYellow);
+    shaft.rotation.x = Math.PI / 2;
+    bg.add(shaft);
+    const grip = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 10, 16), matYellow);
+    grip.rotation.x = Math.PI / 2;
+    grip.position.set(0, 0, -bLen / 2 - 5);
+    bg.add(grip);
+    for (let i = 0; i < 10; i++) {
+      const a = (Math.PI * 2 / 10) * i;
+      const kn = new THREE.Mesh(new THREE.BoxGeometry(0.4, 11, 0.8),
+        new THREE.MeshStandardMaterial({ color: 0xbbbb33, roughness: 0.4, metalness: 0.7 }));
+      kn.position.set(Math.cos(a) * 4.3, Math.sin(a) * 4.3, -bLen / 2 - 5);
+      kn.rotation.z = a;
+      bg.add(kn);
+    }
+    bg.position.set(side * 15, HH / 2, 0);
+    if (side === -1) {
+      mechB_L.add(bg);
+      const mb6 = makeNumberedMarker(6, 0xdddd44, 2.5);
+      mb6.position.set(-15, HH / 2 + 7, -bLen / 2 - 5);
+      mechB_L.add(mb6);
+    } else {
+      mechB_R.add(bg);
+    }
+  }
+
+  mechB.add(mechB_L);
+  mechB.add(mechB_R);
+  mechB.add(mechB_center);
+  mechB.add(mechB_cables);
+}
+
+// ══════════════════════════════════════════
+// MECHANISM C: Gimbal
+// ══════════════════════════════════════════
+
+const mechC = new THREE.Group();
+const mechC_L = new THREE.Group();
+const mechC_R = new THREE.Group();
+const mechC_center = new THREE.Group();
+const mechC_cables = buildCableGroup(6);
+
+function buildMechC() {
+  buildHalf(mechC_L, -1);
+  buildHalf(mechC_R, +1);
+  const gy = HH / 2 + 8;
+
+  // Outer ring (fold)
+  const or1 = new THREE.Mesh(new THREE.TorusGeometry(14, 2, 12, 32), matGimbalOuter);
+  or1.rotation.x = Math.PI / 2;
+  or1.position.set(0, gy, 0);
+  mechC_center.add(or1);
+  const mc2 = makeNumberedMarker(2, 0x777777, 2.5);
+  mc2.position.set(0, gy + 12, 0);
+  mechC_center.add(mc2);
+
+  // Fold axis pins
+  for (const s of [-1, 1]) {
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 10, 8), matMetal);
+    p.rotation.x = Math.PI / 2;
+    p.position.set(0, gy, s * 16);
+    mechC_center.add(p);
+  }
+
+  // Inner ring (butterfly)
+  const ir = new THREE.Mesh(new THREE.TorusGeometry(10, 1.5, 12, 32), matGimbalInner);
+  ir.rotation.z = Math.PI / 2;
+  ir.position.set(0, gy, 0);
+  mechC_center.add(ir);
+  const mc3 = makeNumberedMarker(3, 0xcc4444, 2.5);
+  mc3.position.set(14, gy, 0);
+  mechC_center.add(mc3);
+
+  // Butterfly axis pins
+  for (const s of [-1, 1]) {
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 8, 8), matMetal);
+    p.rotation.z = Math.PI / 2;
+    p.position.set(s * 12, gy, 0);
+    mechC_center.add(p);
+  }
+
+  // Thumb screw (fold)
+  const ts1 = new THREE.Group();
+  ts1.add(new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 8, 8), matYellow).rotateX(Math.PI / 2));
+  const h1 = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 4, 16), matYellow);
+  h1.rotation.x = Math.PI / 2; h1.position.set(0, 0, -6);
+  ts1.add(h1);
+  ts1.position.set(0, gy, -20);
+  mechC_center.add(ts1);
+  const mc4 = makeNumberedMarker(4, 0xdddd44, 2.5);
+  mc4.position.set(0, gy, -28);
+  mechC_center.add(mc4);
+
+  // Thumb screw (butterfly)
+  const ts2 = new THREE.Group();
+  ts2.add(new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 8, 8), matYellow).rotateZ(Math.PI / 2));
+  const h2 = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 4, 16), matYellow);
+  h2.rotation.z = Math.PI / 2; h2.position.set(-6, 0, 0);
+  ts2.add(h2);
+  ts2.position.set(-18, gy, 0);
+  mechC_center.add(ts2);
+  const mc5 = makeNumberedMarker(5, 0xdddd44, 2.5);
+  mc5.position.set(-28, gy, 0);
+  mechC_center.add(mc5);
+
+  // Brackets
+  for (const s of [-1, 1]) {
+    const br = new THREE.Mesh(new THREE.BoxGeometry(3, 10, 6), matMetal);
+    br.position.set(s * 4, HH / 2 + 4, 0);
+    if (s === -1) mechC_L.add(br); else mechC_R.add(br);
+  }
+
+  mechC.add(mechC_L);
+  mechC.add(mechC_R);
+  mechC.add(mechC_center);
+  mechC.add(mechC_cables);
+}
+
+// ══════════════════════════════════════════
+// MECHANISM D: Ball + Cam Lever
+// ══════════════════════════════════════════
+
+const mechD = new THREE.Group();
+const mechD_L = new THREE.Group();
+const mechD_R = new THREE.Group();
+const mechD_center = new THREE.Group();
+const mechD_cables = buildCableGroup(5);
+
+function buildMechD() {
+  buildHalf(mechD_L, -1);
+  buildHalf(mechD_R, +1);
+  const by = HH / 2 + 6, br = 10;
+
+  // Ball
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(br, 24, 24), matBall);
+  ball.position.set(0, by, 0);
+  mechD_center.add(ball);
+  const md2 = makeNumberedMarker(2, 0xcc4444, 2.5);
+  md2.position.set(0, by + br + 5, 0);
+  mechD_center.add(md2);
+
+  // Socket halves
+  const sg = new THREE.SphereGeometry(br + 3, 24, 24, 0, Math.PI);
+  for (const s of [-1, 1]) {
+    const sock = new THREE.Mesh(sg, matMetal);
+    sock.position.set(0, by, 0);
+    sock.rotation.y = s > 0 ? 0 : Math.PI;
+    if (s === -1) mechD_L.add(sock); else mechD_R.add(sock);
+  }
+  const md3 = makeNumberedMarker(3, 0x888888, 2.5);
+  md3.position.set(16, by, 0);
+  mechD_center.add(md3);
+
+  // Clamp bolt
+  const clb = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, br * 2 + 16, 8), matMetal);
+  clb.rotation.x = Math.PI / 2;
+  clb.position.set(0, by, 0);
+  mechD_center.add(clb);
+
+  // Cam lever
+  const lg = new THREE.Group();
+  lg.add(new THREE.Mesh(new THREE.BoxGeometry(4, 3, 25), matYellow));
+  const lh = new THREE.Mesh(new THREE.SphereGeometry(3.5, 8, 8), matYellow);
+  lh.position.set(0, 0, 13);
+  lg.add(lh);
+  const lp = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, 5, 12), matYellow);
+  lp.rotation.x = Math.PI / 2;
+  lp.position.set(0, 0, -12);
+  lg.add(lp);
+  lg.position.set(0, by, br + 12);
+  mechD_center.add(lg);
+  const md4 = makeNumberedMarker(4, 0xdddd44, 2.5);
+  md4.position.set(0, by + 8, br + 20);
+  mechD_center.add(md4);
+
+  // Brackets
+  for (const s of [-1, 1]) {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(3, 10, 6), matMetal);
+    b.position.set(s * 4, HH / 2 + 3, 0);
+    if (s === -1) mechD_L.add(b); else mechD_R.add(b);
+  }
+
+  mechD.add(mechD_L);
+  mechD.add(mechD_R);
+  mechD.add(mechD_center);
+  mechD.add(mechD_cables);
+}
+
+// ══════════════════════════════════════════
+// BUILD ALL
+// ══════════════════════════════════════════
+buildMechA();
+buildMechB();
+buildMechC();
+buildMechD();
+
+const mechs = { A: mechA, B: mechB, C: mechC, D: mechD };
+const pL = { A: mechA_L, B: mechB_L, C: mechC_L, D: mechD_L };
+const pR = { A: mechA_R, B: mechB_R, C: mechC_R, D: mechD_R };
+const ctr = { A: mechA_center, B: mechB_center, C: mechC_center, D: mechD_center };
+const cab = { A: mechA_cables, B: mechB_cables, C: mechC_cables, D: mechD_cables };
+
+for (const [k, m] of Object.entries(mechs)) {
+  m.position.y = 10;
+  scene.add(m);
+  if (k !== 'A') m.visible = false;
+}
+
+// ══════════════════════════════════════════
+// UPDATE
+// ══════════════════════════════════════════
+
+let currentMech = 'A';
+let foldAngle = 30, butterflyAngle = 15, exploded = false, showCables = true;
+
+function update() {
+  const fr = (foldAngle * Math.PI) / 180;
+  const br = (butterflyAngle * Math.PI) / 180;
+  const eo = exploded ? 35 : 0;
+  for (const k of ['A', 'B', 'C', 'D']) {
+    pL[k].position.set(-eo, 0, 0);
+    pL[k].rotation.set(0, 0, 0);
+    pL[k].rotation.order = 'YZX';
+    pL[k].rotation.z = fr / 2;
+    pL[k].rotation.y = -br;
+    pR[k].position.set(eo, 0, 0);
+    pR[k].rotation.set(0, 0, 0);
+    pR[k].rotation.order = 'YZX';
+    pR[k].rotation.z = -fr / 2;
+    pR[k].rotation.y = br;
+    cab[k].visible = showCables;
+  }
+}
+
+// ══════════════════════════════════════════
+// UI
+// ══════════════════════════════════════════
+
+document.getElementById('fold-slider').addEventListener('input', (e) => {
+  foldAngle = +e.target.value;
+  document.getElementById('fold-val').textContent = foldAngle;
+  update();
+});
+document.getElementById('butterfly-slider').addEventListener('input', (e) => {
+  butterflyAngle = +e.target.value;
+  document.getElementById('butterfly-val').textContent = butterflyAngle;
+  update();
+});
+document.getElementById('exploded-check').addEventListener('change', (e) => { exploded = e.target.checked; update(); });
+document.getElementById('cables-check').addEventListener('change', (e) => { showCables = e.target.checked; update(); });
+
+document.querySelectorAll('.tab[data-mech]').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab[data-mech]').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentMech = tab.dataset.mech;
+    for (const [k, m] of Object.entries(mechs)) m.visible = k === currentMech;
+    document.querySelectorAll('.mech-panel').forEach(p => p.style.display = p.dataset.for === currentMech ? '' : 'none');
+    updateLegendPanel(currentMech);
+  });
+});
+
+const camPresets = {
+  perspective: { pos: [0, 150, 250], target: [0, 15, 0] },
+  top: { pos: [0, 300, 0.1], target: [0, 15, 0] },
+  front: { pos: [0, 50, 250], target: [0, 15, 0] },
+  back: { pos: [0, 50, -250], target: [0, 15, 0] },
+};
+document.querySelectorAll('.cam-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const p = camPresets[btn.dataset.cam];
+    if (!p) return;
+    camera.position.set(...p.pos);
+    controls.target.set(...p.target);
+    controls.update();
+  });
+});
+
+// ══════════════════════════════════════════
+// RESIZE + RENDER
+// ══════════════════════════════════════════
+
+function onResize() {
+  const w = container.clientWidth, h = container.clientHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+window.addEventListener('resize', onResize);
+onResize();
+update();
+
+(function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+})();
+
+</script>
+</body>
+</html>

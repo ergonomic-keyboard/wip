@@ -1,46 +1,48 @@
 # Custom Keyboard Generator
 
-## Steps
+A browser-based tool for designing custom split ergonomic keyboards. Tap your finger positions, preview in 3D, and get a complete bill of materials with purchase links.
 
-### 0. Design your layout
+## Quick Start
 
-Go to https://ergogen.xyz and design your split keyboard layout.
+Launch both the keyboard wizard and the requirement tracker:
 
-### 1. Save the config
-
-```
-mkdir -p input/<name>
-```
-
-Paste your config as `input/<name>/config.yaml`.
-
-### 2. Generate
-
-```
-./generate.sh <name>
+```bash
+cd /home/a/git/git/keyboard/wip
+fuser -k 8080/tcp 8099/tcp 2>/dev/null; python3 -m http.server 8080 & node req-tracker.js & wait
 ```
 
-Output goes to `builds/<name>/` with:
+- Keyboard wizard: http://localhost:8080/wizard.html
+- Requirement tracker: http://localhost:8099
 
-- `outlines/board.dxf` — PCB outline for fabrication
-- `outlines/frame.dxf` — Wooden frame outline for laser cutting
-- `outlines/switch_cutouts.dxf` — Switch plate cutout pattern
-- `cases/wooden_frame.jscad` — 3D model of the frame surround
-- `cases/switch_plate.jscad` — 3D switch plate model
-- `cases/bottom_plate.jscad` — 3D bottom plate model
-- `pcbs/keyboard.kicad_pcb` — PCB with Cherry MX ULP footprints + diodes
+## Keyboard Wizard
 
-## What's included
+Open http://localhost:8080/wizard.html and follow the 4 steps:
 
-- **Cherry MX ULP switch footprint** — custom ergogen footprint (`footprints/cherry_ulp.js`)
-- **No-solder BOM** — see `BOM.md` for full parts list and ordering guide
-- **Firmware** — see `FIRMWARE.md` for ZMK wireless setup
-- **Wooden frame** — frame outline generated automatically, laser-cut from 3mm hardwood
-- **Tenting mount** — wire + turnbuckle + ball bearing design in BOM
+1. **Tap finger positions** — place your left hand flat and tap 3 key positions per finger column (pinky through thumb)
+2. **3D preview** — interactive 3D model with shadows, wooden frame enclosure, click-to-press keys, exploded view, and component labels
+3. **Bill of materials** — full parts list with prices and purchase links, download design files as a ZIP
+4. **Firmware & test** — generated ZMK shield files, keymap visualization, native_posix hardware emulation tests
 
-## Connectivity
+## Requirement Tracker
 
-All supported via nice!nano v2 controller:
-- USB-C wired (one half to laptop)
-- USB-C split (half-to-half + one to laptop)
-- Bluetooth wireless (both halves independent)
+Tracks PASS/FAIL/SKIP status for each requirement in `final_requirements.md`, per git commit.
+
+```bash
+node req-tracker.js
+```
+
+Open http://localhost:8099.
+
+**Features:**
+- Each requirement from `final_requirements.md` is shown with its full text
+- Mark each requirement PASS, FAIL, or SKIP
+- Click the comment button to add notes (e.g. what's wrong, how to fix it)
+- Edit requirement text inline (click the text, edit, click away to save)
+- Add new requirements with the "+ Add requirement" button
+- Navigate between git commits using the arrows in the top-right
+- When navigating to a commit with no status, it inherits PASS/FAIL/SKIP from the nearest reviewed commit (comments are per-commit and not inherited)
+
+**Storage:**
+- Status files are saved in `req-status/<commit-hash>.json`
+- These files are inside the git repo — commit them to sync progress to GitHub
+- Requirement edits are saved directly to `final_requirements.md`
