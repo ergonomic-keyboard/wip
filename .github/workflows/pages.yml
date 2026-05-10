@@ -45,11 +45,7 @@ jobs:
           cp -r footprints _site/footprints 2>/dev/null || true
           cp -r input _site/input 2>/dev/null || true
           # Index redirect to wizard
-          cat > _site/index.html << 'HEREDOC'
-          <!DOCTYPE html>
-          <html><head><meta http-equiv="refresh" content="0;url=wizard.html"></head>
-          <body><a href="wizard.html">Keyboard Builder</a></body></html>
-          HEREDOC
+          echo '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=wizard.html"></head><body><a href="wizard.html">Keyboard Builder</a></body></html>' > _site/index.html
           touch _site/.nojekyll
 
       - uses: actions/configure-pages@v4
