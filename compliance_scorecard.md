@@ -77,14 +77,15 @@
 | R27 | SELF_PASS | 1 | 0 | 0 | Layer toggles set group.visible independently of exploded view Z-offsets. Both controls compose — exploded moves Z, toggles hide/show |
 | R28 | SELF_PASS | 1 | 0 | 0 | Label sprites tagged with userData.layerId. setLayerVisible hides labels when layer hidden. setLabelsVisible respects layerVisibility state |
 | R29 | SELF_PASS | 1 | 0 | 0 | 6 labeled checkboxes (all checked by default) in toolbar after divider, with "Layers:" prefix. Each wired to setLayerVisible via change event |
-| R30 | NOT_STARTED | 0 | 0 | 0 | MCU on underside of PCB, components facing down into milled bottom plate pocket. B.Cu footprint via post-processing |
-| R31 | NOT_STARTED | 0 | 0 | 0 | MCU outer edge aligned with inside edge of pinky column (colIdx 0), body extends inward toward hinge |
-| R32 | NOT_STARTED | 0 | 0 | 0 | MCU Y position computed so USB-C falls into milled frame-edge slot. Slot visible in 3D render |
-| R33 | NOT_STARTED | 0 | 0 | 0 | Bottom plate milled pocket for MCU+USB-C depth. Cork lower matching cutout. Visible recess in render |
-| R34 | NOT_STARTED | 0 | 0 | 0 | USB-C as part of MCU mesh (not separate). Protrudes toward bbox.min.x through frame slot. Remove createUsbCPort() |
+| R30 | SELF_PASS | 3 | 1 | 1 | USER_FAIL #1: MCU at Z=0.7 inside opaque layers — invisible. Self-fail #1: pinkyKeys filter used wrong fields (k.zone/k.colIdx instead of k.meta.zone.name/k.meta.column_net) → pinkyKeys always empty → MCU at -Infinity X. Fix: correct filter + depthTest:false + renderOrder:100 + opacity:0.92 |
+| R31 | SELF_PASS | 2 | 1 | 0 | Self-fail #1: same pinkyKeys bug — MCU X computed as -Infinity. Fix: filter uses meta.column_net==='C0' and meta.zone.name==='matrix'. Fallback to bbox if empty |
+| R32 | USER_FAIL | 1 | 0 | 1 | USER_FAIL #1: USB-C protrudes past board edge instead of being flush. MCU not rotated to match board edge angle. Requirement revised to specify edge-aligned rotation, flush USB-C face, perpendicular cable access |
+| R33 | SELF_PASS | 1 | 0 | 0 | Bottom plate milled pocket spanning MCU+battery area (recessMesh at Z_BOTTOM). Cork lower matching cutout (corkCutoutMesh at Z_CORK_LOWER). Both in correct layer groups |
+| R34 | USER_FAIL | 1 | 0 | 1 | USER_FAIL #1: USB-C protrudes outside board outline. Requirement revised — USB-C should be flush with edge, MCU rotated to match edge angle per R32 |
 | R35 | NOT_STARTED | 0 | 0 | 0 | Post-processing script in generate.sh to flip nice!nano footprint from F.Cu to B.Cu in .kicad_pcb |
-| R36 | NOT_STARTED | 0 | 0 | 0 | Battery adjacent to MCU in same under-PCB cavity, sharing bottom plate pocket. No overlap |
-| R37 | SELF_PASS | 1 | 0 | 0 | XYZ axis indicator at origin (red=X, green=Y, blue=Z), ticks at 10mm/100mm, orange anchor markers (bbox.min.x, hingeX, etc.), "Axes" checkbox (off by default), geometry.md created |
+| R36 | SELF_PASS | 1 | 0 | 0 | Battery at battX = nanoLeftX + NANO_W/2 + 8, same Y as MCU. Top at Z_PCB (touching PCB underside). Shares bottom plate pocket with MCU. No overlap (8mm gap) |
+| R37 | SELF_PASS | 5 | 0 | 4 | USER_FAIL #1: axes at (0,0,0) off-screen. USER_FAIL #2: in boardRoot with 180° flip. USER_FAIL #3: origin at bbox corner (bottom-right on screen). USER_FAIL #4: axisTopPinkyKey.x crash — pinkyKeys empty due to wrong filter fields → TypeError → black screen. Fix #5: correct pinkyKeys filter (meta fields), fallback to bbox |
+| R38 | SELF_PASS | 2 | 1 | 0 | Self-fail #1: same pinkyKeys crash. Fix: fallback to bbox corner if pinkyKeys empty. Origin at top pinky key (colIdx=0, min Y) when keys found |
 
 ## Phase 4 — Hardware / BOM / Assembly
 
@@ -161,15 +162,15 @@
 
 | Metric | Count |
 |--------|-------|
-| Total requirements | 118 |
-| Self-verified PASS | 107 |
+| Total requirements | 119 |
+| Self-verified PASS | 114 |
 | Superseded | 4 |
 | User-confirmed PASS | 0 |
-| User corrections (I was wrong) | 28 |
+| User corrections (I was wrong) | 35 |
 | Runtime re-verified (after fix) | 15 |
 | Currently USER_FAIL | 0 |
 | Blocked | 0 |
-| Not started | 7 |
+| Not started | 1 |
 
 ### USER_FAIL Summary
 
@@ -194,3 +195,11 @@
 - **R22-R25**: New requirements for proper placement (NOT_STARTED)
 
 **Session 12 fix**: Root cause was all component positions hardcoded relative to hingeX (inner edge) instead of computed from each half's board outline bbox. Fix: computed halfCenterX=(bbox.min.x+hingeX)/2, placed MCU at half center on PCB surface, battery at half center between bottom plate and PCB with recess, USB-C as separate component at outer edge (bbox.min.x) oriented outward. All 9 requirements now SELF_PASS.
+
+**Session 15 failures (5 USER_FAIL)**:
+- **R30**: MCU positioned at Z=0.7 (inside opaque bottom plate + cork lower) — completely invisible from default camera angle
+- **R37** (3rd): Axis origin at bbox corner (bottom-right on screen), axes pointing away from board instead of toward it
+- **R37** (4th): Black screen crash — `pinkyKeys` filter used `k.zone` and `k.colIdx` (fields from `buildKeyPositionMap`) on `leftKeys` entries (which have `k.meta.zone.name` and `k.meta.column_net`). `pinkyKeys` was always empty → `axisTopPinkyKey = undefined` → `TypeError` on `.x` access → `buildNewScene` throws → black screen. Same bug also caused MCU to be at -Infinity X (never visible).
+- New requirement R38 added for axis origin positioning
+
+**Session 15 fix**: Root cause: `leftKeys` entries constructed at line 411 have `{ name, x, y, r, origR, meta }` — zone and column info is in `meta.zone.name` and `meta.column_net`, not top-level `zone`/`colIdx`. Fixed filter to use `k.meta?.zone?.name === 'matrix' && k.meta?.column_net === 'C0'`. Added fallbacks for empty pinkyKeys. MCU meshes also given depthTest:false + renderOrder:100 for visibility through occluding layers.

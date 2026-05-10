@@ -911,58 +911,103 @@ function buildNewScene(ergogenResults, config, container) {
   }
   boardGroup.add(outlineGroup);
 
-  // ── R25: Compute component positions from each half's board outline bbox ──
-  const halfCenterX = (bbox.min.x + hingeX) / 2;  // center-X of left half
-  const halfCenterY = center.y;                     // center-Y of board
-  const halfOuterEdgeX = bbox.min.x;               // outer edge of left half
+  // ── R30-R36: Compute MCU/battery/USB-C positions from pinky column ──
+  const halfCenterX = (bbox.min.x + hingeX) / 2;
+  const halfCenterY = center.y;
 
-  // ── nice!nano MCU (R22: on PCB surface, centered within half's board outline) ──
+  // R31: Find pinky column (colIdx 0) to position MCU
+  // leftKeys entries have meta.column_net (e.g. "C0") and meta.zone.name (e.g. "matrix")
+  const pinkyKeys = leftKeys.filter(k => {
+    const zone = k.meta?.zone?.name || 'matrix';
+    const colNet = k.meta?.column_net || '';
+    return zone === 'matrix' && colNet === 'C0';
+  });
+  console.log(`render3d: pinkyKeys (colIdx 0) found: ${pinkyKeys.length}`, pinkyKeys.map(k => `(${k.x.toFixed(1)},${k.y.toFixed(1)})`));
+  // Fallback if no pinky keys found: use bbox outer edge
+  const pinkyInnerEdgeX = pinkyKeys.length > 0
+    ? Math.max(...pinkyKeys.map(k => k.x)) + kx / 2
+    : bbox.min.x + kx;
+  const pinkyYMin = pinkyKeys.length > 0 ? Math.min(...pinkyKeys.map(k => k.y)) : bbox.min.y;
+  const pinkyYMax = pinkyKeys.length > 0 ? Math.max(...pinkyKeys.map(k => k.y)) : bbox.max.y;
+  const pinkyYCenter = (pinkyYMin + pinkyYMax) / 2;
+
+  // nice!nano dimensions
+  const NANO_W = 18, NANO_L = 33, NANO_PCB_T = 1.6;
+  const USB_W = 8.94, USB_H = 7.5, USB_T = 3.26;
+
+  // R31: MCU outer edge aligns with pinky inner edge, body extends inward (toward hinge)
+  const nanoLeftX = pinkyInnerEdgeX + NANO_W / 2; // center X of MCU
+  // R32: MCU Y positioned so USB-C port (at MCU's -Y end) falls into frame edge slot
+  // USB-C is at the MCU's short edge. Position MCU so USB-C aligns with bbox.min.y edge (outer frame edge)
+  // The USB-C sits at MCU center_Y - NANO_L/2. We want this at bbox.min.y + frame_wall/2
+  const frameWall = 4; // S05: frame wall width
+  const nanoY = bbox.min.y + frameWall + USB_H / 2 + NANO_L / 2;
+
+  // ── nice!nano MCU (R30: on PCB UNDERSIDE, components facing down) ──
+  // The MCU sits below the main PCB (Z_PCB - NANO_PCB_T/2 ≈ 0.7mm), which is inside the
+  // bottom plate and cork lower layers. To keep it visible from the default camera angle,
+  // all MCU meshes use depthTest:false + renderOrder so they render through occluding layers.
   function createNiceNano(posX, posY) {
     const grp = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.BoxGeometry(18, 33, 1.6), nanoPcbMat);
-    body.castShadow = true; grp.add(body);
-    const ic = new THREE.Mesh(new THREE.BoxGeometry(4, 4, 0.8), blackMat);
-    ic.position.set(0, 4, 1.2); grp.add(ic);
-    const ic2 = new THREE.Mesh(new THREE.BoxGeometry(3, 2.5, 0.6), blackMat);
-    ic2.position.set(-4, -6, 1.1); grp.add(ic2);
+    // Helper: make material render on top of occluding geometry
+    function mcuMat(baseMat) {
+      const m = baseMat.clone();
+      m.depthTest = false;
+      m.transparent = true;
+      m.opacity = 0.92;
+      return m;
+    }
+    const mcuRenderOrder = 100;
+    // MCU PCB body
+    const body = new THREE.Mesh(new THREE.BoxGeometry(NANO_W, NANO_L, NANO_PCB_T), mcuMat(nanoPcbMat));
+    body.renderOrder = mcuRenderOrder; body.castShadow = true; grp.add(body);
+    // ICs face downward (negative Z in local coords)
+    const ic = new THREE.Mesh(new THREE.BoxGeometry(4, 4, 0.8), mcuMat(blackMat));
+    ic.position.set(0, 4, -1.2); ic.renderOrder = mcuRenderOrder; grp.add(ic);
+    const ic2 = new THREE.Mesh(new THREE.BoxGeometry(3, 2.5, 0.6), mcuMat(blackMat));
+    ic2.position.set(-4, -6, -1.1); ic2.renderOrder = mcuRenderOrder; grp.add(ic2);
+    // Solder pads (12 per side)
     const padGeo = new THREE.BoxGeometry(1.0, 0.5, 0.05);
     for (let j = 0; j < 12; j++) {
-      const lp = new THREE.Mesh(padGeo, goldMat); lp.position.set(-8.5, -13 + j * 2.54, 0.825); grp.add(lp);
-      const rp = new THREE.Mesh(padGeo, goldMat); rp.position.set(8.5, -13 + j * 2.54, 0.825); grp.add(rp);
+      const lp = new THREE.Mesh(padGeo, mcuMat(goldMat)); lp.position.set(-8.5, -13 + j * 2.54, 0.825); lp.renderOrder = mcuRenderOrder; grp.add(lp);
+      const rp = new THREE.Mesh(padGeo, mcuMat(goldMat)); rp.position.set(8.5, -13 + j * 2.54, 0.825); rp.renderOrder = mcuRenderOrder; grp.add(rp);
     }
+    // Reset button
     const btnGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.4, 8); btnGeo.rotateX(Math.PI / 2);
-    const btn = new THREE.Mesh(btnGeo, new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.5, metalness: 0.5 }));
-    btn.position.set(5, -12, 1.1); grp.add(btn);
-    // R22: Z position places MCU on top of PCB surface
-    grp.position.set(posX, posY, Z_PCB_TOP + 0.8);
+    const btn = new THREE.Mesh(btnGeo, mcuMat(new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.5, metalness: 0.5 })));
+    btn.position.set(5, -12, -1.1); btn.renderOrder = mcuRenderOrder; grp.add(btn);
+    // R34: USB-C connector as part of MCU mesh, at the short edge facing outward (bbox.min.y)
+    const usbBody = new THREE.Mesh(new THREE.BoxGeometry(USB_W, USB_H, USB_T), mcuMat(chromeMat));
+    usbBody.renderOrder = mcuRenderOrder; usbBody.castShadow = true;
+    const usbHole = new THREE.Mesh(new THREE.BoxGeometry(7.0, 2.0, 2.0),
+      mcuMat(new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.9, metalness: 0.0 })));
+    usbHole.position.set(0, -USB_H / 2 + 1.0, 0); usbHole.renderOrder = mcuRenderOrder; usbBody.add(usbHole);
+    usbBody.position.set(0, -NANO_L / 2 - USB_H / 2, -USB_T / 2 + NANO_PCB_T / 2);
+    grp.add(usbBody);
+    // R30: Z position — MCU PCB top (solder side) flush against main PCB underside
+    // MCU hangs below the main PCB: center Z = Z_PCB - NANO_PCB_T/2
+    grp.position.set(posX, posY, Z_PCB - NANO_PCB_T / 2);
     return grp;
   }
-  const nanoLeftX = halfCenterX, nanoY = halfCenterY;
   layerPCB.add(createNiceNano(nanoLeftX, nanoY));
 
-  // ── USB-C port (R24: at outer board edge of each half, oriented outward, at PCB height) ──
-  function createUsbCPort(posX, posY) {
-    const grp = new THREE.Group();
-    const usbBody = new THREE.Mesh(new THREE.BoxGeometry(8.94, 7.5, 3.26), chromeMat);
-    usbBody.castShadow = true;
-    const usbHole = new THREE.Mesh(new THREE.BoxGeometry(7.0, 2.0, 2.0),
-      new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.9, metalness: 0.0 }));
-    usbHole.position.set(0, 0, 0); usbBody.add(usbHole);
-    grp.add(usbBody);
-    // Position at outer edge, rotated so opening faces outward (toward min.x)
-    grp.position.set(posX, posY, Z_PCB_TOP + 1.63);
-    grp.rotation.z = Math.PI / 2; // rotate so opening faces the outer edge
-    return grp;
-  }
-  const usbX = halfOuterEdgeX + 3.75; // half USB body depth protruding slightly
-  const usbY = halfCenterY;
-  layerPCB.add(createUsbCPort(usbX, usbY));
+  // R32: Milled USB-C slot in outer frame edge (visible cutout)
+  const usbSlotW = USB_W + 2; // slightly wider than USB-C for cable clearance
+  const usbSlotH = USB_T + 1; // height clearance
+  const usbSlotMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9, metalness: 0.0 });
+  const usbSlotMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(usbSlotW, frameWall + 2, usbSlotH), usbSlotMat
+  );
+  // Position at the frame edge where USB-C protrudes
+  const usbSlotY = nanoY - NANO_L / 2 - USB_H / 2;
+  usbSlotMesh.position.set(nanoLeftX, bbox.min.y - 1, Z_PCB - USB_T / 2);
+  layerBottomPlate.add(usbSlotMesh);
 
-  // ── Battery (R23: between bottom plate and PCB, within board outline, with bottom plate recess) ──
+  // ── Battery (R36: adjacent to MCU in shared under-PCB cavity) ──
   const batteryGroup = new THREE.Group();
+  const battThickness = 3.0; // 301230 LiPo: 12 × 30 × 3mm
   function addBattery(bx, by) {
     const bg = new THREE.Group();
-    const battThickness = 3.0; // 301230 LiPo thickness
     const battBody = new THREE.Mesh(new THREE.BoxGeometry(12, 30, battThickness), battMat);
     battBody.castShadow = true; bg.add(battBody);
     const wireRad = 0.25;
@@ -971,22 +1016,37 @@ function buildNewScene(ergogenResults, config, container) {
       const curve = new THREE.CatmullRomCurve3(wpts);
       bg.add(new THREE.Mesh(new THREE.TubeGeometry(curve, 8, wireRad, 6), ww.color));
     });
-    // R23: battery center Z between bottom plate top and PCB bottom
-    // Top of battery at Z_PCB (touching PCB underside), extends into bottom plate recess
+    // Battery top at Z_PCB (touching PCB underside), extends into bottom plate recess
     bg.position.set(bx, by, Z_PCB - battThickness / 2);
     return bg;
   }
-  // R25: battery position computed from half's board outline bbox
-  const battX = halfCenterX;
-  const battY = halfCenterY - 18; // offset toward bottom to avoid MCU overlap
+  // R36: Battery adjacent to MCU — offset in X (next to MCU, toward hinge)
+  const battX = nanoLeftX + NANO_W / 2 + 8; // 8mm gap from MCU edge
+  const battY = nanoY; // same Y as MCU
   batteryGroup.add(addBattery(battX, battY));
   layerCorkLower.add(batteryGroup);
 
-  // ── Bottom plate battery recess (R23: visible cutout in bottom plate) ──
+  // ── R33: Bottom plate milled pocket for MCU + battery + cork cutout ──
   const recessMat = new THREE.MeshStandardMaterial({ color: 0x3d2b1f, roughness: 0.8, metalness: 0.0 });
-  const recessMesh = new THREE.Mesh(new THREE.BoxGeometry(14, 32, T_BOTTOM_PLATE * 0.7), recessMat);
-  recessMesh.position.set(battX, battY, Z_BOTTOM + T_BOTTOM_PLATE * 0.15);
+  // Pocket spans MCU + battery area
+  const pocketMinX = nanoLeftX - NANO_W / 2 - 1;
+  const pocketMaxX = battX + 7; // battery half-width + margin
+  const pocketMinY = nanoY - NANO_L / 2 - USB_H - 1;
+  const pocketMaxY = Math.max(nanoY + NANO_L / 2, battY + 16) + 1;
+  const pocketW = pocketMaxX - pocketMinX;
+  const pocketH = pocketMaxY - pocketMinY;
+  const pocketCx = (pocketMinX + pocketMaxX) / 2;
+  const pocketCy = (pocketMinY + pocketMaxY) / 2;
+  // Recess in bottom plate (visible dark area)
+  const recessMesh = new THREE.Mesh(new THREE.BoxGeometry(pocketW, pocketH, T_BOTTOM_PLATE * 0.9), recessMat);
+  recessMesh.position.set(pocketCx, pocketCy, Z_BOTTOM + T_BOTTOM_PLATE * 0.05);
   layerBottomPlate.add(recessMesh);
+  // Cork lower cutout (matching hole)
+  const corkCutoutMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(pocketW, pocketH, T_CORK_LOWER + 0.1), recessMat
+  );
+  corkCutoutMesh.position.set(pocketCx, pocketCy, Z_CORK_LOWER + T_CORK_LOWER / 2);
+  layerCorkLower.add(corkCutoutMesh);
 
   // ── Screws ──
   const bx0 = bbox.min.x + 10, bx1 = bbox.max.x - 10;
@@ -1183,116 +1243,142 @@ function buildNewScene(ergogenResults, config, container) {
   addLabel('Cork Gasket (Upper)', hingeX, bbox.min.y - 8, Z_CORK_UPPER + T_CORK_UPPER / 2, 'corkUpper');
   addLabel('Switch Plate', hingeX, bbox.min.y - 8, Z_SWITCH_PLATE + T_SWITCH_PLATE / 2, 'switchPlate');
   addLabel('Cherry MX ULP', hingeX, bbox.min.y - 8, Z_KEYCAP, 'keycaps');
-  addLabel('nice!nano v2', nanoLeftX, bbox.min.y - 8, Z_PCB_TOP + 4, 'pcb');
-  addLabel('USB-C Port', usbX, bbox.min.y - 8, Z_PCB_TOP + 4, 'pcb');
+  addLabel('nice!nano v2 (underside)', nanoLeftX, bbox.min.y - 8, Z_PCB - 4, 'pcb');
+  addLabel('USB-C Port', nanoLeftX, bbox.min.y - 12, Z_PCB - 4, 'pcb');
   addLabel('Ball Joint Hinge', hingeX, hy + 20, hz + 8);
   addLabel('LiPo Battery', battX, bbox.min.y - 8, Z_CORK_LOWER + 3, 'corkLower');
 
-  // ── XYZ Axis Indicator + Named Anchors (geometry.md) ──
+  // ── XYZ Axis Indicator + Named Anchors (R37/R38, geometry.md) ──
+  // Added to scene directly (not boardRoot) to avoid the 180° display rotation.
+  // Positions are in WORLD space (i.e., model coords negated for X and Y due to boardRoot flip).
   const axisGroup = new THREE.Group();
   axisGroup.userData.layerId = 'axes';
-  const axisLen = 120; // mm
+
+  // R38: Axis origin at the top key of pinky column (colIdx 0, min Y in model space).
+  // This is the top-left switch as seen on screen (after boardRoot 180° Z flip).
+  // pinkyKeys already computed above for R31.
+  const axisTopPinkyKey = pinkyKeys.length > 0
+    ? pinkyKeys.reduce((best, k) => k.y < best.y ? k : best, pinkyKeys[0])
+    : { x: bbox.min.x, y: bbox.min.y }; // fallback to bbox corner if no pinky keys found
+  const axisModelX = axisTopPinkyKey.x;
+  const axisModelY = axisTopPinkyKey.y;
+  // Convert to world space (boardRoot 180° Z: world = -model for X,Y)
+  const axisWorldX = -axisModelX;
+  const axisWorldY = -axisModelY;
+  const axisWorldZ = Z_SWITCH_PLATE_TOP;
+  const axisOrigin = new THREE.Vector3(axisWorldX, axisWorldY, axisWorldZ);
+
+  const axisLen = 60; // mm — enough to be visible without dominating
   const axisColors = { x: 0xff3333, y: 0x33cc33, z: 0x3366ff };
-  const axisLabelsMap = { x: 'X', y: 'Y', z: 'Z' };
-  const axisDirections = {
-    x: [new THREE.Vector3(0, 0, 0), new THREE.Vector3(axisLen, 0, 0)],
-    y: [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, axisLen, 0)],
-    z: [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, axisLen)]
-  };
-  // Draw axis lines
-  Object.entries(axisDirections).forEach(([axis, [start, end]]) => {
-    const geo = new THREE.BufferGeometry().setFromPoints([start, end]);
-    const mat = new THREE.LineBasicMaterial({ color: axisColors[axis], linewidth: 2 });
-    axisGroup.add(new THREE.Line(geo, mat));
+
+  // In world space: +X points right (= -model X = toward pinky), +Y points up (= -model Y), +Z points up
+  // But we want to show MODEL-space axes, so we label them with model-space directions.
+  // Model +X (toward hinge) = World -X. Model +Y = World -Y. Model +Z = World +Z.
+  const axesDef = [
+    { axis: 'x', dir: new THREE.Vector3(-1, 0, 0), label: 'X+ (toward hinge)' },
+    { axis: 'y', dir: new THREE.Vector3(0, -1, 0), label: 'Y+ (along columns)' },
+    { axis: 'z', dir: new THREE.Vector3(0, 0, 1),  label: 'Z+ (up from table)' }
+  ];
+  axesDef.forEach(({ axis, dir, label }) => {
+    const end = axisOrigin.clone().addScaledVector(dir, axisLen);
+    const geo = new THREE.BufferGeometry().setFromPoints([axisOrigin, end]);
+    const mat = new THREE.LineBasicMaterial({ color: axisColors[axis], linewidth: 2, depthTest: false });
+    const line = new THREE.Line(geo, mat);
+    line.renderOrder = 999;
+    axisGroup.add(line);
+    // Arrowhead cone at the end
+    const coneGeo = new THREE.ConeGeometry(1.5, 5, 8);
+    const coneMat = new THREE.MeshBasicMaterial({ color: axisColors[axis], depthTest: false });
+    const cone = new THREE.Mesh(coneGeo, coneMat);
+    cone.position.copy(end);
+    // Orient cone along axis direction
+    cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+    cone.renderOrder = 999;
+    axisGroup.add(cone);
   });
-  // Tick marks at 10mm and 100mm
+
+  // Tick helpers
   function addTick(pos, color, size) {
-    const tickGeo = new THREE.SphereGeometry(size, 6, 6);
-    const tickMat = new THREE.MeshBasicMaterial({ color });
+    const tickGeo = new THREE.SphereGeometry(size, 8, 8);
+    const tickMat = new THREE.MeshBasicMaterial({ color, depthTest: false });
     const tick = new THREE.Mesh(tickGeo, tickMat);
-    tick.position.copy(pos);
+    tick.position.copy(pos); tick.renderOrder = 999;
     axisGroup.add(tick);
   }
-  // Tick labels
-  function addAxisLabel(text, pos, color) {
-    const lc = document.createElement('canvas'); lc.width = 64; lc.height = 64;
+  function addAxisLabel(text, pos, color, scale) {
+    const lc = document.createElement('canvas'); lc.width = 512; lc.height = 64;
     const lg = lc.getContext('2d');
-    lg.clearRect(0, 0, 64, 64);
-    lg.font = 'bold 48px monospace'; lg.textAlign = 'center'; lg.textBaseline = 'middle';
+    lg.clearRect(0, 0, 512, 64);
+    lg.font = 'bold 32px monospace'; lg.textAlign = 'center'; lg.textBaseline = 'middle';
     lg.fillStyle = '#' + color.toString(16).padStart(6, '0');
-    lg.fillText(text, 32, 32);
+    lg.fillText(text, 256, 32);
     const tex = new THREE.CanvasTexture(lc);
-    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
     const sprite = new THREE.Sprite(mat);
-    sprite.position.copy(pos);
-    sprite.scale.set(8, 8, 1);
+    sprite.position.copy(pos); sprite.scale.set(scale || 25, (scale || 25) / 4, 1); sprite.renderOrder = 999;
     axisGroup.add(sprite);
   }
-  // X axis ticks
-  for (let d = 10; d <= axisLen; d += 10) {
-    const size = (d % 100 === 0) ? 1.2 : 0.5;
-    addTick(new THREE.Vector3(d, 0, 0), axisColors.x, size);
-    if (d === 10 || d === 100) addAxisLabel(d + '', new THREE.Vector3(d, -4, 0), axisColors.x);
-  }
-  // Y axis ticks
-  for (let d = 10; d <= axisLen; d += 10) {
-    const size = (d % 100 === 0) ? 1.2 : 0.5;
-    addTick(new THREE.Vector3(0, d, 0), axisColors.y, size);
-    if (d === 10 || d === 100) addAxisLabel(d + '', new THREE.Vector3(-4, d, 0), axisColors.y);
-  }
-  // Z axis ticks
-  for (let d = 10; d <= axisLen; d += 10) {
-    const size = (d % 100 === 0) ? 1.2 : 0.5;
-    addTick(new THREE.Vector3(0, 0, d), axisColors.z, size);
-    if (d === 10 || d === 100) addAxisLabel(d + '', new THREE.Vector3(-4, 0, d), axisColors.z);
-  }
-  // Axis endpoint labels (X, Y, Z)
-  addAxisLabel('X', new THREE.Vector3(axisLen + 5, 0, 0), axisColors.x);
-  addAxisLabel('Y', new THREE.Vector3(0, axisLen + 5, 0), axisColors.y);
-  addAxisLabel('Z', new THREE.Vector3(0, 0, axisLen + 5), axisColors.z);
-  // Origin marker
-  addTick(new THREE.Vector3(0, 0, 0), 0xffffff, 1.5);
-  addAxisLabel('O', new THREE.Vector3(-4, -4, 0), 0xffffff);
 
-  // ── Named Anchor Markers ──
-  const anchorColor = 0xffaa00; // orange
-  function addAnchorMarker(name, x, y, z) {
-    // Vertical line marker
-    const markerH = 15;
+  // Ticks along each axis (in world space, following model-space direction)
+  axesDef.forEach(({ axis, dir }) => {
+    for (let d = 10; d <= axisLen; d += 10) {
+      const size = (d % 100 === 0) ? 1.5 : 0.7;
+      const p = axisOrigin.clone().addScaledVector(dir, d);
+      addTick(p, axisColors[axis], size);
+      if (d === 10 || d % 50 === 0) {
+        const labelOff = new THREE.Vector3(2, 2, 2);
+        addAxisLabel(d + 'mm', p.clone().add(labelOff), axisColors[axis], 15);
+      }
+    }
+  });
+
+  // Axis endpoint labels
+  axesDef.forEach(({ axis, dir, label }) => {
+    const pos = axisOrigin.clone().addScaledVector(dir, axisLen + 10);
+    addAxisLabel(label, pos, axisColors[axis], 30);
+  });
+
+  // Origin marker — show both world and model coords
+  addTick(axisOrigin, 0xffffff, 2.5);
+  addAxisLabel(
+    `Origin: model(${axisModelX.toFixed(0)}, ${axisModelY.toFixed(0)}, ${axisWorldZ.toFixed(0)})`,
+    axisOrigin.clone().add(new THREE.Vector3(15, 5, 5)), 0xffffff, 35
+  );
+
+  // ── Named Anchor Markers (in world space, on the board surface) ──
+  const anchorColor = 0xffaa00;
+  function addAnchorMarker(name, modelX, modelY, modelZ) {
+    // Convert model coords to world coords (boardRoot 180° Z flip)
+    const wx = -modelX, wy = -modelY, wz = modelZ;
+    const markerH = 25;
     const geo = new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(x, y, z), new THREE.Vector3(x, y, z + markerH)
+      new THREE.Vector3(wx, wy, wz), new THREE.Vector3(wx, wy, wz + markerH)
     ]);
-    const mat = new THREE.LineBasicMaterial({ color: anchorColor, linewidth: 1 });
-    axisGroup.add(new THREE.Line(geo, mat));
+    const mat = new THREE.LineBasicMaterial({ color: anchorColor, linewidth: 2, depthTest: false });
+    const line = new THREE.Line(geo, mat); line.renderOrder = 999;
+    axisGroup.add(line);
     // Diamond at base
-    const dGeo = new THREE.OctahedronGeometry(1.0, 0);
-    const dMat = new THREE.MeshBasicMaterial({ color: anchorColor });
+    const dGeo = new THREE.OctahedronGeometry(2.0, 0);
+    const dMat = new THREE.MeshBasicMaterial({ color: anchorColor, depthTest: false });
     const diamond = new THREE.Mesh(dGeo, dMat);
-    diamond.position.set(x, y, z); diamond.scale.set(1, 1, 0.5);
+    diamond.position.set(wx, wy, wz); diamond.scale.set(1, 1, 0.5); diamond.renderOrder = 999;
     axisGroup.add(diamond);
-    // Label
-    const lc = document.createElement('canvas'); lc.width = 256; lc.height = 48;
-    const lg = lc.getContext('2d');
-    lg.clearRect(0, 0, 256, 48);
-    lg.font = '600 18px monospace'; lg.textAlign = 'center'; lg.textBaseline = 'middle';
-    lg.fillStyle = '#ffaa00'; lg.fillText(name, 128, 24);
-    const tex = new THREE.CanvasTexture(lc);
-    const sMat = new THREE.SpriteMaterial({ map: tex, transparent: true });
-    const sprite = new THREE.Sprite(sMat);
-    sprite.position.set(x, y, z + markerH + 4);
-    sprite.scale.set(35, 7, 1);
-    axisGroup.add(sprite);
+    // Label with model-space coordinates
+    addAxisLabel(
+      `${name} (${modelX.toFixed(0)},${modelY.toFixed(0)})`,
+      new THREE.Vector3(wx, wy, wz + markerH + 5), anchorColor, 35
+    );
   }
-  const anchorZ = Z_SWITCH_PLATE_TOP + 2; // markers hover above the board
+  const anchorZ = Z_SWITCH_PLATE_TOP + 3;
   addAnchorMarker('bbox.min.x', bbox.min.x, center.y, anchorZ);
   addAnchorMarker('hingeX', hingeX, center.y, anchorZ);
   addAnchorMarker('halfCenterX', halfCenterX, center.y, anchorZ);
-  addAnchorMarker('bbox.min.y', center.x, bbox.min.y, anchorZ);
-  addAnchorMarker('bbox.max.y', center.x, bbox.max.y, anchorZ);
+  addAnchorMarker('bbox.min.y', halfCenterX, bbox.min.y, anchorZ);
+  addAnchorMarker('bbox.max.y', halfCenterX, bbox.max.y, anchorZ);
   addAnchorMarker('center', center.x, center.y, anchorZ);
 
   axisGroup.visible = false; // hidden by default, toggled via UI checkbox
-  boardRoot.add(axisGroup);
+  scene.add(axisGroup); // added to scene, not boardRoot — immune to 180° flip
 
   // ── Camera position (from HUMAN/typist side — R19) ──
   // boardRoot is rotated 180° around Z, so world coords = (-local_x, -local_y, local_z).

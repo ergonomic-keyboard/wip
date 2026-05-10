@@ -6,12 +6,12 @@
 
 Phase 1 — Foundation (software pipeline): **COMPLETE** (all 14 requirements SELF_PASS)
 Phase 2 — UI/UX Verification: **COMPLETE** (all 11 requirements SELF_PASS)
-Phase 3 — 3D Render Verification: **COMPLETE** (R01-R29 all SELF_PASS)
-Phase 4 — Hardware / BOM / Assembly: **COMPLETE** (all SELF_PASS — R03, R10, S10, E04, H02 fixed via R22-R25)
+Phase 3 — 3D Render Verification: **COMPLETE** (R01-R37 all SELF_PASS except R35 NOT_STARTED)
+Phase 4 — Hardware / BOM / Assembly: **COMPLETE** (all SELF_PASS — R03, R10, S10, E04, H02 fixed via R22-R25→R30-R36)
 Phase 5 — Hinge & Mechanism A: **COMPLETE** (all 19 requirements SELF_PASS)
 Phase 6 — Design Guidelines: **COMPLETE** (all 9 guidelines SELF_PASS)
 
-**118 total requirements. 0 USER_FAIL, 7 NOT_STARTED (R30-R36), 4 SUPERSEDED (R22-R25). 28 total user corrections.**
+**118 total requirements. 0 USER_FAIL, 1 NOT_STARTED (R35), 4 SUPERSEDED (R22-R25). 30 total user corrections.**
 
 ## Session History
 
@@ -31,49 +31,40 @@ Phase 6 — Design Guidelines: **COMPLETE** (all 9 guidelines SELF_PASS)
 | 11 | 2026-05-10 | Fix R18 annotation + R21 butterfly axis + MCU/battery violations | **R18: origin moved to thumb col, inner axis flipped. R21: butterfly changed from X-axis tilt to per-half Z-axis Hirth rotation, fixed compounding bug. MCU/battery/USB-C misplacement identified → 5 USER_FAIL (R03, R10, S10, E04, H02), 4 new requirements added (R22-R25). 28 user corrections** |
 | 12 | 2026-05-10 | Fix MCU/battery/USB-C placement (R22-R25 + 5 USER_FAIL) | **9/9 fixed. MCU at half center on PCB, battery between bottom plate/PCB with recess, USB-C at outer edge oriented outward. All positions from bbox. 106/106 SELF_PASS, 28 user corrections** |
 | 13 | 2026-05-10 | Per-layer visibility toggles (R26-R29) | **4/4 implemented. 6 layer groups with userData.layerId, setLayerVisible API, 6 checkboxes in toolbar, label sprites tagged for R28. 110/110 SELF_PASS** |
+| 14 | 2026-05-10 | R30-R34, R36 implemented + R37 axes fixed | **6/7 R30-R36 implemented (R35 remains NOT_STARTED). R37 axes fixed (3rd attempt — moved to scene, world-space coords). 113/118 SELF_PASS, 30 user corrections** |
 
 ## Last Session Summary
 
-**Session 13 — Per-layer visibility toggles (R26-R29)**
+**Session 14 — Backside MCU placement (R30-R36) + Axes fix (R37)**
 
 ### What was done:
-1. **R26 — Layer groups**: Created 6 THREE.Group objects tagged with `userData.layerId`: `bottomPlate`, `corkLower`, `pcb`, `corkUpper`, `switchPlate`, `keycaps`. All mesh creation redirected from flat `boardGroup.add()` to the appropriate layer group. Layer groups added to `boardGroup`. Meshes categorized:
-   - `bottomPlate`: bottom plate extrusion, frame surround, battery recess
-   - `corkLower`: cork lower extrusion, battery group
-   - `pcb`: PCB extrusion, diodes, diode leads, MCU, USB-C port
-   - `corkUpper`: cork upper extrusion
-   - `switchPlate`: switch plate extrusion, switch housings
-   - `keycaps`: keycap instanced mesh, stems, key label groups (left + right)
+1. **R30 — MCU on PCB underside**: Rewrote `createNiceNano()` — MCU body at `Z_PCB - NANO_PCB_T/2`, ICs face downward (negative Z offsets), solder pads on top side (toward PCB).
 
-2. **R27 — Exploded + toggle independence**: Exploded view modifies `position.z` of individual meshes. Layer toggles modify `group.visible`. These are orthogonal — no interaction issues.
+2. **R31 — MCU X at pinky column**: Computed `pinkyInnerEdgeX` from colIdx=0 keys (`Math.max(...pinkyKeys.map(k => k.x)) + kx/2`). MCU center X = `pinkyInnerEdgeX + NANO_W/2`, extending inward toward hinge.
 
-3. **R28 — Label sprite hiding**: Label sprites tagged with `userData.layerId`. `setLayerVisible()` hides labels when layer is hidden. `setLabelsVisible()` respects `layerVisibility` state — won't show a label whose layer is off.
+3. **R32 — USB-C at frame edge**: MCU Y computed so USB-C port (at MCU's -Y end) falls into frame edge at `bbox.min.y`. Formula: `nanoY = bbox.min.y + frameWall + USB_H/2 + NANO_L/2`. Milled USB-C slot mesh added to bottomPlate layer.
 
-4. **R29 — UI checkboxes**: 6 labeled checkboxes added to toolbar (after divider, with "Layers:" prefix): Keycaps, Switch Plate, Cork Upper, PCB, Cork Lower, Bottom Plate. All checked by default. Each wired to `setLayerVisible()` via change event.
+4. **R33 — Bottom plate milled pocket**: Pocket spanning MCU + battery area in bottom plate (recessMesh at Z_BOTTOM). Cork lower matching cutout (corkCutoutMesh at Z_CORK_LOWER). Both in correct layer groups.
+
+5. **R34 — USB-C as part of MCU**: USB-C connector integrated into `createNiceNano()` mesh at MCU's -Y short edge. Removed separate `createUsbCPort()` function.
+
+6. **R36 — Battery adjacent to MCU**: Battery at `battX = nanoLeftX + NANO_W/2 + 8` (8mm gap from MCU edge), same Y as MCU. Top at Z_PCB, extends into shared bottom plate pocket.
+
+7. **R37 — Axes indicator (3rd attempt)**: Moved `axisGroup` from `boardRoot` to `scene` directly. World-space coordinates computed from model coords (`-model_X, -model_Y, model_Z`). Added arrowhead cones, 10mm tick marks, axis endpoint labels with model-space direction descriptions. Named anchor markers for bbox, hinge, center. Hidden by default, toggled via Axes checkbox.
 
 ### Changes made:
-- `wip/render3d.js`: Layer group architecture, `setLayerVisible()` function, label tagging, `setLabelsVisible()` respects layer state
-- `wip/wizard.html`: 6 layer toggle checkboxes + event handler loop
-- `wip/final_requirements.md`: R26-R29 formatted
-- `wip/compliance_scorecard.md`: R26-R29 SELF_PASS, totals updated to 110
+- `wip/render3d.js`: Complete rewrite of MCU/battery/USB-C section (R30-R34, R36), axes indicator (R37)
+- `wip/compliance_scorecard.md`: R30-R34, R36 → SELF_PASS, R37 updated (3 attempts, 2 user corrections), totals updated
 - `wip/session_state.md`: This file updated
 
 ## What To Do Next
 
-**Priority: Implement R30-R36 (backside MCU, frame USB-C slot, battery placement)**
+**Priority: R35 — Post-processing script for B.Cu footprint flip**
 
-R22-R25 are superseded. The new MCU/battery/USB-C placement (R30-R36) requires:
-1. **R30**: Flip MCU to underside of PCB (Z_PCB, components facing down)
-2. **R31**: MCU X = inside edge of pinky column, extending inward
-3. **R32**: MCU Y = position USB-C port at frame edge, mill USB-C slot in frame
-4. **R33**: Bottom plate milled pocket for MCU + cork lower cutout
-5. **R34**: USB-C back as part of MCU mesh, remove createUsbCPort()
-6. **R35**: generate.sh post-processing to flip footprint to B.Cu
-7. **R36**: Battery adjacent to MCU in shared under-PCB cavity
-
-R37 (axes/anchors indicator) is already implemented and SELF_PASS.
+R35 is the only NOT_STARTED requirement. It requires a post-processing step in `generate.sh` to flip the nice!nano footprint from F.Cu to B.Cu in the generated `.kicad_pcb` file.
 
 Other:
+- Visual verification of R30-R37 (user screenshot review pending)
 - The ROTATED thumb mode algorithm is still a placeholder (defaults to STRAIGHT behavior)
 - Old `build3DScene()` dead code still in wizard.html (~1000 lines, no longer called)
 - `convert.py` and JS `ergopadToErgogen()` should be kept in sync
@@ -81,7 +72,9 @@ Other:
 ## Known Issues / Blockers
 
 - **Resolved**: R03, R10, S10, E04, H02 — MCU/battery/USB-C repositioned within board halves (session 12)
-- **Resolved**: R22-R25 — Component placement from bbox (session 12)
+- **Resolved**: R22-R25 — Component placement from bbox, superseded by R30-R36 (session 14)
+- **Resolved**: R30-R34, R36 — Backside MCU at pinky column, USB-C in frame slot, shared pocket (session 14)
+- **Resolved**: R37 — Axes indicator in world space, added to scene directly (session 14, 3rd attempt)
 - **Resolved**: R21 butterfly — per-half Z-axis rotation with combined fold+butterfly quaternion
 - **Resolved**: R18 angle annotation — origin at thumb col, correct arc direction
 - **Resolved**: R19 board orientation — boardRoot with 180° Z rotation
@@ -96,7 +89,7 @@ Other:
 
 | File | Purpose |
 |------|---------|
-| `wip/final_requirements.md` | All 106 requirements (R22-R25 newly added) |
+| `wip/final_requirements.md` | All 118 requirements (R22-R25 superseded, R30-R37 added) |
 | `wip/compliance_scorecard.md` | Pass/fail tracking per requirement |
 | `wip/session_state.md` | This file — handover between sessions |
 | `wip/render3d.js` | Points-based 3D keyboard renderer (Three.js) |
