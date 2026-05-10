@@ -380,7 +380,31 @@ Alternatively Cables shall use quick-release clevis pins with spring-loaded ball
 
 **REQ-R02** — The 3D model shall update automatically when the input config changes (i.e., `generate.sh` produces a viewable 3D file).
 
-**REQ-R03** — The 3D model shall show all components: bamboo bottom plate, cork gaskets, FR-4 PCB, switch plate, wooden frame surround, keycaps, nice!nano MCU, USB-C ports, batteries, hinge, cables, and fasteners.
+**REQ-R03** — The 3D model shall show all components listed in REQ-R03.1–R03.12.
+
+**REQ-R03.1** — The 3D model shall render the bamboo bottom plate.
+
+**REQ-R03.2** — The 3D model shall render the cork gaskets.
+
+**REQ-R03.3** — The 3D model shall render the FR-4 PCB.
+
+**REQ-R03.4** — The 3D model shall render the switch plate.
+
+**REQ-R03.5** — The 3D model shall render the wooden frame surround.
+
+**REQ-R03.6** — The 3D model shall render the keycaps.
+
+**REQ-R03.7** — The 3D model shall render the nice!nano MCU.
+
+**REQ-R03.8** — The 3D model shall render the USB-C ports.
+
+**REQ-R03.9** — The 3D model shall render the batteries.
+
+**REQ-R03.10** — The 3D model shall render the hinge.
+
+**REQ-R03.11** — The 3D model shall render the cables.
+
+**REQ-R03.12** — The 3D model shall render the fasteners.
 
 **REQ-R04** — An exploded view shall be togglable.
 

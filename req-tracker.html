@@ -40,6 +40,12 @@
   }
   .commit-label:hover { border-color: #5a9ae0; }
   .commit-label.is-current { border-color: #3a3; }
+  .nav-link {
+    padding: 3px 10px; border: 1px solid #4a8adf; border-radius: 3px;
+    background: #2a5a9f; color: #fff; font-size: 0.8em; text-decoration: none;
+    white-space: nowrap; margin-left: 8px;
+  }
+  .nav-link:hover { background: #3a6abf; }
 
   .commit-dropdown {
     position: absolute; top: 100%; right: 0; background: #1a1a22; border: 1px solid #444;
@@ -190,10 +196,27 @@ function migrateStatus(raw) {
   return r;
 }
 
+let staticMode = false;
+
 async function load(commitHash) {
-  const qs = commitHash ? `?commit=${commitHash}` : '';
-  const resp = await fetch('/api/data' + qs);
-  const data = await resp.json();
+  let data;
+  try {
+    const qs = commitHash ? `?commit=${commitHash}` : '';
+    const resp = await fetch('/api/data' + qs);
+    if (!resp.ok) throw new Error(resp.status);
+    data = await resp.json();
+  } catch {
+    // No server — static mode (GitHub Pages)
+    staticMode = true;
+    try {
+      const resp = await fetch('req-tracker-data.json');
+      data = await resp.json();
+    } catch {
+      // Last resort: fetch requirements markdown directly
+      const mdResp = await fetch('final_requirements.md');
+      data = { requirements: await mdResp.text(), commits: [], currentCommit: 'static', selectedCommit: 'static', userStatus: {} };
+    }
+  }
   userStatus = migrateStatus(data.userStatus || {});
   commits = data.commits || [];
   selectedCommit = data.selectedCommit;
@@ -267,11 +290,17 @@ function render() {
   const isCur = selectedCommit === currentCommit;
   const commitObj = commits.find(c => c.hash === selectedCommit);
   const commitLabel = commitObj ? `${commitObj.hash} ${commitObj.msg}` : selectedCommit;
-  document.getElementById('commit-nav').innerHTML = `
-    <button onclick="navCommit(-1)" ${ci <= 0 ? 'disabled' : ''} title="Newer commit">&larr;</button>
-    <span class="commit-label ${isCur ? 'is-current' : ''}" onclick="toggleDropdown()" title="${esc(commitLabel)}">${esc(commitLabel)}</span>
-    <button onclick="navCommit(1)" ${ci >= commits.length - 1 ? 'disabled' : ''} title="Older commit">&rarr;</button>
-  `;
+  let navHtml = '';
+  if (!staticMode) {
+    navHtml += `<button onclick="navCommit(-1)" ${ci <= 0 ? 'disabled' : ''} title="Newer commit">&larr;</button>`;
+    navHtml += `<span class="commit-label ${isCur ? 'is-current' : ''}" onclick="toggleDropdown()" title="${esc(commitLabel)}">${esc(commitLabel)}</span>`;
+    navHtml += `<button onclick="navCommit(1)" ${ci >= commits.length - 1 ? 'disabled' : ''} title="Older commit">&rarr;</button>`;
+  } else {
+    navHtml += `<span class="commit-label is-current" style="cursor:default">${esc(commitLabel)}</span>`;
+    navHtml += `<span style="font-size:0.75em;color:#888;margin-left:4px">(read-only)</span>`;
+  }
+  navHtml += `<a href="wizard.html" class="nav-link" title="Keyboard Builder">Keyboard Builder</a>`;
+  document.getElementById('commit-nav').innerHTML = navHtml;
 
   // Requirements grouped by section
   const content = document.getElementById('content');
@@ -303,15 +332,17 @@ function render() {
     html += `<div class="req ${s ? 'mark-'+s : ''} ${isSup ? 'superseded' : ''} ${isDeleted ? 'mark-deleted' : ''} ${isSub ? 'sub-req' : ''}" data-id="${item.id}">`;
     html += `<div class="req-top">`;
     html += `<span class="req-id">${esc(item.id)}</span>`;
-    html += `<span class="req-text" contenteditable="${isDeleted ? 'false' : 'true'}" data-id="${item.id}" spellcheck="false">${esc(item.text)}</span>`;
+    html += `<span class="req-text" contenteditable="${!staticMode && !isDeleted ? 'true' : 'false'}" data-id="${item.id}" spellcheck="false">${esc(item.text)}</span>`;
     if (!isSup) {
       html += `<span class="req-btns">`;
       if (!isDeleted) {
         html += `<button class="${s==='PASS'?'sel-PASS':''}" onclick="mark('${item.id}','PASS')">PASS</button>`;
         html += `<button class="${s==='ASSUME'?'sel-ASSUME':''}" onclick="mark('${item.id}','ASSUME')" title="Assumed pass">Assume</button>`;
         html += `<button class="${s==='FAIL'?'sel-FAIL':''}" onclick="mark('${item.id}','FAIL')">FAIL</button>`;
-        html += `<button class="btn-comment ${c ? 'has-comment' : ''}" onclick="toggleComment('${item.id}')" title="Comment">&#x1f4ac;</button>`;
-        html += `<button class="btn-del" onclick="deleteReq('${item.id}')" title="Delete requirement">&#x2715;</button>`;
+        if (!staticMode) {
+          html += `<button class="btn-comment ${c ? 'has-comment' : ''}" onclick="toggleComment('${item.id}')" title="Comment">&#x1f4ac;</button>`;
+          html += `<button class="btn-del" onclick="deleteReq('${item.id}')" title="Delete requirement">&#x2715;</button>`;
+        }
       } else {
         html += `<button class="btn-undo" onclick="undoDelete('${item.id}')" title="Undo delete">Undo</button>`;
       }
@@ -348,6 +379,7 @@ function render() {
 }
 
 function renderAddArea(sectionTitle) {
+  if (staticMode) return '';
   if (activeAddForm && activeAddForm.sectionTitle === sectionTitle) {
     return `<div class="add-form">
       <div class="add-form-id-wrap" id="add-id-wrap">
@@ -366,6 +398,7 @@ function renderAddArea(sectionTitle) {
 }
 
 function mark(id, status) {
+  if (staticMode) return;
   const cur = userStatus[id];
   if (cur && cur.status === status) {
     if (cur.comment) { cur.status = ''; }

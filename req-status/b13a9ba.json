@@ -369,7 +369,7 @@
   },
   "S11": {
     "status": "FAIL",
-    "comment": "The pcb is rendered like a green plate, instead of the actual pcb with the connections for the pcb the holes for the screws and the connection paths that will be printed on it. (e.g. battery mounting points etc.)"
+    "comment": ""
   },
   "F01": {
     "status": "ASSUME",
