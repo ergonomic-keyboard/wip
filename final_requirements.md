@@ -378,6 +378,9 @@ Alternatively Cables shall use quick-release clevis pins with spring-loaded ball
 
 **REQ-R01.2** — The user shall see a small legend with the keyboard navigation shortcuts in the top right of the screen.
 
+**REQ-R01.3** — Ensure if the user wants to see component labels that it uses the diagonal line to top right followed by horizontal line towards its label, if the render is moved, resort the labels to prevent line crossings. Allow togling them off, e.g. if nuts are 7 nuts, show 7 labels, but allow one to toglle off specific nut lable,s or just the group nut.
+
+
 **REQ-R02** — The 3D model shall update automatically when the input config changes (i.e., `generate.sh` produces a viewable 3D file).
 
 **REQ-R03** — The 3D model shall show all components listed in REQ-R03.1–R03.12.
