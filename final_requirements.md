@@ -8,6 +8,14 @@ Y runs positiveley along the columns (top to bottom of keyboard). Z is vertical 
 
 
 
+## 0. Requirements Tracker
+
+**REQ-T01** — The requirements progress page shall contain buttons for: PASS, Assumed Pass, SKIP, Comment (icon), and Delete (which turns into Undo after clicking it).
+
+**REQ-T02** — The end of each requirement type section (e.g. "4. Hardware — Structure", "2. Validation") shall include a + button to append a new requirement in that section at the end.
+
+---
+
 ## 1. Layout & Input
 
 **REQ-L01** — The system shall use the passhutk ergogen website to capture finger tap positions and generate a JSON layout for the split keyboard.
@@ -65,7 +73,6 @@ Loading shall scale raw tap positions correctly if canvas dimensions differ from
 **REQ-V05** — Validation errors shall be displayed directly on the page 1 canvas, overlaid on the affected key positions, using color-coded indicators (red for invalid, green for valid) and a human-readable summary message below the toolbar.
 
 **REQ-V06** — If validation detects overlapping switches or position mismatches exceeding the threshold, the Next button to page 2 shall be disabled and the error shall be displayed prominently.
-
 ---
 
 ## 3. Hardware — Switches & Keys

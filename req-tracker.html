@@ -8,7 +8,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, 'Segoe UI', Roboto, monospace; background: #0d0d0f; color: #e0e0e0; padding: 16px 24px; }
 
-  /* Top bar: stats left, commit nav right */
+  /* Top bar */
   .topbar {
     position: sticky; top: 0; z-index: 10; background: #0d0d0f;
     display: flex; align-items: center; gap: 12px; padding: 8px 0 10px; border-bottom: 1px solid #333;
@@ -54,21 +54,23 @@
   .commit-dropdown .cd-item.selected { background: #2a4a6a; }
   .cd-hash { color: #8af; font-family: monospace; flex-shrink: 0; }
   .cd-msg { color: #ccc; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .cd-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
 
   /* Sections & requirements */
   .section-hdr {
     font-size: 1.05em; font-weight: bold; margin: 22px 0 8px; padding: 5px 10px;
     background: #1a1a2a; border-left: 3px solid #5a9ae0; border-radius: 2px; color: #ccc;
+    display: flex; align-items: center;
   }
+  .section-hdr .section-title { flex: 1; }
   .req {
     border: 1px solid #222; border-radius: 4px; margin: 6px 0; padding: 0;
     background: #111116; transition: border-color 0.15s;
   }
   .req:hover { border-color: #444; }
   .req.mark-PASS { border-left: 3px solid #3a3; }
-  .req.mark-FAIL { border-left: 3px solid #a33; }
+  .req.mark-ASSUME { border-left: 3px solid #38a; }
   .req.mark-SKIP { border-left: 3px solid #883; }
+  .req.mark-deleted { border-left: 3px solid #a33; opacity: 0.3; }
   .req.superseded { opacity: 0.35; }
 
   .req-top { display: flex; align-items: flex-start; gap: 8px; padding: 6px 10px; }
@@ -82,14 +84,15 @@
   }
   .req-btns button:hover { border-color: #888; }
   .req-btns button.sel-PASS { background: #1a4a1a; border-color: #3a3; color: #5c5; font-weight: bold; }
-  .req-btns button.sel-FAIL { background: #4a1a1a; border-color: #a33; color: #f66; font-weight: bold; }
+  .req-btns button.sel-ASSUME { background: #1a3a4a; border-color: #38a; color: #6ae; font-weight: bold; }
   .req-btns button.sel-SKIP { background: #2a2a1a; border-color: #883; color: #aa8; font-weight: bold; }
   .req-btns button.btn-comment { color: #5a9ae0; }
   .req-btns button.btn-comment.has-comment { color: #5ae; border-color: #5a9ae0; }
+  .req-btns button.btn-del { color: #a55; }
+  .req-btns button.btn-del:hover { border-color: #a33; color: #f66; }
+  .req-btns button.btn-undo { color: #5a9ae0; border-color: #38a; }
 
-  .req-comment {
-    display: none; padding: 4px 10px 8px 68px;
-  }
+  .req-comment { display: none; padding: 4px 10px 8px 68px; }
   .req-comment.visible { display: block; }
   .req-comment textarea {
     width: 100%; padding: 5px 8px; font-size: 0.82em; font-family: inherit;
@@ -102,11 +105,12 @@
   .save-ind { position: fixed; top: 8px; right: 12px; font-size: 0.8em; color: #5c5; opacity: 0; transition: opacity 0.3s; z-index: 20; }
   .save-ind.show { opacity: 1; }
 
-  .add-req {
-    margin: 10px 0; padding: 6px 12px; font-size: 0.82em; border: 1px dashed #444;
-    border-radius: 4px; background: transparent; color: #888; cursor: pointer; width: 100%;
+  .add-section-req {
+    margin: 4px 0 12px; padding: 4px 12px; font-size: 0.78em; border: 1px dashed #333;
+    border-radius: 3px; background: transparent; color: #666; cursor: pointer; width: 100%;
+    text-align: left;
   }
-  .add-req:hover { border-color: #5a9ae0; color: #aaa; }
+  .add-section-req:hover { border-color: #5a9ae0; color: #aaa; }
 </style>
 </head>
 <body>
@@ -121,16 +125,16 @@
 <script>
 let userStatus = {};     // { reqId: { status, comment } }
 let parsed = [];         // [{ type:'section'|'req', ... }]
-let commits = [];        // [{ hash, msg }]
+let commits = [];
 let selectedCommit = '';
 let currentCommit = '';
 let activeFilter = 'all';
-let openComments = {};   // { reqId: true } — which comment boxes are open
+let openComments = {};
+let pendingDeletes = {};  // { reqId: true } — marked for delete but not yet confirmed
 
 function getStatus(id) { return userStatus[id]?.status || ''; }
 function getComment(id) { return userStatus[id]?.comment || ''; }
 
-// Migrate old string format
 function migrateStatus(raw) {
   const r = {};
   for (const [k, v] of Object.entries(raw)) {
@@ -149,8 +153,8 @@ async function load(commitHash) {
   selectedCommit = data.selectedCommit;
   currentCommit = data.currentCommit;
   parsed = parseMd(data.requirements);
-  // Open comment boxes for any req that already has a comment
   openComments = {};
+  pendingDeletes = {};
   for (const [k, v] of Object.entries(userStatus)) {
     if (v.comment) openComments[k] = true;
   }
@@ -189,26 +193,25 @@ function matchesFilter(id) {
 }
 
 function render() {
-  // Stats
   const reqs = parsed.filter(p => p.type === 'req');
   const sup = reqs.filter(r => r.text.startsWith('~~SUPERSEDED'));
   const active = reqs.length - sup.length;
   const pass = reqs.filter(r => getStatus(r.id) === 'PASS').length;
-  const fail = reqs.filter(r => getStatus(r.id) === 'FAIL').length;
+  const assume = reqs.filter(r => getStatus(r.id) === 'ASSUME').length;
   const skip = reqs.filter(r => getStatus(r.id) === 'SKIP').length;
-  const unch = active - pass - fail - skip;
+  const unch = active - pass - assume - skip;
 
   document.getElementById('stats').innerHTML = `
     <span class="s"><span class="dot" style="background:#5c5"></span>PASS: ${pass}</span>
-    <span class="s"><span class="dot" style="background:#f66"></span>FAIL: ${fail}</span>
+    <span class="s"><span class="dot" style="background:#6ae"></span>Assumed: ${assume}</span>
     <span class="s"><span class="dot" style="background:#aa8"></span>SKIP: ${skip}</span>
     <span class="s"><span class="dot" style="background:#555"></span>Unchecked: ${unch}</span>
-    <span class="s" style="color:#fff;font-weight:bold">${pass+fail+skip}/${active}</span>
+    <span class="s" style="color:#fff;font-weight:bold">${pass+assume+skip}/${active}</span>
     <div class="filters">
       <button data-f="all" class="${activeFilter==='all'?'active':''}">All</button>
       <button data-f="unchecked" class="${activeFilter==='unchecked'?'active':''}">Unchecked</button>
       <button data-f="PASS" class="${activeFilter==='PASS'?'active':''}">PASS</button>
-      <button data-f="FAIL" class="${activeFilter==='FAIL'?'active':''}">FAIL</button>
+      <button data-f="ASSUME" class="${activeFilter==='ASSUME'?'active':''}">Assumed</button>
       <button data-f="SKIP" class="${activeFilter==='SKIP'?'active':''}">SKIP</button>
     </div>
   `;
@@ -224,46 +227,67 @@ function render() {
     <button onclick="navCommit(1)" ${ci >= commits.length - 1 ? 'disabled' : ''} title="Older commit">&rarr;</button>
   `;
 
-  // Requirements
+  // Requirements grouped by section
   const content = document.getElementById('content');
   let html = '';
-  for (const item of parsed) {
+  let currentSection = '';
+
+  for (let pi = 0; pi < parsed.length; pi++) {
+    const item = parsed[pi];
+
     if (item.type === 'section') {
-      html += `<div class="section-hdr">${esc(item.title)}</div>`;
+      // Close previous section with its + button
+      if (currentSection) {
+        html += `<button class="add-section-req" onclick="addReqToSection('${esc(currentSection)}')">+ Add requirement to ${esc(currentSection)}</button>`;
+      }
+      currentSection = item.title;
+      html += `<div class="section-hdr"><span class="section-title">${esc(item.title)}</span></div>`;
       continue;
     }
     if (item.type !== 'req') continue;
     if (!matchesFilter(item.id)) continue;
+
     const s = getStatus(item.id);
     const c = getComment(item.id);
     const isSup = item.text.startsWith('~~SUPERSEDED');
     const commentOpen = openComments[item.id];
+    const isDeleted = pendingDeletes[item.id];
 
-    html += `<div class="req ${s ? 'mark-'+s : ''} ${isSup ? 'superseded' : ''}" data-id="${item.id}">`;
+    html += `<div class="req ${s ? 'mark-'+s : ''} ${isSup ? 'superseded' : ''} ${isDeleted ? 'mark-deleted' : ''}" data-id="${item.id}">`;
     html += `<div class="req-top">`;
     html += `<span class="req-id">${esc(item.id)}</span>`;
-    html += `<span class="req-text" contenteditable="true" data-id="${item.id}" spellcheck="false">${esc(item.text)}</span>`;
+    html += `<span class="req-text" contenteditable="${isDeleted ? 'false' : 'true'}" data-id="${item.id}" spellcheck="false">${esc(item.text)}</span>`;
     if (!isSup) {
       html += `<span class="req-btns">`;
-      html += `<button class="${s==='PASS'?'sel-PASS':''}" onclick="mark('${item.id}','PASS')">PASS</button>`;
-      html += `<button class="${s==='FAIL'?'sel-FAIL':''}" onclick="mark('${item.id}','FAIL')">FAIL</button>`;
-      html += `<button class="${s==='SKIP'?'sel-SKIP':''}" onclick="mark('${item.id}','SKIP')">SKIP</button>`;
-      html += `<button class="btn-comment ${c ? 'has-comment' : ''}" onclick="toggleComment('${item.id}')" title="Add comment">&#x1f4ac;</button>`;
+      if (!isDeleted) {
+        html += `<button class="${s==='PASS'?'sel-PASS':''}" onclick="mark('${item.id}','PASS')">PASS</button>`;
+        html += `<button class="${s==='ASSUME'?'sel-ASSUME':''}" onclick="mark('${item.id}','ASSUME')" title="Assumed pass">Assume</button>`;
+        html += `<button class="${s==='SKIP'?'sel-SKIP':''}" onclick="mark('${item.id}','SKIP')">SKIP</button>`;
+        html += `<button class="btn-comment ${c ? 'has-comment' : ''}" onclick="toggleComment('${item.id}')" title="Comment">&#x1f4ac;</button>`;
+        html += `<button class="btn-del" onclick="deleteReq('${item.id}')" title="Delete requirement">&#x2715;</button>`;
+      } else {
+        html += `<button class="btn-undo" onclick="undoDelete('${item.id}')" title="Undo delete">Undo</button>`;
+      }
       html += `</span>`;
     }
     html += `</div>`;
-    if (!isSup) {
+    if (!isSup && !isDeleted) {
       html += `<div class="req-comment ${commentOpen ? 'visible' : ''}" id="comment-${item.id}">`;
       html += `<textarea placeholder="What's wrong, how to fix it..." data-id="${item.id}">${esc(c)}</textarea>`;
       html += `</div>`;
     }
     html += `</div>`;
   }
-  html += `<button class="add-req" onclick="addReq()">+ Add requirement</button>`;
+
+  // Final section + button
+  if (currentSection) {
+    html += `<button class="add-section-req" onclick="addReqToSection('${esc(currentSection)}')">+ Add requirement to ${esc(currentSection)}</button>`;
+  }
+
   content.innerHTML = html;
 
   // Attach handlers
-  content.querySelectorAll('.req-text[contenteditable]').forEach(el => {
+  content.querySelectorAll('.req-text[contenteditable="true"]').forEach(el => {
     el.addEventListener('blur', () => onReqTextEdit(el));
   });
   content.querySelectorAll('.req-comment textarea').forEach(el => {
@@ -279,7 +303,6 @@ function render() {
 function mark(id, status) {
   const cur = userStatus[id];
   if (cur && cur.status === status) {
-    // Toggle off status but keep comment
     if (cur.comment) { cur.status = ''; }
     else { delete userStatus[id]; }
   } else {
@@ -293,11 +316,47 @@ function toggleComment(id) {
   if (openComments[id]) { delete openComments[id]; }
   else { openComments[id] = true; }
   render();
-  // Focus the textarea
   if (openComments[id]) {
     const ta = document.querySelector(`#comment-${id} textarea`);
     if (ta) ta.focus();
   }
+}
+
+function deleteReq(id) {
+  pendingDeletes[id] = true;
+  render();
+  // Actually delete from file after a brief moment (user can undo)
+  setTimeout(() => {
+    if (!pendingDeletes[id]) return; // was undone
+    fetch('/api/delete-requirement', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    }).then(r => r.json()).then(r => {
+      if (r.ok) {
+        parsed = parsed.filter(p => !(p.type === 'req' && p.id === id));
+        delete pendingDeletes[id];
+        delete userStatus[id];
+        render();
+        scheduleSave();
+        flashSave('Deleted ' + id, '#f88');
+      } else {
+        delete pendingDeletes[id];
+        render();
+        flashSave('Error: ' + (r.error || ''), '#f66');
+      }
+    }).catch(e => {
+      delete pendingDeletes[id];
+      render();
+      flashSave('Error: ' + e.message, '#f66');
+    });
+  }, 3000);
+}
+
+function undoDelete(id) {
+  delete pendingDeletes[id];
+  render();
+  flashSave('Delete cancelled', '#5ae');
 }
 
 function onReqTextEdit(el) {
@@ -316,20 +375,28 @@ function onReqTextEdit(el) {
   }).catch(e => flashSave('Error: ' + e.message, '#f66'));
 }
 
-function addReq() {
+function addReqToSection(sectionTitle) {
   const id = prompt('Requirement ID (e.g. R40, L12):');
   if (!id) return;
   const text = prompt('Requirement text:');
   if (!text) return;
-  parsed.push({ type: 'req', id, text });
+  // Insert into parsed array right before the next section
+  const secIdx = parsed.findIndex(p => p.type === 'section' && p.title === sectionTitle);
+  let insertIdx = parsed.length;
+  if (secIdx >= 0) {
+    for (let i = secIdx + 1; i < parsed.length; i++) {
+      if (parsed[i].type === 'section') { insertIdx = i; break; }
+    }
+  }
+  parsed.splice(insertIdx, 0, { type: 'req', id, text });
   fetch('/api/add-requirement', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id, text }),
+    body: JSON.stringify({ id, text, afterSection: sectionTitle }),
   }).then(r => r.json()).then(r => {
-    if (r.ok) flashSave('Added', '#5ae');
-    else flashSave('Error', '#f66');
-  });
+    if (r.ok) flashSave('Added ' + id, '#5ae');
+    else flashSave('Error: ' + (r.error || ''), '#f66');
+  }).catch(e => flashSave('Error: ' + e.message, '#f66'));
   render();
 }
 
@@ -337,9 +404,7 @@ function addReq() {
 function navCommit(dir) {
   const ci = commits.findIndex(c => c.hash === selectedCommit);
   const ni = ci + dir;
-  if (ni >= 0 && ni < commits.length) {
-    load(commits[ni].hash);
-  }
+  if (ni >= 0 && ni < commits.length) load(commits[ni].hash);
 }
 
 let dropdownOpen = false;
@@ -351,7 +416,6 @@ function toggleDropdown() {
   dd.className = 'commit-dropdown';
   dd.id = 'commit-dd';
   commits.forEach(c => {
-    // Check if this commit has a status file (indicated by having been loaded)
     const isSel = c.hash === selectedCommit;
     const isCur = c.hash === currentCommit;
     dd.innerHTML += `<div class="cd-item ${isSel?'selected':''}" onclick="selectCommit('${c.hash}')">
@@ -372,15 +436,10 @@ function closeDropdown() {
 }
 
 function closeDropdownOnClick(e) {
-  if (!e.target.closest('.commit-dropdown') && !e.target.closest('.commit-label')) {
-    closeDropdown();
-  }
+  if (!e.target.closest('.commit-dropdown') && !e.target.closest('.commit-label')) closeDropdown();
 }
 
-function selectCommit(hash) {
-  closeDropdown();
-  load(hash);
-}
+function selectCommit(hash) { closeDropdown(); load(hash); }
 
 // Save
 let saveTimeout = null;
@@ -419,7 +478,6 @@ document.getElementById('stats').addEventListener('click', e => {
   render();
 });
 
-// Keyboard: Escape closes dropdown
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') closeDropdown();
 });

@@ -8,7 +8,7 @@ Launch both the keyboard wizard and the requirement tracker:
 
 ```bash
 cd /home/a/git/git/keyboard/wip
-python3 -m http.server 8080 & node req-tracker.js & wait
+fuser -k 8080/tcp 8099/tcp 2>/dev/null; python3 -m http.server 8080 & node req-tracker.js & wait
 ```
 
 - Keyboard wizard: http://localhost:8080/wizard.html

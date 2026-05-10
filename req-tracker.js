@@ -146,7 +146,8 @@ const server = http.createServer(async (req, res) => {
       const { id, newText } = JSON.parse(body);
       if (!id || !newText) throw new Error('id and newText required');
       let md = fs.readFileSync(REQUIREMENTS_FILE, 'utf8');
-      const re = new RegExp(`(\\*\\*(?:REQ-)?${id}\\*\\*\\s*[—–-]\\s*)(.+)`, 'g');
+      // Match single-line or multiline requirement (up to next ** or ## or ---)
+      const re = new RegExp(`(\\*\\*(?:REQ-)?${id}\\*\\*\\s*[—–-]\\s*)([\\s\\S]*?)(?=\\n\\*\\*|\\n##|\\n---|$)`, 'g');
       const match = re.exec(md);
       if (!match) throw new Error(`${id} not found in requirements`);
       md = md.slice(0, match.index) + match[1] + newText + md.slice(match.index + match[0].length);
@@ -160,14 +161,61 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // API: POST /api/add-requirement — append a new requirement
+  // API: POST /api/delete-requirement — remove a requirement from final_requirements.md
+  if (url.pathname === '/api/delete-requirement' && req.method === 'POST') {
+    const body = await readBody(req);
+    try {
+      const { id } = JSON.parse(body);
+      if (!id) throw new Error('id required');
+      let md = fs.readFileSync(REQUIREMENTS_FILE, 'utf8');
+      // Match the full requirement block including leading newlines
+      const re = new RegExp(`\\n*\\*\\*(?:REQ-)?${id}\\*\\*\\s*[—–-]\\s*[\\s\\S]*?(?=\\n\\*\\*|\\n##|\\n---|$)`, 'g');
+      const match = re.exec(md);
+      if (!match) throw new Error(`${id} not found`);
+      md = md.slice(0, match.index) + md.slice(match.index + match[0].length);
+      fs.writeFileSync(REQUIREMENTS_FILE, md);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end('{"ok":true}');
+    } catch (e) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+    return;
+  }
+
+  // API: POST /api/add-requirement — add a requirement to a specific section
   if (url.pathname === '/api/add-requirement' && req.method === 'POST') {
     const body = await readBody(req);
     try {
-      const { id, text } = JSON.parse(body);
+      const { id, text, afterSection } = JSON.parse(body);
       if (!id || !text) throw new Error('id and text required');
       let md = fs.readFileSync(REQUIREMENTS_FILE, 'utf8');
-      md = md.trimEnd() + '\n\n**REQ-' + id + '** — ' + text + '\n';
+      const newReq = '\n**REQ-' + id + '** — ' + text + '\n';
+      if (afterSection) {
+        // Find the section header, then find the end of that section (next ## or --- or EOF)
+        const lines = md.split('\n');
+        let sectionStart = -1;
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].match(/^## /) && lines[i].includes(afterSection)) {
+            sectionStart = i; break;
+          }
+        }
+        if (sectionStart >= 0) {
+          // Find end of section: next --- or next ## header
+          let insertAt = lines.length;
+          for (let i = sectionStart + 1; i < lines.length; i++) {
+            if (lines[i].match(/^---/) || (lines[i].match(/^## /) && i > sectionStart)) {
+              insertAt = i; break;
+            }
+          }
+          lines.splice(insertAt, 0, newReq);
+          md = lines.join('\n');
+        } else {
+          md = md.trimEnd() + '\n' + newReq;
+        }
+      } else {
+        md = md.trimEnd() + '\n' + newReq;
+      }
       fs.writeFileSync(REQUIREMENTS_FILE, md);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end('{"ok":true}');
@@ -189,6 +237,16 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
     res.end(data);
   });
+});
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.log(`Port ${PORT} in use, killing existing process...`);
+    try { execSync(`fuser -k ${PORT}/tcp`, { stdio: 'ignore' }); } catch {}
+    setTimeout(() => server.listen(PORT), 500);
+  } else {
+    throw err;
+  }
 });
 
 server.listen(PORT, () => {
