@@ -1157,11 +1157,56 @@ function buildNewScene(ergogenResults, config, container) {
   corkCutoutMesh.position.set(pocketCx, pocketCy, Z_CORK_LOWER + T_CORK_LOWER / 2);
   layerCorkLower.add(corkCutoutMesh);
 
-  // ── Screws ──
-  const bx0 = bbox.min.x + 10, bx1 = bbox.max.x - 10;
-  const by0 = bbox.min.y + 10, by1 = bbox.max.y - 10;
-  const bmx = (bbox.min.x + bbox.max.x) / 2, bmy = center.y;
-  const screwPositions = [[bx0, by0], [bx0, by1], [bx0, bmy], [bx1, by0], [bx1, by1], [bx1, bmy], [bmx, by0]].map(([x, y]) => ({ x, y }));
+  // ── Screws — placed at midpoints between key pairs, distributed across board ──
+  // Use every key position directly; pick well-spaced subset for screw locations.
+  const screwPositions = [];
+  if (leftKeys.length >= 3) {
+    // Centroid of all keys
+    const keyCx = leftKeys.reduce((s, k) => s + k.x, 0) / leftKeys.length;
+    const keyCy = leftKeys.reduce((s, k) => s + k.y, 0) / leftKeys.length;
+
+    // Place screws at midpoints between the centroid and each key, but only
+    // keep well-distributed ones. First collect all candidate positions.
+    const candidates = [];
+
+    // Midpoint of each key with the centroid (guaranteed inside convex hull)
+    leftKeys.forEach(k => {
+      candidates.push({ x: (k.x + keyCx) / 2, y: (k.y + keyCy) / 2 });
+    });
+
+    // Also midpoints between pairs of distant keys (diagonally opposite)
+    const sortedByAngle = [...leftKeys].map(k => ({
+      ...k, angle: Math.atan2(k.y - keyCy, k.x - keyCx)
+    })).sort((a, b) => a.angle - b.angle);
+    const n = sortedByAngle.length;
+    for (let i = 0; i < n; i++) {
+      const opp = sortedByAngle[(i + Math.floor(n / 2)) % n];
+      const k = sortedByAngle[i];
+      candidates.push({ x: (k.x + opp.x) / 2, y: (k.y + opp.y) / 2 });
+    }
+
+    // Greedy farthest-point sampling to pick 7 well-spaced screws
+    const TARGET = 7;
+    const picked = [{ x: keyCx, y: keyCy }]; // start with centroid
+    const used = new Set([0]);
+
+    while (picked.length < TARGET && picked.length < candidates.length) {
+      let bestDist = -1, bestIdx = -1;
+      for (let i = 0; i < candidates.length; i++) {
+        const c = candidates[i];
+        // Min distance to any already-picked screw
+        const minD = picked.reduce((m, p) =>
+          Math.min(m, Math.sqrt((c.x - p.x) ** 2 + (c.y - p.y) ** 2)), Infinity);
+        if (minD > bestDist) { bestDist = minD; bestIdx = i; }
+      }
+      if (bestIdx < 0) break;
+      picked.push(candidates[bestIdx]);
+      // Remove nearby candidates to speed up next iterations
+      candidates.splice(bestIdx, 1);
+    }
+
+    picked.forEach(p => screwPositions.push(p));
+  }
   const screwHeadGeo = new THREE.CylinderGeometry(2, 1, 1, 16); screwHeadGeo.rotateX(Math.PI / 2);
   const screwShaftGeo = new THREE.CylinderGeometry(1, 1, T_FRAME, 8); screwShaftGeo.rotateX(Math.PI / 2);
   const insertGeo = new THREE.CylinderGeometry(1.6, 1.6, 3, 16); insertGeo.rotateX(Math.PI / 2);
