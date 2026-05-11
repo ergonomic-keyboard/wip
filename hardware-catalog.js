@@ -12,10 +12,10 @@ export const HARDWARE_CATALOG = {
         pinLen: 5,           // mm pin exposed gap between barrels
         totalLen: 23,        // mm assembled length (both barrels + gap)
         mortiseDepth: 9.6,   // mm drill depth into each board half
-        hingeCount: 3,       // number of barrel hinges along the board
+        hingeCount: 1,       // single barrel hinge at center
       },
       foldType: 'barrel',
-      bom: [{ item: 'SOSS 8mm Concealed Brass Barrel Hinge', qty: 3, spec: '8mm dia, 180° opening' }],
+      bom: [{ item: 'SOSS 8mm Concealed Brass Barrel Hinge', qty: 1, spec: '8mm dia, 180° opening' }],
     },
     'barrel-5mm': {
       name: '5mm Mini Barrel Hinge',
@@ -26,10 +26,10 @@ export const HARDWARE_CATALOG = {
         pinLen: 3,           // mm pin exposed gap between barrels
         totalLen: 17,        // mm assembled length
         mortiseDepth: 7,     // mm drill depth
-        hingeCount: 4,       // number of barrel hinges along the board
+        hingeCount: 1,       // single barrel hinge at center
       },
       foldType: 'barrel',
-      bom: [{ item: '5mm Solid Brass Miniature Barrel Hinge', qty: 4, spec: '5mm dia, concealed' }],
+      bom: [{ item: '5mm Solid Brass Miniature Barrel Hinge', qty: 1, spec: '5mm dia, concealed' }],
     },
     'piano-12mm': {
       name: '12mm Stainless Piano Hinge',

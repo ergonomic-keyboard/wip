@@ -406,6 +406,13 @@ function buildNewScene(ergogenResults, config, container) {
     });
   }
   for (const [name, pt] of ptEntries) {
+    // Skip non-key points (mounting holes, standoffs, tent legs, etc.)
+    const colNet = pt.meta?.column_net || '';
+    const rowNet = pt.meta?.row_net || '';
+    if (!colNet || !rowNet) {
+      console.log(`  render3d: skipping non-key point "${name}" (no column_net/row_net)`);
+      continue;
+    }
     const isThumb = pt.meta?.zone?.name === 'thumb' || name.startsWith('thumb_');
     const rawR = isThumb ? pt.r + THUMB_ROT_CORRECTION : pt.r;
     // Coordinate transform: ergogen is Y-up, Three.js scene is Y-down → negate Y.

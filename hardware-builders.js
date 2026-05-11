@@ -76,14 +76,17 @@ export function buildPianoHinge(dims, mats, boardSpan) {
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * Build concealed barrel hinges (e.g. SOSS) spaced along the Y axis at x=0, z=0.
- * Each hinge = two brass barrels (drilled into each half) connected by a steel pin.
+ * Build concealed barrel hinge (e.g. SOSS) at the board center.
+ * Pin axis runs along Y (front-to-back / "belly to screen"),
+ * so the two halves fold toward each other around the Y axis.
+ * Each hinge = barrel + two mounting leaves that extend into each board half.
  * @param {object} dims — { barrelDia, barrelLen, pinDia, pinLen, totalLen, mortiseDepth, hingeCount }
  * @param {object} mats — { brass, steel, chrome }
  * @param {number} boardSpan — total Y-extent of the board (mm)
+ * @param {number} halfBoardW — distance from hinge line to the far edge of one board half (mm)
  * @returns {{ group }}
  */
-export function buildBarrelHinge(dims, mats, boardSpan) {
+export function buildBarrelHinge(dims, mats, boardSpan, halfBoardW) {
   const group = new THREE.Group();
   group.userData.hwType = 'hinge';
 
@@ -91,48 +94,72 @@ export function buildBarrelHinge(dims, mats, boardSpan) {
   const barrelR = barrelDia / 2;
   const pinR = pinDia / 2;
 
-  // Space hinges evenly along the board span
-  const spacing = boardSpan / (hingeCount + 1);
+  // Mounting leaf dimensions
+  const leafThick = 1.0;                        // mm — thin steel leaf
+  const leafHeight = barrelDia;                  // mm — same height as barrel diameter
+  const leafLen = Math.min(20, halfBoardW * 0.3); // mm — extends into each board half
 
-  for (let i = 0; i < hingeCount; i++) {
+  // Place hinge(s) evenly along the board span (typically just 1)
+  const count = hingeCount || 1;
+  const spacing = boardSpan / (count + 1);
+
+  for (let i = 0; i < count; i++) {
     const hy = -boardSpan / 2 + spacing * (i + 1);
 
-    // Left barrel (drilled into left half, extends in -X)
-    const lBarrelGeo = new THREE.CylinderGeometry(barrelR, barrelR, barrelLen, 16);
-    lBarrelGeo.rotateZ(Math.PI / 2); // orient along X axis
-    const lBarrel = new THREE.Mesh(lBarrelGeo, mats.brass.clone());
-    lBarrel.position.set(-barrelLen / 2 - pinLen / 2, hy, 0);
-    lBarrel.castShadow = true;
-    lBarrel.userData._hingeLeaf = 'left';
-    group.add(lBarrel);
+    // Central barrel oriented along Y axis (CylinderGeometry default axis)
+    const barrelTotalLen = barrelLen * 2 + pinLen;
+    const barrelGeo = new THREE.CylinderGeometry(barrelR, barrelR, barrelTotalLen, 16);
+    const barrel = new THREE.Mesh(barrelGeo, mats.brass.clone());
+    barrel.position.set(0, hy, 0);
+    barrel.castShadow = true;
+    barrel.userData._hingePin = true; // barrel stays at center during fold
+    group.add(barrel);
 
-    // Right barrel (drilled into right half, extends in +X)
-    const rBarrelGeo = new THREE.CylinderGeometry(barrelR, barrelR, barrelLen, 16);
-    rBarrelGeo.rotateZ(Math.PI / 2);
-    const rBarrel = new THREE.Mesh(rBarrelGeo, mats.brass.clone());
-    rBarrel.position.set(barrelLen / 2 + pinLen / 2, hy, 0);
-    rBarrel.castShadow = true;
-    rBarrel.userData._hingeLeaf = 'right';
-    group.add(rBarrel);
-
-    // Connecting pin (exposed between barrels)
-    const pinGeo = new THREE.CylinderGeometry(pinR, pinR, pinLen + barrelLen * 2, 8);
-    pinGeo.rotateZ(Math.PI / 2);
+    // Connecting pin — runs through barrel along Y axis
+    const pinTotalLen = barrelTotalLen + 2; // slightly longer than barrel
+    const pinGeo = new THREE.CylinderGeometry(pinR, pinR, pinTotalLen, 8);
     const pin = new THREE.Mesh(pinGeo, mats.steel.clone());
     pin.position.set(0, hy, 0);
     pin.castShadow = true;
     pin.userData._hingePin = true;
     group.add(pin);
 
-    // Annular grooves (decorative rings on each barrel for glue grip)
+    // Left mounting leaf — extends into left board half (−X direction)
+    const lLeafGeo = new THREE.BoxGeometry(leafLen, leafThick, leafHeight);
+    const lLeaf = new THREE.Mesh(lLeafGeo, mats.steel.clone());
+    lLeaf.position.set(-leafLen / 2, hy, 0);
+    lLeaf.castShadow = true;
+    lLeaf.userData._hingeLeaf = 'left';
+    group.add(lLeaf);
+
+    // Right mounting leaf — extends into right board half (+X direction)
+    const rLeafGeo = new THREE.BoxGeometry(leafLen, leafThick, leafHeight);
+    const rLeaf = new THREE.Mesh(rLeafGeo, mats.steel.clone());
+    rLeaf.position.set(leafLen / 2, hy, 0);
+    rLeaf.castShadow = true;
+    rLeaf.userData._hingeLeaf = 'right';
+    group.add(rLeaf);
+
+    // Screw holes on each leaf (decorative circles)
     [-1, 1].forEach(dir => {
-      const grooveR = barrelR + 0.2;
+      const screwX = dir * (leafLen * 0.7);
+      const screwGeo = new THREE.CylinderGeometry(1.2, 1.2, leafThick + 0.2, 8);
+      screwGeo.rotateX(Math.PI / 2); // align screw axis along Y (through the leaf)
+      const screw = new THREE.Mesh(screwGeo, mats.chrome.clone());
+      screw.position.set(screwX, hy, 0);
+      screw.castShadow = true;
+      screw.userData._hingeLeaf = dir < 0 ? 'left' : 'right';
+      group.add(screw);
+    });
+
+    // Decorative annular groove on each end of barrel
+    [-1, 1].forEach(dir => {
       const grooveGeo = new THREE.TorusGeometry(barrelR - 0.3, 0.3, 6, 16);
-      grooveGeo.rotateZ(Math.PI / 2); // orient around X axis
+      grooveGeo.rotateX(Math.PI / 2);
       const groove = new THREE.Mesh(grooveGeo, mats.brass.clone());
-      const bx = dir * (barrelLen / 2 + pinLen / 2);
-      groove.position.set(bx, hy, 0);
-      groove.userData._hingeLeaf = dir < 0 ? 'left' : 'right';
+      const by = hy + dir * (barrelTotalLen / 2 - 1);
+      groove.position.set(0, by, 0);
+      groove.userData._hingePin = true; // stays at center
       group.add(groove);
     });
   }
@@ -418,14 +445,15 @@ export function buildHardwareAssembly(catalog, selection, mats, geo) {
   const hingeDef = catalog.hinges[selection.hinge];
   let hingeResult;
 
+  const halfBoardW = hingeX - bbox.min.x;
+
   if (hingeDef.foldType === 'barrel') {
-    hingeResult = buildBarrelHinge(hingeDef.dims, mats, boardSpan);
+    hingeResult = buildBarrelHinge(hingeDef.dims, mats, boardSpan, halfBoardW);
     hingeResult.group.position.set(hingeX, hingeCenterY, hingeZ);
   } else if (hingeDef.foldType === 'piano') {
     hingeResult = buildPianoHinge(hingeDef.dims, mats, boardSpan);
     hingeResult.group.position.set(hingeX, hingeCenterY, hingeZ);
   } else {
-    const halfBoardW = hingeX - bbox.min.x;
     hingeResult = buildBallJointHinge(hingeDef.dims, mats, boardSpan, halfBoardW);
     hingeResult.group.position.set(hingeX, hingeCenterY, hingeZ);
   }
