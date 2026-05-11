@@ -1157,152 +1157,124 @@ function buildNewScene(ergogenResults, config, container) {
   corkCutoutMesh.position.set(pocketCx, pocketCy, Z_CORK_LOWER + T_CORK_LOWER / 2);
   layerCorkLower.add(corkCutoutMesh);
 
-  // ── Screws — REQ-S07.1 through S07.5 (described for right half, mirrored to left) ──
-  // In left-half model space: X increases toward hinge (inner), Y increases toward bottom.
-  // bbox.min.x = pinky edge, bbox.max.x = inner/hinge edge.
-  // bbox.min.y = top edge (away from user), bbox.max.y = bottom edge (near user).
-  // boardRoot has 180° Z rotation → visual flips both axes.
+  // ── Screws — REQ-S07.1 through S07.5 (described for LEFT half as user sees it) ──
+  // boardRoot has 180° Z rotation: visual = (-model_x, -model_y).
+  // User view of left half: "left"=pinky=visual -X=model +X,
+  //   "right"=hinge=visual +X=model -X,
+  //   "top"=screen=visual +Y=model -Y, "bottom"=user=visual -Y=model +Y.
+  // Corner offsets (user-view → model, accounting for 180° Z flip):
+  //   top-left  = (+SW, -SH)    top-right  = (-SW, -SH)
+  //   bot-left  = (+SW, +SH)    bot-right  = (-SW, +SH)
   // Column nets: C0=pinky, C1=ring, C2=middle, C3=index, C4=inner(index_far)
-  const screwPositions = [];   // required (red) positions
-  const altScrewPositions = []; // alternative (purple) positions
+  const screwPositions = [];
+  const altScrewPositions = [];
+  const screwDiagonals = []; // {corner:{x,y}, dir:{x,y}, label:string} for debug lines
   if (leftKeys.length >= 3) {
-    const SWITCH_GAP = 7;    // mm minimum distance from nearest switch center
-    const INSET = 7;         // mm from board edge to bolt center
-
+    const INSET = 7;
     const mKeys = leftKeys.filter(k => k.meta?.zone?.name !== 'thumb');
     const tKeys = leftKeys.filter(k => k.meta?.zone?.name === 'thumb' || k.name.startsWith('thumb_'));
 
-    // Group matrix keys by column_net, sort each by Y ascending (top→bottom)
+    // Group matrix keys by column_net, sort each by Y ascending
     const colByNet = {};
     for (const k of mKeys) {
       const cn = k.meta?.column_net || '';
       if (!colByNet[cn]) colByNet[cn] = [];
       colByNet[cn].push(k);
     }
-    for (const cn of Object.keys(colByNet)) {
-      colByNet[cn].sort((a, b) => a.y - b.y);
-    }
-    const c0 = colByNet['C0'] || []; // pinky
-    const c1 = colByNet['C1'] || []; // ring
-    const c2 = colByNet['C2'] || []; // middle
-    const c3 = colByNet['C3'] || []; // index
-    const c4 = colByNet['C4'] || []; // inner (index_far)
+    for (const cn of Object.keys(colByNet)) colByNet[cn].sort((a, b) => a.y - b.y);
+    const c0 = colByNet['C0'] || [];
+    const c4 = colByNet['C4'] || [];
+    const c3 = colByNet['C3'] || [];
 
-    // Switch half-dimensions (Cherry ULP footprint)
-    const SW = 7.1;   // half-width in X
-    const SH = 6.4;   // half-height in Y
+    const SW = 7.1, SH = 6.4; // switch half-dimensions
 
-    // Compute thumb angle for S07.3 conditional
-    let thumbAngleDeg = 0;
-    const s1Keys = config._stage1Keys;
-    if (s1Keys) {
-      const innerCol = s1Keys['index_far'] || s1Keys['index'];
-      const thumbCol = s1Keys['thumb'];
-      if (innerCol && thumbCol) {
-        const innerDx = innerCol.top.x - innerCol.bottom.x;
-        const innerDy = innerCol.top.y - innerCol.bottom.y;
-        const thumbDx = thumbCol.top.x - thumbCol.bottom.x;
-        const thumbDy = thumbCol.top.y - thumbCol.bottom.y;
-        const innerLen = Math.sqrt(innerDx * innerDx + innerDy * innerDy);
-        const thumbLen = Math.sqrt(thumbDx * thumbDx + thumbDy * thumbDy);
-        if (innerLen > 0.1 && thumbLen > 0.1) {
-          const dot = (innerDx * thumbDx + innerDy * thumbDy) / (innerLen * thumbLen);
-          thumbAngleDeg = Math.acos(Math.max(-1, Math.min(1, dot))) * 180 / Math.PI;
-        }
-      }
-    }
-
-    // Positions are described for right half then mirrored to left-half model space:
-    //   Right "left" (hinge) → model +X     Right "right" (pinky) → model -X
-    //   Right "top" (away)   → model -Y     Right "bottom" (near) → model +Y
-    // So right-half corner offsets map to model offsets:
-    //   top-left  → (+SW, -SH)    top-right  → (-SW, -SH)
-    //   bot-left  → (+SW, +SH)    bot-right  → (-SW, +SH)
-
-    const innerCol = c4.length > 0 ? c4 : c3;  // Y-H-N (or fallback)
+    const innerCol = c4.length > 0 ? c4 : c3;
     const yKey = innerCol.length > 0 ? innerCol[0] : null;                    // Y (top inner)
     const nKey = innerCol.length > 0 ? innerCol[innerCol.length - 1] : null;  // N (bottom inner)
     const pKey = c0.length > 0 ? c0[0] : null;                                // P (top pinky)
-    const commaKey = c2.length > 0 ? c2[c2.length - 1] : null;               // , (bottom middle)
+    // Log all thumb keys for debugging
+    tKeys.forEach(tk => console.log(`  thumb key: "${tk.name}" pos=(${tk.x.toFixed(1)}, ${tk.y.toFixed(1)}) r=${tk.r.toFixed(1)}°`));
+    // Log column contents and key selections for debugging
+    console.log(`  C4 keys: ${c4.map(k => `${k.name}(${k.x.toFixed(1)},${k.y.toFixed(1)})`).join(', ')}`);
+    console.log(`  C0 keys: ${c0.map(k => `${k.name}(${k.x.toFixed(1)},${k.y.toFixed(1)})`).join(', ')}`);
+    console.log(`  All mKeys: ${mKeys.map(k => `${k.name}[${k.meta?.column_net}](${k.x.toFixed(1)},${k.y.toFixed(1)})`).join(', ')}`);
+    if (yKey) console.log(`  yKey="${yKey.name}" pos=(${yKey.x.toFixed(1)}, ${yKey.y.toFixed(1)}) r=${yKey.r.toFixed(1)}°`);
+    if (nKey) console.log(`  nKey="${nKey.name}" pos=(${nKey.x.toFixed(1)}, ${nKey.y.toFixed(1)}) r=${nKey.r.toFixed(1)}°`);
+    if (pKey) console.log(`  pKey="${pKey.name}" pos=(${pKey.x.toFixed(1)}, ${pKey.y.toFixed(1)}) r=${pKey.r.toFixed(1)}°`);
+    // S07.4/S07.5 thumb key = hinge-side thumb key (lowest model X = closest to hinge in user view)
+    const thumbScrewKey = tKeys.length > 0
+      ? tKeys.reduce((a, b) => a.x < b.x ? a : b)  // lowest model X = closest to hinge in user view
+      : null;
+    if (thumbScrewKey) console.log(`  thumbScrewKey="${thumbScrewKey.name}" pos=(${thumbScrewKey.x.toFixed(1)}, ${thumbScrewKey.y.toFixed(1)}) r=${thumbScrewKey.r.toFixed(1)}°`);
 
-    // S07.1 — ≤10mm from top-left corner of Y → model: Y.x + SW, Y.y - SH
+    // Helper: place bolt on the ROTATED switch diagonal, outside the specified corner, ≤10mm away.
+    // cornerOff = unrotated offset from key center to corner (e.g. {x:+SW, y:-SH} for user-top-left).
+    // The offset is rotated by the key's rotation angle to follow the actual switch diagonal.
+    // Bolt placed 3mm outside the corner along the outward diagonal direction.
+    function placeScrewOnDiag(key, cornerOff, label) {
+      // Rotate corner offset by key rotation
+      const rad = (key.r || 0) * Math.PI / 180;
+      const cos = Math.cos(rad), sin = Math.sin(rad);
+      const rx = cornerOff.x * cos - cornerOff.y * sin;
+      const ry = cornerOff.x * sin + cornerOff.y * cos;
+      // Corner position in model space
+      const cx = key.x + rx;
+      const cy = key.y + ry;
+      // Diagonal direction: from center toward rotated corner, normalized
+      const len = Math.sqrt(rx * rx + ry * ry);
+      const dx = rx / len;
+      const dy = ry / len;
+      // Place bolt 3mm outside the corner along the diagonal
+      const boltDist = 3;
+      const bx = cx + dx * boltDist;
+      const by = cy + dy * boltDist;
+      screwDiagonals.push({ corner: { x: cx, y: cy }, dir: { x: dx, y: dy }, label });
+      console.log(`  ${label}: corner=(${cx.toFixed(1)}, ${cy.toFixed(1)}) bolt=(${bx.toFixed(1)}, ${by.toFixed(1)}) keyRot=${(key.r||0).toFixed(1)}°`);
+      return { x: bx, y: by };
+    }
+
+    // S07.1 — on diagonal through top-left corner of Y, outside switch
+    // User top-left = model (+SW, -SH) (before key rotation)
     if (yKey) {
-      screwPositions.push({ x: yKey.x + SW, y: yKey.y - SH });
+      screwPositions.push(placeScrewOnDiag(yKey, { x: SW, y: -SH }, 'S07.1 Y top-left'));
     } else {
       screwPositions.push({ x: bbox.max.x - INSET, y: bbox.min.y + INSET });
     }
 
-    // S07.2 — ≤10mm from bottom-left corner of N → model: N.x + SW, N.y + SH
+    // S07.2 — on diagonal through bottom-left corner of N, outside switch
+    // User bottom-left = model (+SW, +SH) (before key rotation)
     if (nKey) {
-      screwPositions.push({ x: nKey.x + SW, y: nKey.y + SH });
+      screwPositions.push(placeScrewOnDiag(nKey, { x: SW, y: SH }, 'S07.2 N bot-left'));
     } else {
       screwPositions.push({ x: bbox.max.x - INSET, y: bbox.max.y - INSET });
     }
 
-    // S07.3 — Near inner column, conditional on thumb angle
-    // If >10°: near N's bottom-pinky-side corner (different corner from S07.2 which uses hinge-side)
-    // Else: near Y's top-pinky-side corner (different corner from S07.1)
-    if (thumbAngleDeg > 10 && nKey) {
-      // N's bottom-right corner (right-half view) = bottom-pinky-side = model (N.x - SW, N.y + SH)
-      screwPositions.push({ x: nKey.x - SW, y: nKey.y + SH });
-    } else if (yKey) {
-      // Y's top-right corner (right-half view) = top-pinky-side = model (Y.x - SW, Y.y - SH)
-      screwPositions.push({ x: yKey.x - SW, y: yKey.y - SH });
-    } else {
-      screwPositions.push({ x: bbox.max.x - INSET, y: center.y });
-    }
-
-    // S07.4 — ≤10mm from top-right or bottom-right edge of P → model: P.x - SW, P.y ± SH
-    // Use top-right corner (model: P.x - SW, P.y - SH)
+    // S07.3 — on diagonal through top-right corner of P, outside switch
+    // User top-right = model (-SW, -SH) (before key rotation)
     if (pKey) {
-      screwPositions.push({ x: pKey.x - SW, y: pKey.y - SH });
+      screwPositions.push(placeScrewOnDiag(pKey, { x: -SW, y: -SH }, 'S07.3 P top-right'));
     } else {
       screwPositions.push({ x: bbox.min.x + INSET, y: bbox.min.y + INSET });
     }
 
-    // S07.5 — ≤10mm from bottom-right corner of , (comma) → model: comma.x - SW, comma.y + SH
-    if (commaKey) {
-      screwPositions.push({ x: commaKey.x - SW, y: commaKey.y + SH });
+    // S07.4 — on diagonal through top-right corner of outermost thumb key, outside
+    // User top-right = model (-SW, -SH) (before key rotation)
+    if (thumbScrewKey) {
+      screwPositions.push(placeScrewOnDiag(thumbScrewKey, { x: -SW, y: -SH }, 'S07.4 Thumb top-right'));
     } else {
       screwPositions.push({ x: bbox.min.x + INSET, y: bbox.max.y - INSET });
     }
 
-    // ── Alternative (purple) positions ──
-    // S07.4a — ≤10mm from top-right corner of alt ref switch
-    // Place between C0 and C1 top keys
-    if (pKey && c1.length > 0) {
-      const oKey = c1[0]; // O (top ring)
-      const gapX = (pKey.x + oKey.x) / 2;
-      altScrewPositions.push({ x: gapX - SW, y: Math.min(pKey.y, oKey.y) - SH });
-    } else if (pKey) {
-      altScrewPositions.push({ x: pKey.x - SW, y: pKey.y - SH - 5 });
+    // S07.5 — on diagonal through bottom-right corner of outermost thumb key, outside
+    // User bottom-right = model (-SW, +SH) (before key rotation)
+    if (thumbScrewKey) {
+      screwPositions.push(placeScrewOnDiag(thumbScrewKey, { x: -SW, y: SH }, 'S07.5 Thumb bot-right'));
     } else {
-      altScrewPositions.push({ x: bbox.min.x + INSET, y: bbox.min.y + INSET });
+      screwPositions.push({ x: bbox.max.x - INSET, y: bbox.max.y - INSET });
     }
 
-    // S07.5a — ≤10mm from bottom-right corner of alt ref switch
-    // Place between C0 and C1 bottom keys
-    if (c0.length > 0 && c1.length > 0) {
-      const slashKey = c0[c0.length - 1]; // / (bottom pinky)
-      const dotKey = c1[c1.length - 1];   // . (bottom ring)
-      const gapX = (slashKey.x + dotKey.x) / 2;
-      altScrewPositions.push({ x: gapX - SW, y: Math.max(slashKey.y, dotKey.y) + SH });
-    } else {
-      altScrewPositions.push({ x: bbox.min.x + INSET, y: bbox.max.y - INSET });
-    }
-
-    // Verify ≤10mm constraint and log
-    function distToCorner(sp, key, cx, cy) {
-      const dx = sp.x - (key.x + cx), dy = sp.y - (key.y + cy);
-      return Math.sqrt(dx * dx + dy * dy);
-    }
-    console.log(`render3d screws: ${screwPositions.length} required + ${altScrewPositions.length} alt, thumbAngle=${thumbAngleDeg.toFixed(1)}°`);
-    if (yKey) console.log(`  S07.1 dist to Y top-left corner: ${distToCorner(screwPositions[0], yKey, SW, -SH).toFixed(1)}mm`);
-    if (nKey) console.log(`  S07.2 dist to N bot-left corner: ${distToCorner(screwPositions[1], nKey, SW, SH).toFixed(1)}mm`);
-    if (nKey) console.log(`  S07.3 dist to N bot-pinky corner: ${distToCorner(screwPositions[2], nKey, -SW, SH).toFixed(1)}mm`);
-    if (pKey) console.log(`  S07.4 dist to P top-right corner: ${distToCorner(screwPositions[3], pKey, -SW, -SH).toFixed(1)}mm`);
-    if (commaKey) console.log(`  S07.5 dist to , bot-right corner: ${distToCorner(screwPositions[4], commaKey, -SW, SH).toFixed(1)}mm`);
-    // Log distances between screws to check for overlap
+    // Distance verification
+    console.log(`render3d screws: ${screwPositions.length} positions, no alternatives`);
     for (let i = 0; i < screwPositions.length; i++) {
       for (let j = i + 1; j < screwPositions.length; j++) {
         const dx = screwPositions[i].x - screwPositions[j].x;
@@ -1312,7 +1284,6 @@ function buildNewScene(ergogenResults, config, container) {
       }
     }
     screwPositions.forEach((sp, i) => console.log(`  screw ${i}: (${sp.x.toFixed(1)}, ${sp.y.toFixed(1)})`));
-    altScrewPositions.forEach((sp, i) => console.log(`  alt ${i}: (${sp.x.toFixed(1)}, ${sp.y.toFixed(1)})`));
   }
   const SCREW_HEAD_R = 3;  // mm — M3 bolt head radius (visible)
   const screwHeadGeo = new THREE.CylinderGeometry(SCREW_HEAD_R, SCREW_HEAD_R * 0.8, 1.5, 16); screwHeadGeo.rotateX(Math.PI / 2);
@@ -1332,21 +1303,40 @@ function buildNewScene(ergogenResults, config, container) {
   const screwGroup = new THREE.Group(); screwGroup.userData.layerId = 'screws';
   [screwHeadInst, screwShaftInst, insertInst].forEach(inst => { inst.instanceMatrix.needsUpdate = true; screwGroup.add(inst); });
 
-  // ── Alternative (purple) screw positions ──
-  const nAlt = altScrewPositions.length;
-  if (nAlt > 0) {
-    const altMat = new THREE.MeshStandardMaterial({ color: 0x9966cc, metalness: 0.4, roughness: 0.5, transparent: true, opacity: 0.55 });
-    const altHeadInst = new THREE.InstancedMesh(screwHeadGeo, altMat, nAlt); altHeadInst.castShadow = true;
-    const altShaftInst = new THREE.InstancedMesh(screwShaftGeo, altMat.clone(), nAlt);
-    const altInsertInst = new THREE.InstancedMesh(insertGeo, altMat.clone(), nAlt);
-    altScrewPositions.forEach((sp, i) => {
-      dummy.position.set(sp.x, sp.y, Z_SWITCH_PLATE_TOP + 0.75); dummy.rotation.set(0, 0, 0); dummy.scale.set(1, 1, 1);
-      dummy.updateMatrix(); altHeadInst.setMatrixAt(i, dummy.matrix);
-      dummy.position.z = Z_BOTTOM + T_FRAME / 2; dummy.updateMatrix(); altShaftInst.setMatrixAt(i, dummy.matrix);
-      dummy.position.z = Z_BOTTOM + 1.5; dummy.updateMatrix(); altInsertInst.setMatrixAt(i, dummy.matrix);
-    });
-    [altHeadInst, altShaftInst, altInsertInst].forEach(inst => { inst.instanceMatrix.needsUpdate = true; screwGroup.add(inst); });
-  }
+  // ── Diagonal debug lines — show switch diagonals for screw placement verification ──
+  const diagLineMat = new THREE.LineBasicMaterial({ color: 0xff4444, linewidth: 2 });
+  const diagZ = Z_SWITCH_PLATE_TOP + 2; // slightly above bolt heads
+  screwDiagonals.forEach(({ corner, dir, label }) => {
+    // Draw line from inside the switch (opposite corner direction) through the corner and beyond
+    const insidePt = new THREE.Vector3(corner.x - dir.x * 15, corner.y - dir.y * 15, diagZ);
+    const outsidePt = new THREE.Vector3(corner.x + dir.x * 15, corner.y + dir.y * 15, diagZ);
+    const lineGeo = new THREE.BufferGeometry().setFromPoints([insidePt, outsidePt]);
+    const line = new THREE.Line(lineGeo, diagLineMat);
+    line.userData.layerId = 'screws';
+    screwGroup.add(line);
+    // Small dot at the corner point
+    const dotGeo = new THREE.SphereGeometry(0.8, 8, 8);
+    const dotMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const dot = new THREE.Mesh(dotGeo, dotMat);
+    dot.position.set(corner.x, corner.y, diagZ);
+    dot.userData.layerId = 'screws';
+    screwGroup.add(dot);
+    // Small text label at the bolt position (outside end of diagonal)
+    const lblCanvas = document.createElement('canvas');
+    lblCanvas.width = 256; lblCanvas.height = 64;
+    const ctx = lblCanvas.getContext('2d');
+    ctx.fillStyle = '#ff4444';
+    ctx.font = 'bold 28px monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(label, 128, 32);
+    const lblTex = new THREE.CanvasTexture(lblCanvas);
+    const lblMat = new THREE.SpriteMaterial({ map: lblTex, transparent: true, depthTest: false });
+    const lblSprite = new THREE.Sprite(lblMat);
+    lblSprite.scale.set(20, 5, 1);
+    lblSprite.position.set(outsidePt.x, outsidePt.y, diagZ + 3);
+    lblSprite.userData.layerId = 'screws';
+    screwGroup.add(lblSprite);
+  });
 
   boardGroup.add(screwGroup);
 
@@ -1407,6 +1397,7 @@ function buildNewScene(ergogenResults, config, container) {
 
   keyMap.leftKeys.forEach(k => {
     const label = getKeymapLabel(k);
+    console.log(`  label: ${k.name} C${k.colIdx}R${k.rowIdx} → "${label}" pos=(${k.x.toFixed(1)},${k.y.toFixed(1)})`);
     if (!label) return;
     const tex = makeLabelTex(label);
     const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false });
@@ -1545,9 +1536,7 @@ function buildNewScene(ergogenResults, config, container) {
   screwPositions.forEach((sp, i) => {
     addLeaderLabel(`Bolt ${i + 1}`, sp.x, sp.y, Z_SWITCH_PLATE_TOP + 1, 'screws');
   });
-  altScrewPositions.forEach((sp, i) => {
-    addLeaderLabel(`Alt ${i + 1}`, sp.x, sp.y, Z_SWITCH_PLATE_TOP + 1, 'screws');
-  });
+  // (no alternative screw positions in current design)
 
   // Cable labels
   addLeaderLabel('Cable (near)', (nearLeftX + nearRightX) / 2, nearCableY, cableZ - 3, 'cables');
@@ -2167,7 +2156,11 @@ function buildNewScene(ergogenResults, config, container) {
     getLabelGroups: () => Object.keys(labelGroupVisibility),
     labelGroupVisibility,
     setAxesVisible: (v) => { axisGroup.visible = v; },
-    setOutlinesVisible: (v) => { outlineGroup.visible = v; },
+    setOutlinesVisible: (v) => {
+      outlineGroup.visible = v;
+      // Also toggle the cloned outlineGroup in the right half
+      rightContent.traverse(obj => { if (obj.name === 'stage1Outlines') obj.visible = v; });
+    },
     setCablesVisible: (v) => { hwAssembly.cablesGroup.visible = v; },
     setHingeVisible: (v) => { hwAssembly.hingeResult.group.visible = v; },
     rebuildHardware,

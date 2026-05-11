@@ -533,34 +533,26 @@
   },
   "S07": {
     "status": "ASSUME",
-    "comment": "Verified via playwright headless test: all 5 screws at 0.0mm from reference corners, min inter-screw distance 14.2mm. Awaiting user visual confirmation."
+    "comment": "5 screws on rotation-aware switch diagonals (left-half coords, mirrored to right). Corner offsets rotated by key.r to follow actual splay. Playwright verified all at 3mm from corners (≤10mm). Purple outlines fixed for both halves. Awaiting user confirmation."
   },
   "S07.1": {
     "status": "ASSUME",
-    "comment": "At Y top-left corner (236.6, 70.2). Dist=0.0mm. Verified headless."
+    "comment": "On rotated diagonal through top-left corner of Y key (20.3° splay), 3mm outside. Verified via playwright."
   },
   "S07.2": {
     "status": "ASSUME",
-    "comment": "At N bottom-left corner (210.9, 142.0). Dist=0.0mm. Verified headless."
+    "comment": "On rotated diagonal through bottom-left corner of N key (20.3° splay), 3mm outside. Verified via playwright."
   },
   "S07.3": {
     "status": "ASSUME",
-    "comment": "At N bottom-right/pinky corner (196.7, 142.0). Dist=0.0mm. 14.2mm from S07.2. Verified headless."
+    "comment": "On rotated diagonal through top-right corner of P key (-10.2° splay), 3mm outside. Verified via playwright."
   },
   "S07.4": {
     "status": "ASSUME",
-    "comment": "At P top-right corner (31.9, 68.0). Dist=0.0mm. Verified headless."
+    "comment": "On rotated diagonal through top-right corner of outermost thumb key (thumb_t_inner_cluster, -54.5° splay), 3mm outside. Verified via playwright."
   },
   "S07.5": {
     "status": "ASSUME",
-    "comment": "At comma bottom-right corner (129.3, 114.5). Dist=0.0mm. Verified headless."
-  },
-  "S07.4a": {
-    "status": "ASSUME",
-    "comment": "Alt: between P/O top area (56.8, 44.2). Purple semi-transparent."
-  },
-  "S07.5a": {
-    "status": "ASSUME",
-    "comment": "Alt: between slash/dot bottom area (70.6, 160.5). Purple semi-transparent."
+    "comment": "On rotated diagonal through bottom-right corner of outermost thumb key (thumb_t_inner_cluster, -54.5° splay), 3mm outside. Verified via playwright."
   }
 }
