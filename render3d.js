@@ -1376,13 +1376,9 @@ function buildNewScene(ergogenResults, config, container) {
     addLeaderLabel(`Bolt ${i + 1}`, sp.x, sp.y, Z_SWITCH_PLATE_TOP + 1, 'screws');
   });
 
-  // Cable hardware labels
-  addLeaderLabel('Turnbuckle (near)', cableSegments[0]?.turnbuckleX || hingeX, nearCableY, cableZ - 1.5, 'cables');
-  addLeaderLabel('Turnbuckle (far)', cableSegments[1]?.turnbuckleX || hingeX, farCableY, cableZ - 1.5, 'cables');
-  addLeaderLabel('Ring Eye Nut (near)', nearLeftX, nearCableY, cableZ, 'cables');
-  addLeaderLabel('Ring Eye Nut (far)', farLeftX, farCableY, cableZ, 'cables');
-  addLeaderLabel('Clevis Pin (near)', cableSegments[0]?.clevisLeftX || hingeX - 12, nearCableY, cableZ, 'cables');
-  addLeaderLabel('Clevis Pin (far)', cableSegments[1]?.clevisLeftX || hingeX - 12, farCableY, cableZ, 'cables');
+  // Cable labels
+  addLeaderLabel('Cable (near)', (nearLeftX + nearRightX) / 2, nearCableY, cableZ - 3, 'cables');
+  addLeaderLabel('Cable (far)', (farLeftX + farRightX) / 2, farCableY, cableZ - 3, 'cables');
 
   let labelsVisible = false;
   const LABEL_MARGIN_RIGHT = 20; // px from right edge
@@ -1887,21 +1883,18 @@ function buildNewScene(ergogenResults, config, container) {
   let dragCableIdx = -1;
   const dragPlane = new THREE.Plane();
   const dragIntersect = new THREE.Vector3();
-  const SNAP_DIST = 15; // mm distance to snap-connect cable to bracket
+  const SNAP_DIST = 15;
 
   function getCableTargets() {
     const targets = [];
     hwAssembly.cableSegments.forEach((seg, i) => {
-      // Pin end
-      seg.pinGroup.traverse(obj => { if (obj.isMesh) { obj.userData._cableIdx = i; obj.userData._pinEnd = true; targets.push(obj); } });
-      // Bracket
-      if (seg.bracketMesh) { seg.bracketMesh.userData._cableIdx = i; targets.push(seg.bracketMesh); }
+      if (seg.cableTube) { seg.cableTube.userData._cableIdx = i; targets.push(seg.cableTube); }
     });
     return targets;
   }
 
   function onCablePointerDown(event) {
-    if (event.button !== 0) return; // left click only
+    if (event.button !== 0) return;
     const rect = renderer.domElement.getBoundingClientRect();
     pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
@@ -1918,28 +1911,14 @@ function buildNewScene(ergogenResults, config, container) {
     const seg = hwAssembly.cableSegments[idx];
     if (!seg) return;
 
-    if (hit.object.userData._pinEnd) {
-      // Grab the cable end — start dragging
-      event.stopPropagation();
-      dragCableIdx = idx;
-      hwAssembly.disconnectCable(idx);
-      controls.enabled = false;
+    event.stopPropagation();
+    dragCableIdx = idx;
+    hwAssembly.disconnectCable(idx);
+    controls.enabled = false;
 
-      // Set up drag plane perpendicular to camera at the pin position
-      const camDir = camera.getWorldDirection(new THREE.Vector3());
-      dragPlane.setFromNormalAndCoplanarPoint(camDir, seg.pinGroup.position);
-
-      renderer.domElement.style.cursor = 'grabbing';
-    } else if (hit.object.userData._isBracket && !seg.connected) {
-      // Click on bracket while cable is dangling nearby — connect
-      const pinPos = seg.pinGroup.position;
-      const bracketPos = hit.object.position.clone();
-      if (pinPos.distanceTo(bracketPos) < SNAP_DIST * 2) {
-        hwAssembly.connectCable(idx);
-        // Reapply fold to update cable geometry
-        hwAssembly.applyFold(180 - currentFoldSliderDeg);
-      }
-    }
+    const camDir = camera.getWorldDirection(new THREE.Vector3());
+    dragPlane.setFromNormalAndCoplanarPoint(camDir, seg.freeEndPos);
+    renderer.domElement.style.cursor = 'grabbing';
   }
 
   function onCablePointerMove(event) {
@@ -1950,10 +1929,8 @@ function buildNewScene(ergogenResults, config, container) {
     raycaster.setFromCamera(pointer, camera);
 
     if (raycaster.ray.intersectPlane(dragPlane, dragIntersect)) {
-      // Transform from world space to boardRoot local space
       const localPos = boardRoot.worldToLocal(dragIntersect.clone());
       hwAssembly.setCableFreeEnd(dragCableIdx, localPos);
-      // Update cable geometry
       hwAssembly.applyFold(180 - currentFoldSliderDeg);
     }
   }
@@ -1962,16 +1939,10 @@ function buildNewScene(ergogenResults, config, container) {
     if (dragCableIdx < 0) return;
     const seg = hwAssembly.cableSegments[dragCableIdx];
 
-    // Check if pin is near the bracket — snap connect
     if (seg && !seg.connected) {
-      // Get bracket world position
-      const bracketMesh = seg.bracketMesh;
-      const bracketWorldPos = new THREE.Vector3();
-      bracketMesh.getWorldPosition(bracketWorldPos);
-      const bracketLocal = boardRoot.worldToLocal(bracketWorldPos.clone());
-
-      const pinPos = seg.pinGroup.position;
-      if (pinPos.distanceTo(bracketLocal) < SNAP_DIST) {
+      // Check if free end is near the bracket anchor — snap connect
+      const bracketPos = new THREE.Vector3(seg.bracketX, seg.cy, cableZ);
+      if (seg.freeEndPos.distanceTo(bracketPos) < SNAP_DIST) {
         hwAssembly.connectCable(dragCableIdx);
       }
       hwAssembly.applyFold(180 - currentFoldSliderDeg);
