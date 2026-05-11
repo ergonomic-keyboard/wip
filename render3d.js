@@ -1157,72 +1157,197 @@ function buildNewScene(ergogenResults, config, container) {
   corkCutoutMesh.position.set(pocketCx, pocketCy, Z_CORK_LOWER + T_CORK_LOWER / 2);
   layerCorkLower.add(corkCutoutMesh);
 
-  // ── Screws — placed at midpoints between key pairs, distributed across board ──
-  // Use every key position directly; pick well-spaced subset for screw locations.
-  const screwPositions = [];
+  // ── Screws — REQ-S07.1 through S07.5 (described for right half, mirrored to left) ──
+  // In left-half model space: X increases toward hinge (inner), Y increases toward bottom.
+  // bbox.min.x = pinky edge, bbox.max.x = inner/hinge edge.
+  // bbox.min.y = top edge (away from user), bbox.max.y = bottom edge (near user).
+  // boardRoot has 180° Z rotation → visual flips both axes.
+  // Column nets: C0=pinky, C1=ring, C2=middle, C3=index, C4=inner(index_far)
+  const screwPositions = [];   // required (red) positions
+  const altScrewPositions = []; // alternative (purple) positions
   if (leftKeys.length >= 3) {
-    // Centroid of all keys
-    const keyCx = leftKeys.reduce((s, k) => s + k.x, 0) / leftKeys.length;
-    const keyCy = leftKeys.reduce((s, k) => s + k.y, 0) / leftKeys.length;
+    const SWITCH_GAP = 7;    // mm minimum distance from nearest switch center
+    const INSET = 7;         // mm from board edge to bolt center
 
-    // Place screws at midpoints between the centroid and each key, but only
-    // keep well-distributed ones. First collect all candidate positions.
-    const candidates = [];
+    const mKeys = leftKeys.filter(k => k.meta?.zone?.name !== 'thumb');
+    const tKeys = leftKeys.filter(k => k.meta?.zone?.name === 'thumb' || k.name.startsWith('thumb_'));
 
-    // Midpoint of each key with the centroid (guaranteed inside convex hull)
-    leftKeys.forEach(k => {
-      candidates.push({ x: (k.x + keyCx) / 2, y: (k.y + keyCy) / 2 });
-    });
-
-    // Also midpoints between pairs of distant keys (diagonally opposite)
-    const sortedByAngle = [...leftKeys].map(k => ({
-      ...k, angle: Math.atan2(k.y - keyCy, k.x - keyCx)
-    })).sort((a, b) => a.angle - b.angle);
-    const n = sortedByAngle.length;
-    for (let i = 0; i < n; i++) {
-      const opp = sortedByAngle[(i + Math.floor(n / 2)) % n];
-      const k = sortedByAngle[i];
-      candidates.push({ x: (k.x + opp.x) / 2, y: (k.y + opp.y) / 2 });
+    // Group matrix keys by column_net, sort each by Y ascending (top→bottom)
+    const colByNet = {};
+    for (const k of mKeys) {
+      const cn = k.meta?.column_net || '';
+      if (!colByNet[cn]) colByNet[cn] = [];
+      colByNet[cn].push(k);
     }
+    for (const cn of Object.keys(colByNet)) {
+      colByNet[cn].sort((a, b) => a.y - b.y);
+    }
+    const c0 = colByNet['C0'] || []; // pinky
+    const c1 = colByNet['C1'] || []; // ring
+    const c2 = colByNet['C2'] || []; // middle
+    const c3 = colByNet['C3'] || []; // index
+    const c4 = colByNet['C4'] || []; // inner (index_far)
 
-    // Greedy farthest-point sampling to pick 7 well-spaced screws
-    const TARGET = 7;
-    const picked = [{ x: keyCx, y: keyCy }]; // start with centroid
-    const used = new Set([0]);
+    // Switch half-dimensions (Cherry ULP footprint)
+    const SW = 7.1;   // half-width in X
+    const SH = 6.4;   // half-height in Y
 
-    while (picked.length < TARGET && picked.length < candidates.length) {
-      let bestDist = -1, bestIdx = -1;
-      for (let i = 0; i < candidates.length; i++) {
-        const c = candidates[i];
-        // Min distance to any already-picked screw
-        const minD = picked.reduce((m, p) =>
-          Math.min(m, Math.sqrt((c.x - p.x) ** 2 + (c.y - p.y) ** 2)), Infinity);
-        if (minD > bestDist) { bestDist = minD; bestIdx = i; }
+    // Compute thumb angle for S07.3 conditional
+    let thumbAngleDeg = 0;
+    const s1Keys = config._stage1Keys;
+    if (s1Keys) {
+      const innerCol = s1Keys['index_far'] || s1Keys['index'];
+      const thumbCol = s1Keys['thumb'];
+      if (innerCol && thumbCol) {
+        const innerDx = innerCol.top.x - innerCol.bottom.x;
+        const innerDy = innerCol.top.y - innerCol.bottom.y;
+        const thumbDx = thumbCol.top.x - thumbCol.bottom.x;
+        const thumbDy = thumbCol.top.y - thumbCol.bottom.y;
+        const innerLen = Math.sqrt(innerDx * innerDx + innerDy * innerDy);
+        const thumbLen = Math.sqrt(thumbDx * thumbDx + thumbDy * thumbDy);
+        if (innerLen > 0.1 && thumbLen > 0.1) {
+          const dot = (innerDx * thumbDx + innerDy * thumbDy) / (innerLen * thumbLen);
+          thumbAngleDeg = Math.acos(Math.max(-1, Math.min(1, dot))) * 180 / Math.PI;
+        }
       }
-      if (bestIdx < 0) break;
-      picked.push(candidates[bestIdx]);
-      // Remove nearby candidates to speed up next iterations
-      candidates.splice(bestIdx, 1);
     }
 
-    picked.forEach(p => screwPositions.push(p));
+    // Positions are described for right half then mirrored to left-half model space:
+    //   Right "left" (hinge) → model +X     Right "right" (pinky) → model -X
+    //   Right "top" (away)   → model -Y     Right "bottom" (near) → model +Y
+    // So right-half corner offsets map to model offsets:
+    //   top-left  → (+SW, -SH)    top-right  → (-SW, -SH)
+    //   bot-left  → (+SW, +SH)    bot-right  → (-SW, +SH)
+
+    const innerCol = c4.length > 0 ? c4 : c3;  // Y-H-N (or fallback)
+    const yKey = innerCol.length > 0 ? innerCol[0] : null;                    // Y (top inner)
+    const nKey = innerCol.length > 0 ? innerCol[innerCol.length - 1] : null;  // N (bottom inner)
+    const pKey = c0.length > 0 ? c0[0] : null;                                // P (top pinky)
+    const commaKey = c2.length > 0 ? c2[c2.length - 1] : null;               // , (bottom middle)
+
+    // S07.1 — ≤10mm from top-left corner of Y → model: Y.x + SW, Y.y - SH
+    if (yKey) {
+      screwPositions.push({ x: yKey.x + SW, y: yKey.y - SH });
+    } else {
+      screwPositions.push({ x: bbox.max.x - INSET, y: bbox.min.y + INSET });
+    }
+
+    // S07.2 — ≤10mm from bottom-left corner of N → model: N.x + SW, N.y + SH
+    if (nKey) {
+      screwPositions.push({ x: nKey.x + SW, y: nKey.y + SH });
+    } else {
+      screwPositions.push({ x: bbox.max.x - INSET, y: bbox.max.y - INSET });
+    }
+
+    // S07.3 — Near inner column, conditional on thumb angle
+    // If >10°: near N's bottom-pinky-side corner (different corner from S07.2 which uses hinge-side)
+    // Else: near Y's top-pinky-side corner (different corner from S07.1)
+    if (thumbAngleDeg > 10 && nKey) {
+      // N's bottom-right corner (right-half view) = bottom-pinky-side = model (N.x - SW, N.y + SH)
+      screwPositions.push({ x: nKey.x - SW, y: nKey.y + SH });
+    } else if (yKey) {
+      // Y's top-right corner (right-half view) = top-pinky-side = model (Y.x - SW, Y.y - SH)
+      screwPositions.push({ x: yKey.x - SW, y: yKey.y - SH });
+    } else {
+      screwPositions.push({ x: bbox.max.x - INSET, y: center.y });
+    }
+
+    // S07.4 — ≤10mm from top-right or bottom-right edge of P → model: P.x - SW, P.y ± SH
+    // Use top-right corner (model: P.x - SW, P.y - SH)
+    if (pKey) {
+      screwPositions.push({ x: pKey.x - SW, y: pKey.y - SH });
+    } else {
+      screwPositions.push({ x: bbox.min.x + INSET, y: bbox.min.y + INSET });
+    }
+
+    // S07.5 — ≤10mm from bottom-right corner of , (comma) → model: comma.x - SW, comma.y + SH
+    if (commaKey) {
+      screwPositions.push({ x: commaKey.x - SW, y: commaKey.y + SH });
+    } else {
+      screwPositions.push({ x: bbox.min.x + INSET, y: bbox.max.y - INSET });
+    }
+
+    // ── Alternative (purple) positions ──
+    // S07.4a — ≤10mm from top-right corner of alt ref switch
+    // Place between C0 and C1 top keys
+    if (pKey && c1.length > 0) {
+      const oKey = c1[0]; // O (top ring)
+      const gapX = (pKey.x + oKey.x) / 2;
+      altScrewPositions.push({ x: gapX - SW, y: Math.min(pKey.y, oKey.y) - SH });
+    } else if (pKey) {
+      altScrewPositions.push({ x: pKey.x - SW, y: pKey.y - SH - 5 });
+    } else {
+      altScrewPositions.push({ x: bbox.min.x + INSET, y: bbox.min.y + INSET });
+    }
+
+    // S07.5a — ≤10mm from bottom-right corner of alt ref switch
+    // Place between C0 and C1 bottom keys
+    if (c0.length > 0 && c1.length > 0) {
+      const slashKey = c0[c0.length - 1]; // / (bottom pinky)
+      const dotKey = c1[c1.length - 1];   // . (bottom ring)
+      const gapX = (slashKey.x + dotKey.x) / 2;
+      altScrewPositions.push({ x: gapX - SW, y: Math.max(slashKey.y, dotKey.y) + SH });
+    } else {
+      altScrewPositions.push({ x: bbox.min.x + INSET, y: bbox.max.y - INSET });
+    }
+
+    // Verify ≤10mm constraint and log
+    function distToCorner(sp, key, cx, cy) {
+      const dx = sp.x - (key.x + cx), dy = sp.y - (key.y + cy);
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+    console.log(`render3d screws: ${screwPositions.length} required + ${altScrewPositions.length} alt, thumbAngle=${thumbAngleDeg.toFixed(1)}°`);
+    if (yKey) console.log(`  S07.1 dist to Y top-left corner: ${distToCorner(screwPositions[0], yKey, SW, -SH).toFixed(1)}mm`);
+    if (nKey) console.log(`  S07.2 dist to N bot-left corner: ${distToCorner(screwPositions[1], nKey, SW, SH).toFixed(1)}mm`);
+    if (nKey) console.log(`  S07.3 dist to N bot-pinky corner: ${distToCorner(screwPositions[2], nKey, -SW, SH).toFixed(1)}mm`);
+    if (pKey) console.log(`  S07.4 dist to P top-right corner: ${distToCorner(screwPositions[3], pKey, -SW, -SH).toFixed(1)}mm`);
+    if (commaKey) console.log(`  S07.5 dist to , bot-right corner: ${distToCorner(screwPositions[4], commaKey, -SW, SH).toFixed(1)}mm`);
+    // Log distances between screws to check for overlap
+    for (let i = 0; i < screwPositions.length; i++) {
+      for (let j = i + 1; j < screwPositions.length; j++) {
+        const dx = screwPositions[i].x - screwPositions[j].x;
+        const dy = screwPositions[i].y - screwPositions[j].y;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d < 15) console.log(`  WARNING: screw ${i} and ${j} only ${d.toFixed(1)}mm apart!`);
+      }
+    }
+    screwPositions.forEach((sp, i) => console.log(`  screw ${i}: (${sp.x.toFixed(1)}, ${sp.y.toFixed(1)})`));
+    altScrewPositions.forEach((sp, i) => console.log(`  alt ${i}: (${sp.x.toFixed(1)}, ${sp.y.toFixed(1)})`));
   }
-  const screwHeadGeo = new THREE.CylinderGeometry(2, 1, 1, 16); screwHeadGeo.rotateX(Math.PI / 2);
-  const screwShaftGeo = new THREE.CylinderGeometry(1, 1, T_FRAME, 8); screwShaftGeo.rotateX(Math.PI / 2);
-  const insertGeo = new THREE.CylinderGeometry(1.6, 1.6, 3, 16); insertGeo.rotateX(Math.PI / 2);
+  const SCREW_HEAD_R = 3;  // mm — M3 bolt head radius (visible)
+  const screwHeadGeo = new THREE.CylinderGeometry(SCREW_HEAD_R, SCREW_HEAD_R * 0.8, 1.5, 16); screwHeadGeo.rotateX(Math.PI / 2);
+  const screwShaftGeo = new THREE.CylinderGeometry(1.5, 1.5, T_FRAME, 8); screwShaftGeo.rotateX(Math.PI / 2);
+  const insertGeo = new THREE.CylinderGeometry(2, 2, 3, 16); insertGeo.rotateX(Math.PI / 2);
   const nScrews = screwPositions.length;
   const screwHeadInst = new THREE.InstancedMesh(screwHeadGeo, chromeMat.clone(), nScrews); screwHeadInst.castShadow = true;
   const screwShaftInst = new THREE.InstancedMesh(screwShaftGeo, steelMat.clone(), nScrews);
   screwShaftInst.userData._screwShaft = true;
   const insertInst = new THREE.InstancedMesh(insertGeo, brassMat, nScrews);
   screwPositions.forEach((sp, i) => {
-    dummy.position.set(sp.x, sp.y, Z_SWITCH_PLATE_TOP + 0.5); dummy.rotation.set(0, 0, 0); dummy.scale.set(1, 1, 1);
+    dummy.position.set(sp.x, sp.y, Z_SWITCH_PLATE_TOP + 0.75); dummy.rotation.set(0, 0, 0); dummy.scale.set(1, 1, 1);
     dummy.updateMatrix(); screwHeadInst.setMatrixAt(i, dummy.matrix);
     dummy.position.z = Z_BOTTOM + T_FRAME / 2; dummy.updateMatrix(); screwShaftInst.setMatrixAt(i, dummy.matrix);
     dummy.position.z = Z_BOTTOM + 1.5; dummy.updateMatrix(); insertInst.setMatrixAt(i, dummy.matrix);
   });
   const screwGroup = new THREE.Group(); screwGroup.userData.layerId = 'screws';
   [screwHeadInst, screwShaftInst, insertInst].forEach(inst => { inst.instanceMatrix.needsUpdate = true; screwGroup.add(inst); });
+
+  // ── Alternative (purple) screw positions ──
+  const nAlt = altScrewPositions.length;
+  if (nAlt > 0) {
+    const altMat = new THREE.MeshStandardMaterial({ color: 0x9966cc, metalness: 0.4, roughness: 0.5, transparent: true, opacity: 0.55 });
+    const altHeadInst = new THREE.InstancedMesh(screwHeadGeo, altMat, nAlt); altHeadInst.castShadow = true;
+    const altShaftInst = new THREE.InstancedMesh(screwShaftGeo, altMat.clone(), nAlt);
+    const altInsertInst = new THREE.InstancedMesh(insertGeo, altMat.clone(), nAlt);
+    altScrewPositions.forEach((sp, i) => {
+      dummy.position.set(sp.x, sp.y, Z_SWITCH_PLATE_TOP + 0.75); dummy.rotation.set(0, 0, 0); dummy.scale.set(1, 1, 1);
+      dummy.updateMatrix(); altHeadInst.setMatrixAt(i, dummy.matrix);
+      dummy.position.z = Z_BOTTOM + T_FRAME / 2; dummy.updateMatrix(); altShaftInst.setMatrixAt(i, dummy.matrix);
+      dummy.position.z = Z_BOTTOM + 1.5; dummy.updateMatrix(); altInsertInst.setMatrixAt(i, dummy.matrix);
+    });
+    [altHeadInst, altShaftInst, altInsertInst].forEach(inst => { inst.instanceMatrix.needsUpdate = true; screwGroup.add(inst); });
+  }
+
   boardGroup.add(screwGroup);
 
   // ── Split into left/right halves ──
@@ -1419,6 +1544,9 @@ function buildNewScene(ergogenResults, config, container) {
   // Screw labels (one per screw position, group = 'screws')
   screwPositions.forEach((sp, i) => {
     addLeaderLabel(`Bolt ${i + 1}`, sp.x, sp.y, Z_SWITCH_PLATE_TOP + 1, 'screws');
+  });
+  altScrewPositions.forEach((sp, i) => {
+    addLeaderLabel(`Alt ${i + 1}`, sp.x, sp.y, Z_SWITCH_PLATE_TOP + 1, 'screws');
   });
 
   // Cable labels

@@ -198,8 +198,14 @@ Y runs positiveley along the columns (top to bottom of keyboard). Z is vertical 
 
 **REQ-S06.1** — Bolt heads shall sit flush with the surface.
 
-**REQ-S07** — Each half shall have at least 7 mounting points, including near the thumb bridge, center of the middle column, and inner-bottom area.
-
+**REQ-S07** — Each half shall have at least 5 mounting points placed according to REQ-S07.1 through REQ-S07.5. The positions below in S07.1 to S07.5 are described for the left half, these nut and bolt coordinates are to be mirrored to the right half (acrross the middle axis from the user belly to the screen).
+**REQ-S07.1** — Looking at the keyboard from the user, at the left half, with closest to the user as "bottom" and closest to screen as "top". One mounting point **on the diagnonal switch line (outside switch) through the top-left corner of the Y key, with the center of the nut on the diagonal of the switch**.  The bolt center shall be ≤ 10 mm from that corner. The bolt shall not overlap any switch footprint.
+**REQ-S07.2** — Looking at the keyboard from the user, at the left half, with closest to the user as "bottom" and closest to screen as "top".  One mounting point **on the diagonal line (outside switch) through bottom-left corner of the N key**. The bolt center shall be ≤ 10 mm from that corner.
+**REQ-S07.3** — Looking at the keyboard from the user, at the left half, with closest to the user as "bottom" and closest to screen as "top".  One mounting point bolt shall be on the **key diagonal line  (outside switch) through the top right corner of P switch** The bolt center shall be ≤ 10 mm from that corner.
+**REQ-S07.4** — Looking at the keyboard from the user, at the left half, with closest to the user as "bottom" and closest to screen as "top". One mounting point bolt shall be on the **key diagonal line  (outside switch) through the top right corner of the alt switch** The bolt center shall be ≤ 10 mm from that corner.
+**REQ-S07.5** — Looking at the keyboard from the user, at the left half, with closest to the user as "bottom" and closest to screen as "top". One mounting point bolt shall be on the **key diagonal line  (outside 
+switch) through the bottom left corner of the alt switch** The bolt center
+ shall be ≤ 10 mm from that corner.
 **REQ-S07a** — Each mounting bolt shall pass through the top frame bezel and clamp through all intermediate layers (switch plate, cork, PCB, cork) into a heat-set brass insert in the bottom frame backbone.
 
 **REQ-S07a.1** — All intermediate layers (switch plate, cork gaskets, PCB, bottom plate) shall have clearance holes at each mounting point.
@@ -362,8 +368,15 @@ Alternatively Cables shall use quick-release clevis pins with spring-loaded ball
 
 **REQ-A01** — All bolts and inserts required for assembly shall be specified in the BOM with their positions documented.
 
-**REQ-A01.1** — No screws or nuts shall be used; the design shall use only M2 bolts with heat-set brass inserts (per REQ-S06).
+**REQ-A01.1** — No screws shall be used; the design shall use only M2 bolts with heat-set brass inserts (per REQ-S06).
 
+**REQ-A01.2** — There will be one nut and bolt in the bottom left corner, with the outer edge of the bolt 0.5 cm out of the edge (so the center of the nut will be 0.5 cm + nutradius from the edge). The nut will nut be at the position of a switch (again 0.5 cm away from switch.)
+There will be another nut left above the thumb (as low as possible but still above.
+
+If the angle between the inner column and the thumb column is larger than 10 degrees, then there will be another nut left below the outer inner colum. Otherwise it will be above the outer most switch of the inner column (between the switch and the edge).
+
+Another screw will be in the top right corner.
+Another screw will be in the bottom left corner.
 **REQ-A02** — Files required for CNC-cutting/laser-cutting the wood frame pieces shall be generated and included in the project output.
 
 **REQ-A03** — A builder's guide (`grandma_builder.md`) shall be produced containing only the sequential steps required for a non-technical person to assemble the keyboard from the kit.

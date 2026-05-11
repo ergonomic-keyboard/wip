@@ -121,6 +121,7 @@ header { display: flex; align-items: center; justify-content: space-between; pad
     <button id="btn-back" disabled>Back</button>
     <button id="btn-next" class="primary" disabled>Next</button>
     <a href="req-tracker.html" id="btn-compliance" class="compliance-link">Requirement Compliance</a>
+    <span id="req-score-badge" style="font-size:11px;color:#999;margin-left:6px;white-space:nowrap"></span>
   </div>
 </header>
 
@@ -3726,6 +3727,19 @@ window.goToPage = goToPage;
 window.computeErgogenPreview = computeErgogenPreview;
 window.drawCanvas = drawCanvas;
 window.updateToolbar = updateToolbar;
+
+// Load requirement score badge
+fetch('req-tracker-data.json').then(r => r.ok ? r.json() : null).then(d => {
+  if (!d || !d.userStatus) return;
+  const us = d.userStatus;
+  const vals = Object.values(us).filter(v => v && typeof v === 'object');
+  const pass = vals.filter(v => v.status === 'PASS').length;
+  const assume = vals.filter(v => v.status === 'ASSUME').length;
+  const fail = vals.filter(v => v.status === 'FAIL').length;
+  const total = vals.filter(v => v.status).length;
+  const badge = document.getElementById('req-score-badge');
+  if (badge) badge.innerHTML = `<span style="color:#5c5">${pass}P</span> / <span style="color:#6ae">${assume}A</span> / <span style="color:#f66">${fail}F</span> <span style="color:#777">(${total})</span>`;
+}).catch(() => {});
 </script>
 </body>
 </html>
