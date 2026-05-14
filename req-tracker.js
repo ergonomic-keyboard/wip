@@ -81,7 +81,15 @@ function ensureStatus(hash) {
         if (v && typeof v === 'object') { s = v.status || ''; }
         else if (typeof v === 'string') { s = v; }
         if (s === 'SKIP') s = 'FAIL';
-        inherited[k] = { status: s, comment: '' };
+        const entry = { status: s, comment: '' };
+        // Preserve counter fields (T03)
+        if (v && typeof v === 'object') {
+          if (v.selfAttempts) entry.selfAttempts = v.selfAttempts;
+          if (v.selfFails) entry.selfFails = v.selfFails;
+          if (v.userCorrections) entry.userCorrections = v.userCorrections;
+          if (v.comment) entry.comment = v.comment;
+        }
+        inherited[k] = entry;
       }
       writeJSON(f, inherited);
       return;

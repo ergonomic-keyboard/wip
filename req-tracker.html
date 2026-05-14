@@ -102,6 +102,43 @@
   .req-btns button.btn-del:hover { border-color: #a33; color: #f66; }
   .req-btns button.btn-undo { color: #5a9ae0; border-color: #38a; }
 
+  /* T03: Attempt/fail/correction counters */
+  .req-counters { display: flex; gap: 2px; flex-shrink: 0; padding-top: 1px; margin-left: 4px; }
+  .req-counter {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 22px; height: 20px; padding: 0 4px;
+    font-size: 0.7em; font-family: monospace; border-radius: 3px;
+    border: 1px solid #333; background: #1a1a1f; color: #666;
+    cursor: default; position: relative;
+  }
+  .req-counter.cnt-attempts { color: #888; }
+  .req-counter.cnt-fails { color: #f88; border-color: #533; }
+  .req-counter.cnt-fails:not(.zero) { background: #2a1a1a; }
+  .req-counter.cnt-corrections { color: #fa4; border-color: #643; cursor: pointer; }
+  .req-counter.cnt-corrections:not(.zero) { background: #2a2010; }
+  .req-counter.cnt-corrections.note-pinned { border-color: #fa4; background: #2a2a10; }
+  .req-counter.zero { opacity: 0.35; }
+
+  /* T03: Note display below requirement (shown via hover/pin on corrections counter) */
+  .req-note { display: none; padding: 4px 10px 6px 68px; font-size: 0.82em; color: #999; line-height: 1.4; white-space: pre-wrap; border-top: 1px solid #1a1a22; }
+  .req-note.visible { display: block; }
+
+  /* T03: Column headers above counters */
+  .counter-hdr {
+    display: flex; gap: 2px; justify-content: center; align-items: center;
+    font-size: 0.65em; color: #666; margin-left: 4px;
+  }
+  .counter-hdr span {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 22px; padding: 0 3px; text-align: center;
+  }
+  .counter-hdr .toggle-all-notes {
+    cursor: pointer; color: #fa4; border: 1px solid #533; border-radius: 3px;
+    padding: 1px 4px; background: #1a1a1f; font-size: 1em;
+  }
+  .counter-hdr .toggle-all-notes:hover { background: #2a2a30; border-color: #888; }
+  .counter-hdr .toggle-all-notes.active { background: #2a2010; border-color: #fa4; }
+
   .req-comment { display: none; padding: 4px 10px 8px 68px; }
   .req-comment.visible { display: block; }
   .req-comment textarea {
@@ -181,10 +218,15 @@ let currentCommit = '';
 let activeFilter = 'all';
 let openComments = {};
 let pendingDeletes = {};  // { reqId: true } — marked for delete but not yet confirmed
+let pinnedNotes = {};     // { reqId: true } — notes toggled permanently visible (T03)
+let allNotesPinned = false; // global toggle for all notes (T03)
 
 function getStatus(id) { return userStatus[id]?.status || ''; }
 function getComment(id) { return userStatus[id]?.comment || ''; }
 function isAiChanged(id) { return !!userStatus[id]?.changedByAI; }
+function getAttempts(id) { return userStatus[id]?.selfAttempts || 0; }
+function getFails(id) { return userStatus[id]?.selfFails || 0; }
+function getCorrections(id) { return userStatus[id]?.userCorrections || 0; }
 
 function migrateStatus(raw) {
   const r = {};
@@ -195,7 +237,12 @@ function migrateStatus(raw) {
     else continue;
     if (status === 'SKIP') status = 'FAIL';
     r[k] = { status, comment };
-    if (v && typeof v === 'object' && v.changedByAI) r[k].changedByAI = true;
+    if (v && typeof v === 'object') {
+      if (v.changedByAI) r[k].changedByAI = true;
+      if (v.selfAttempts) r[k].selfAttempts = v.selfAttempts;
+      if (v.selfFails) r[k].selfFails = v.selfFails;
+      if (v.userCorrections) r[k].userCorrections = v.userCorrections;
+    }
   }
   return r;
 }
@@ -228,9 +275,6 @@ async function load(commitHash) {
   parsed = parseMd(data.requirements);
   openComments = {};
   pendingDeletes = {};
-  for (const [k, v] of Object.entries(userStatus)) {
-    if (v.comment) openComments[k] = true;
-  }
   render();
 }
 
@@ -320,7 +364,10 @@ function render() {
         html += renderAddArea(currentSection);
       }
       currentSection = item.title;
-      html += `<div class="section-hdr"><span class="section-title">${esc(item.title)}</span></div>`;
+      html += `<div class="section-hdr"><span class="section-title">${esc(item.title)}</span>`;
+      html += `<div class="counter-hdr"><span title="Self-attempts">🔄</span><span title="Self-fails">❌</span>`;
+      html += `<span class="toggle-all-notes ${allNotesPinned ? 'active' : ''}" onclick="toggleAllNotes()" title="Toggle all notes">📝</span>`;
+      html += `</div></div>`;
       continue;
     }
     if (item.type !== 'req') continue;
@@ -352,9 +399,27 @@ function render() {
         html += `<button class="btn-undo" onclick="undoDelete('${item.id}')" title="Undo delete">Undo</button>`;
       }
       html += `</span>`;
+      // T03: attempt/fail/correction counters
+      if (!isDeleted) {
+        const att = getAttempts(item.id), fl = getFails(item.id), cor = getCorrections(item.id);
+        const notePinned = allNotesPinned || pinnedNotes[item.id];
+        html += `<span class="req-counters">`;
+        html += `<span class="req-counter cnt-attempts ${att===0?'zero':''}" title="Self-attempts">${att}</span>`;
+        html += `<span class="req-counter cnt-fails ${fl===0?'zero':''}" title="Self-fails">${fl}</span>`;
+        html += `<span class="req-counter cnt-corrections ${cor===0?'zero':''} ${notePinned?'note-pinned':''}" title="User corrections — click to pin note" onclick="toggleNotePin('${item.id}')" data-noteid="${item.id}">`;
+        html += `${cor}`;
+        html += `</span>`;
+        html += `</span>`;
+      }
     }
     html += `</div>`;
     if (!isSup && !isDeleted) {
+      // T03: Inline note (read-only, shown via hover/pin on corrections counter)
+      const notePinned2 = allNotesPinned || pinnedNotes[item.id];
+      if (c) {
+        html += `<div class="req-note ${notePinned2 ? 'visible' : ''}" id="note-${item.id}">${esc(c)}</div>`;
+      }
+      // Editable comment area (toggled via speech bubble button)
       html += `<div class="req-comment ${commentOpen ? 'visible' : ''}" id="comment-${item.id}">`;
       html += `<textarea placeholder="What's wrong, how to fix it..." data-id="${item.id}">${esc(c)}</textarea>`;
       html += `</div>`;
@@ -373,6 +438,21 @@ function render() {
   content.querySelectorAll('.req-text[contenteditable="true"]').forEach(el => {
     el.addEventListener('blur', () => onReqTextEdit(el));
   });
+  // T03: Hover on corrections counter shows/hides inline note
+  content.querySelectorAll('.req-counter.cnt-corrections[data-noteid]').forEach(el => {
+    const id = el.dataset.noteid;
+    el.addEventListener('mouseenter', () => {
+      if (allNotesPinned || pinnedNotes[id]) return; // already visible
+      const note = document.getElementById('note-' + id);
+      if (note) note.classList.add('visible');
+    });
+    el.addEventListener('mouseleave', () => {
+      if (allNotesPinned || pinnedNotes[id]) return; // pinned, stay visible
+      const note = document.getElementById('note-' + id);
+      if (note) note.classList.remove('visible');
+    });
+  });
+
   content.querySelectorAll('.req-comment textarea').forEach(el => {
     el.addEventListener('input', () => {
       const id = el.dataset.id;
@@ -460,6 +540,19 @@ function undoDelete(id) {
   delete pendingDeletes[id];
   render();
   flashSave('Delete cancelled', '#5ae');
+}
+
+// T03: Toggle note pin per requirement
+function toggleNotePin(id) {
+  if (pinnedNotes[id]) { delete pinnedNotes[id]; }
+  else { pinnedNotes[id] = true; }
+  render();
+}
+
+// T03: Toggle all notes globally
+function toggleAllNotes() {
+  allNotesPinned = !allNotesPinned;
+  render();
 }
 
 function onReqTextEdit(el) {

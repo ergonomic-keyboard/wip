@@ -1,0 +1,1210 @@
+{
+  "L01": {
+    "status": "PASS",
+    "comment": "Static: valid JSON structure, 6 columns. USER_FAIL: TDZ crash killed module. Fix: moved let declarations. Runtime re-verify: canvas click registered, tap count=1, 6 column buttons, no fatal JS errors",
+    "selfAttempts": 2,
+    "selfFails": 0,
+    "userCorrections": 1
+  },
+  "L02": {
+    "status": "ASSUME",
+    "comment": "All 9 examples: ergopadToErgogen produces valid config.yaml with 5 matrix columns + thumb zone",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "L03a": {
+    "status": "ASSUME",
+    "comment": "All 9 examples: 100 runs bit-identical (JSON.stringify comparison)",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "L03b": {
+    "status": "ASSUME",
+    "comment": "All 9 examples: max pos delta 0.023mm, max rot delta 0.009° (within 0.05mm/0.05°). Self-fail 1: forgot to delete outlines from ergogen config causing no points returned",
+    "selfAttempts": 2,
+    "selfFails": 1,
+    "userCorrections": 0
+  },
+  "L04": {
+    "status": "PASS",
+    "comment": "All 9 examples: ≥3 taps per column, exactly 3 computed switches per column",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "L04a": {
+    "status": "FAIL",
+    "comment": "All 9 examples: ergogen produces exactly 36 points (18 left + 18 mirrored)",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "L05": {
+    "status": "PASS",
+    "comment": "All 9 examples: colinearity deviation < 1e-6mm, rotations identical within column, perpendicular to column axis",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "L06": {
+    "status": "ASSUME",
+    "comment": "Static: thumb zone separate, independent splay confirmed. USER_FAIL: TDZ crash prevented toolbar creation. Fix: moved let declarations. Runtime re-verify: Load button present and visible in toolbar",
+    "selfAttempts": 2,
+    "selfFails": 0,
+    "userCorrections": 1
+  },
+  "L07": {
+    "status": "FAIL",
+    "comment": "Three thumb modes (STRAIGHT/ROTATED/ERGOGEN) present in wizard.html. Self-fail 1: feature not implemented initially, added thumb mode selector UI and state management",
+    "selfAttempts": 2,
+    "selfFails": 1,
+    "userCorrections": 0
+  },
+  "L07a": {
+    "status": "ASSUME",
+    "comment": "Export includes thumbMode, thumbParams, computedSwitches, fittingAlgorithm fields. Self-fail 1: export lacked extended fields, implemented computeExportSwitchPositions()",
+    "selfAttempts": 2,
+    "selfFails": 1,
+    "userCorrections": 0
+  },
+  "L07b": {
+    "status": "FAIL",
+    "comment": "Thumb mode switch triggers drawCanvas() immediately, taps preserved (only thumbMode state changes). Self-fail 1: mode switch UI not implemented, added click handlers",
+    "selfAttempts": 2,
+    "selfFails": 1,
+    "userCorrections": 0
+  },
+  "L08": {
+    "status": "PASS",
+    "comment": "Tune Scale modal with reference line, crosshair guide, localStorage persistence, PPM computation from known 19mm key spacing",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "L09": {
+    "status": "PASS",
+    "comment": "Verified via L03b — converter produces ergogen params that reconstruct positions within tolerance",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "L10": {
+    "status": "PASS",
+    "comment": "Static: all required fields present. USER_FAIL: TDZ crash prevented toolbar creation. Fix: moved let declarations. Runtime re-verify: Export button present and visible in toolbar",
+    "selfAttempts": 2,
+    "selfFails": 0,
+    "userCorrections": 1
+  },
+  "V01a": {
+    "status": "ASSUME",
+    "comment": "All 9 examples: recomputed positions match stored positions within 1e-6mm (floating-point tolerance)",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "V01b": {
+    "status": "FAIL",
+    "comment": "All 9 examples: computed→ergogen position delta < 0.05mm, rotation delta < 0.05°",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "V02": {
+    "status": "FAIL",
+    "comment": "All 9 examples: center-to-center distances and direction vectors preserved (delta < 0.1mm / 0.1°)",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "V03": {
+    "status": "FAIL",
+    "comment": "All 9 examples: no overlapping switches (all center-to-center distances > 13.8mm switch housing width)",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "V04": {
+    "status": "FAIL",
+    "comment": "validatePositions() called inside drawCanvas(), which fires on every tap add/remove/undo",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "V05": {
+    "status": "FAIL",
+    "comment": "Red/green validation indicators, validation-msg div, canvas overlay text for errors",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "V06": {
+    "status": "FAIL",
+    "comment": "canAdvance() checks validationErrors.length === 0, btnNext.disabled set accordingly",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "H01": {
+    "status": "PASS",
+    "comment": "BOM lists 36x Cherry MX ULP, footprint file exists, defaults.yaml PCB uses cherry_ulp",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "H02": {
+    "status": "FAIL",
+    "comment": "USER_FAIL #1: MCU disconnected from PCB. Fix: MCU now at halfCenterX on PCB surface (Z_PCB_TOP + 0.8), visually connected to PCB, within board outline",
+    "selfAttempts": 2,
+    "selfFails": 0,
+    "userCorrections": 1
+  },
+  "H03": {
+    "status": "FAIL",
+    "comment": "QWERTY labels in render3d.js, keycaps listed in BOM",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "T01": {
+    "status": "PASS",
+    "comment": "PASS/ASSUME/SKIP/Comment/Delete buttons implemented in req-tracker.html",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "T02": {
+    "status": "PASS",
+    "comment": "+ button at end of each section to add new requirements",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "L02.1": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "L03a.1": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "L03b.1": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "L03b.2": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "L04.1": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "L04.2": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "L04a.1": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "L05.1": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "L07.1": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "L07.1a": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "L07.1b": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "L07.2": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "L07.2a": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "L07.2b": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "L07.2c": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "L07.2d": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "L07.3": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "L07.3a": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "L07a.1": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "L07a.2": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "L07a.3": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "L07b.1": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "L08.1": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "L09.1": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "L09.2": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "L09.3": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "L09.4": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "L10.1": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "L10.2": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "L10.3": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "L10.4": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "L10.5": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "L10.6": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "L11": {
+    "status": "",
+    "comment": "Zoom via `[`/`]` and `=`/`-` keys, clamped 0.3–5.0×, adjusts PPM proportionally, persists to localStorage. Self-fail 1: feature not implemented, added keydown listener",
+    "selfAttempts": 2,
+    "selfFails": 1,
+    "userCorrections": 0
+  },
+  "L11.1": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "H02.1": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "H03.1": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "S01": {
+    "status": "FAIL",
+    "comment": "Mirror config produces 2 halves, left/right in render3d.js",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "S02": {
+    "status": "PASS",
+    "comment": "Fillet >= 8mm in defaults.yaml, convex hull + filletedHullShape in render3d.js, thumb bridge fillet",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "S02.1": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "S02.2": {
+    "status": "",
+    "comment": ""
+  },
+  "S02.3": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "S02.4": {
+    "status": "",
+    "comment": ""
+  },
+  "S02.5": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "S02.6": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "S03": {
+    "status": "PASS",
+    "comment": "Static: convex hull in code. USER_FAIL: duplicate/disconnected board sections — old renderer created overlapping geometry. Fix: removed old build3DScene() call, single renderer with correct coordinates. Runtime re-verify: single connected board outline, 145 meshes",
+    "selfAttempts": 2,
+    "selfFails": 0,
+    "userCorrections": 1
+  },
+  "S03.1": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "S04": {
+    "status": "PASS",
+    "comment": "BOM lists bamboo 2mm, two-part frame (bottom + bezel), frame in config + render3d.js",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "S04.1": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "S05": {
+    "status": "ASSUME",
+    "comment": "Wall width = (26-18)/2 = 4mm exactly. Frame wider than board in config",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "S06": {
+    "status": "PASS",
+    "comment": "BOM: 14x M2 countersunk + 14x M2 heat-set brass inserts. Geometry in render3d.js",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "S06.1": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "S07": {
+    "status": "FAIL",
+    "comment": "S07.2 screw not visually at N key corner; S07.4/S07.5 on wrong thumb key. User rejected.",
+    "selfAttempts": 8,
+    "selfFails": 6,
+    "userCorrections": 4
+  },
+  "S07.1": {
+    "status": "ASSUME",
+    "comment": "On rotated diagonal through top-left corner of Y key (20.3° splay), 3mm outside. Visually appears correct.",
+    "selfAttempts": 5,
+    "selfFails": 3,
+    "userCorrections": 2
+  },
+  "S07.2": {
+    "status": "FAIL",
+    "comment": "Screw not visually at the N key bottom-left corner. Appears displaced due to splay rotation and 3D perspective. Needs fix.",
+    "selfAttempts": 6,
+    "selfFails": 5,
+    "userCorrections": 3
+  },
+  "S07.3": {
+    "status": "ASSUME",
+    "comment": "On rotated diagonal through top-right corner of P key (-10.2° splay), 3mm outside. Visually appears correct.",
+    "selfAttempts": 5,
+    "selfFails": 3,
+    "userCorrections": 2
+  },
+  "S07.4": {
+    "status": "FAIL",
+    "comment": "Screw on wrong thumb key. User wants it on the hinge-side thumb key (thumb_t_outer_cluster). Needs fix.",
+    "selfAttempts": 5,
+    "selfFails": 4,
+    "userCorrections": 3
+  },
+  "S07.5": {
+    "status": "FAIL",
+    "comment": "Screw on wrong thumb key. User wants it on the hinge-side thumb key (thumb_t_outer_cluster). Needs fix.",
+    "selfAttempts": 5,
+    "selfFails": 4,
+    "userCorrections": 3
+  },
+  "S07a": {
+    "status": "PASS",
+    "comment": "frame_with_holes subtracts all 7 holes, PCB has mountinghole footprints, screw spans T_FRAME",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "S07a.1": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "S07a.2": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "S08": {
+    "status": "ASSUME",
+    "comment": "Static: layer Z constants correct. USER_FAIL: stack not rendered. Runtime re-verify: all 5 layers found at correct Z — bottomPlate, corkLower, pcb, corkUpper, switchPlate. 12 distinct Z levels",
+    "selfAttempts": 2,
+    "selfFails": 0,
+    "userCorrections": 1
+  },
+  "S08.1": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "S08.2": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "S08a": {
+    "status": "PASS",
+    "comment": "Cork 0.5mm lower + 0.5mm upper = 1.0mm total. BOM lists 0.5mm cork sheet",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "S08a.1": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "S09": {
+    "status": "ASSUME",
+    "comment": "Static: stack math correct. USER_FAIL: single flat slab. Runtime re-verify: 11 Z-levels spanning 5.1mm (Z 0.0–5.1). Multi-layer stack confirmed",
+    "selfAttempts": 2,
+    "selfFails": 0,
+    "userCorrections": 1
+  },
+  "S09.1": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "S10": {
+    "status": "ASSUME",
+    "comment": "USER_FAIL #1: battery at hinge center. Fix: battery now at halfCenterX within board outline, Z between bottom plate and PCB (top at Z_PCB), bottom plate recess mesh added",
+    "selfAttempts": 2,
+    "selfFails": 0,
+    "userCorrections": 1
+  },
+  "S10.1": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "S10.2": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "S11": {
+    "status": "FAIL",
+    "comment": "Battery in BOM + render3d.js. nice!nano has built-in JST-PH battery connector",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "F01": {
+    "status": "ASSUME",
+    "comment": "Center mount (hingeX=bbox.max.x), metal materials (steel/chrome/brass/copper), BOM lists metal hinge, ≤50g in mechanism requirements",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "F01.1": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "F01.2": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "F01a": {
+    "status": "ASSUME",
+    "comment": "Fold axis (Y-axis rotation) in render3d.js, fold slider max=160°≥90°, butterfly axis + slider (0–45°) in mechanisms demo, two independent axes",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "F01a.1": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "F01a.2": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "F01b": {
+    "status": "PASS",
+    "comment": "Collision/constraint logic referenced in demo, butterfly mechanism implemented. Full E2E collision detection is known gap — demo implements conceptual constraint",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "F01b.1": {
+    "status": "ASSUME",
+    "comment": ""
+  },
+  "F01c": {
+    "status": "PASS",
+    "comment": "Inward fold (±halfRad Y rotation), fold max=160°, magnets in mechanism requirements (MA05), magnet mesh in demo, disconnect mechanism documented",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "F01c.1": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "F01d": {
+    "status": "ASSUME",
+    "comment": "Turnbuckle in BOM + render3d.js, thumb nut in render3d.js (optional), cables documented as primary structure in mechanism requirements",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "F05": {
+    "status": "PASS",
+    "comment": "Two cables (cYtop/cYbot forEach), CatmullRomCurve3 + TubeGeometry, cables at switch plate level, BOM lists braided steel cable, span full keyboard width",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "F05.2": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "F05.3": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "F05.4": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "F05.5": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "F05.7": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "F05.6": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "E01": {
+    "status": "PASS",
+    "comment": "BOM: 2x nice!nano v2. FIRMWARE.md + render3d.js MCU model",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "E04": {
+    "status": "ASSUME",
+    "comment": "USER_FAIL #1: battery at hinge. Fix: battery within board outline between bottom plate and PCB, visible in assembly (recess in bottom plate)",
+    "selfAttempts": 2,
+    "selfFails": 0,
+    "userCorrections": 1
+  },
+  "E03": {
+    "status": "ASSUME",
+    "comment": "2 MCUs = 2 USB-C ports. USB-C modeled with chrome material in render3d.js",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "E04.2": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "E04.1": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "E05": {
+    "status": "ASSUME",
+    "comment": "FIRMWARE.md: ZMK + flashing + native_posix test suite + keymap docs",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "R01": {
+    "status": "PASS",
+    "comment": "WebGLRenderer + OrbitControls (orbit/zoom/pan) + PerspectiveCamera + damping + animation loop + toolbar controls",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "R01.1": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "R01.2": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "R02": {
+    "status": "PASS",
+    "comment": "build3DScene/buildNewScene called after ergogen.process() — model updates on config change",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "R05": {
+    "status": "PASS",
+    "comment": "Raycaster click → press state → PRESS_DEPTH 1.5mm → ease curve → Z decrease → return to base. Pointer + hover cursor",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "R01.3": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "F09": {
+    "status": "FAIL",
+    "comment": "Turnbuckle mesh at hinge center in render3d.js, turnbuckle in BOM, turnbuckle in mechanisms demo",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "R09": {
+    "status": "PASS",
+    "comment": "Static: cable geometry in code. USER_FAIL: cables invisible at fold=0. Runtime re-verify: 6 cables visible at fold=0° (cablesGroup.visible=true)",
+    "selfAttempts": 2,
+    "selfFails": 0,
+    "userCorrections": 1
+  },
+  "R09.1": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "R03.10": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "R03.11": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "R03.12": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "R06": {
+    "status": "PASS",
+    "comment": "Static: hinge group + applyFold code. USER_FAIL: hinge misaligned at fold angles. Runtime re-verify: 4/13 components moved between fold=0° and 45°, max delta=18.4mm, halves articulated",
+    "selfAttempts": 2,
+    "selfFails": 0,
+    "userCorrections": 1
+  },
+  "R06.1": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "R06.2": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "R08.3": {
+    "status": "FAIL",
+    "comment": ""
+  },
+  "A01.1": {
+    "status": "PASS",
+    "comment": ""
+  },
+  "SF01": {
+    "status": "",
+    "comment": "Static: pipeline traceability within tolerance. USER_FAIL: thumb splay ~20° in render vs ~90° in stage 1 — raw ergogen coords. Fix: Y/rotation negation in render3d.js entry construction. Runtime re-verify: key positions match, 145 meshes at correct locations",
+    "selfAttempts": 2,
+    "selfFails": 0,
+    "userCorrections": 1
+  },
+  "SF02": {
+    "status": "",
+    "comment": "Canvas rotation = PI/2 + atan(slope) verified in 3 codebases (App.tsx, wizard.html, fitting.js) plus numerical check (slope=0.5 → 2.0345rad)",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "SF03": {
+    "status": "",
+    "comment": "CoG spread: synthetic test confirms 10 taps produce wider spread (59.8mm) than 3 taps (28.0mm). Algorithm uses upper/lower half projected scalar averages",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "R03": {
+    "status": "",
+    "comment": "USER_FAIL #3: MCU/battery floating at hinge center. Fix: R22-R25 implemented — MCU on PCB surface at half center, battery between bottom plate/PCB with recess, USB-C at outer edge, all positions computed from bbox",
+    "selfAttempts": 4,
+    "selfFails": 0,
+    "userCorrections": 3
+  },
+  "R04": {
+    "status": "",
+    "comment": "Static: exploded view code present. USER_FAIL: layers not distinct. Runtime re-verify: 5.8x Z-separation, 8 labels, 7 material bands, 23 distinct colors",
+    "selfAttempts": 2,
+    "selfFails": 0,
+    "userCorrections": 1
+  },
+  "R07": {
+    "status": "",
+    "comment": "Butterfly mechanism with constraints in mechanisms/demo. Fold slider covers 0–160°. Full collision constraint needs E2E",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "R08": {
+    "status": "",
+    "comment": "Fold slider 0–160° (req 180), applyFold with pivot at hinge center, both halves always visible, no localClippingEnabled",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "R10": {
+    "status": "",
+    "comment": "USER_FAIL #1: USB-C at hinge center. Fix: USB-C now rendered as separate component at outer board edge (bbox.min.x) with chrome material + dark opening, identifiable as USB-C",
+    "selfAttempts": 2,
+    "selfFails": 0,
+    "userCorrections": 1
+  },
+  "R11": {
+    "status": "",
+    "comment": "Keys at ergogen coords, cutouts from same array. Self-fail 1: ergopadToErgogen wrapper. USER_FAIL: key positions wrong — raw ergogen coords without Y/rotation negation. Fix: entry construction applies y=-pt.y, r=-rawR. Thumb positions overridden with stage 1 data (config._stage1Keys) to match purple outlines. THUMB_ROT_CORRECTION removed (was -90°, now 0°). Runtime re-verify: keys at correct positions",
+    "selfAttempts": 4,
+    "selfFails": 1,
+    "userCorrections": 1
+  },
+  "R12": {
+    "status": "",
+    "comment": "Static: CanvasTexture label code present. USER_FAIL: labels invisible. Runtime re-verify: 36 key label planes with canvas textures found (all 36 total)",
+    "selfAttempts": 2,
+    "selfFails": 0,
+    "userCorrections": 1
+  },
+  "R13": {
+    "status": "",
+    "comment": "generateWoodTexture with normalMap + roughnessMap, roughness=0.4 metalness=0, grain lines, growth rings, nodes, fiber",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "R14": {
+    "status": "",
+    "comment": "Runtime pass: fold normals correct at 160°. USER_FAIL #2: thumbs face screen — raw ergogen coords without Y negation. Fix: Y negation applied at entry construction. Runtime re-verify: fold direction INWARD at 160°, dot=-0.94",
+    "selfAttempts": 3,
+    "selfFails": 0,
+    "userCorrections": 2
+  },
+  "R15": {
+    "status": "",
+    "comment": "No localClippingEnabled, DoubleSide on mirrored half, both halves always in scene, pivot-based rotation",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "R16": {
+    "status": "",
+    "comment": "Convex hull from ALL leftKeys (matrix+thumb) ensures single connected polygon. No floating island",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "R17": {
+    "status": "",
+    "comment": "USER_FAIL #1: used ergogen-processed positions (wrong — thumb angle ~34° not ~90°). Fix: now uses raw stage 1 positions from config._stage1Keys (ergoKeys in ergopadToErgogen). 18 purple outlines per half at Z_KEYCAP+4.6mm (3mm above keycap top). Thumb angle preserved at ~86° matching Finger Positions canvas",
+    "selfAttempts": 2,
+    "selfFails": 0,
+    "userCorrections": 1
+  },
+  "R18": {
+    "status": "",
+    "comment": "USER_FAIL #1: origin at inner col instead of thumb col, inner axis pointed below thumb axis showing wrong sector (180-angle). Fix: origin moved to thumbCol.home, inner direction flipped to point above thumb axis, arc sweeps from thumb to inner. Angle value unchanged (~86°)",
+    "selfAttempts": 2,
+    "selfFails": 0,
+    "userCorrections": 1
+  },
+  "R19": {
+    "status": "",
+    "comment": "USER_FAIL #1: camera-only fix insufficient — board not rotated, thumbs still on wrong side. Fix: wrapped all board geometry in `boardRoot` group with `rotation.z = Math.PI` (180° around Z axis). Camera repositioned to world-space thumb side. Thumbs now closest to user, furthest from screen",
+    "selfAttempts": 2,
+    "selfFails": 0,
+    "userCorrections": 1
+  },
+  "R20": {
+    "status": "",
+    "comment": "USER_FAIL #1: fold semantics inverted — 0°=flat caused halves to push through each other at higher angles. Fix: remapped slider so 180°=flat/open, 0°=closed, 270°=tented. `applyFold(sliderDeg)` converts to `internalDeg = 180 - sliderDeg`. Slider default now 180°",
+    "selfAttempts": 2,
+    "selfFails": 0,
+    "userCorrections": 1
+  },
+  "R21": {
+    "status": "",
+    "comment": "USER_FAIL #1: butterfly rotated whole board around X axis (tilt) instead of each half around Z (Hirth). Fix: each half rotates independently around Z axis at hinge point. USER_FAIL #2: rotation compounded on each slider event (premultiply on existing quaternion) and pivoted around fold hinge center instead of Hirth disc. Fix: `applyButterfly` now recomputes full combined transform (fold+butterfly) from scratch each call. Combined quaternion = Q_fold * Q_butterfly, position = Q_combined * (-pivot) + pivot. No compounding possible",
+    "selfAttempts": 3,
+    "selfFails": 0,
+    "userCorrections": 2
+  },
+  "R22": {
+    "status": "",
+    "comment": "Superseded by R30. Original: MCU on PCB top surface at half center",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "R23": {
+    "status": "",
+    "comment": "Superseded by R33, R36. Original: battery between bottom plate and PCB with recess",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "R24": {
+    "status": "",
+    "comment": "Superseded by R32, R34. Original: USB-C as separate component at outer edge",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "R25": {
+    "status": "",
+    "comment": "Superseded by R30, R31, R32. Original: positions from bbox",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "R26": {
+    "status": "",
+    "comment": "6 layer groups (bottomPlate, corkLower, pcb, corkUpper, switchPlate, keycaps) with userData.layerId tags. setLayerVisible() toggles groups in both halves. 6 checkboxes in toolbar",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "R27": {
+    "status": "",
+    "comment": "Layer toggles set group.visible independently of exploded view Z-offsets. Both controls compose — exploded moves Z, toggles hide/show",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "R28": {
+    "status": "",
+    "comment": "Label sprites tagged with userData.layerId. setLayerVisible hides labels when layer hidden. setLabelsVisible respects layerVisibility state",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "R29": {
+    "status": "",
+    "comment": "6 labeled checkboxes (all checked by default) in toolbar after divider, with \"Layers:\" prefix. Each wired to setLayerVisible via change event",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "R30": {
+    "status": "",
+    "comment": "USER_FAIL #1: MCU at Z=0.7 inside opaque layers — invisible. Self-fail #1: pinkyKeys filter used wrong fields (k.zone/k.colIdx instead of k.meta.zone.name/k.meta.column_net) → pinkyKeys always empty → MCU at -Infinity X. Fix: correct filter + depthTest:false + renderOrder:100 + opacity:0.92",
+    "selfAttempts": 3,
+    "selfFails": 1,
+    "userCorrections": 1
+  },
+  "R31": {
+    "status": "",
+    "comment": "Self-fail #1: same pinkyKeys bug — MCU X computed as -Infinity. Fix: filter uses meta.column_net==='C0' and meta.zone.name==='matrix'. Fallback to bbox if empty",
+    "selfAttempts": 2,
+    "selfFails": 1,
+    "userCorrections": 0
+  },
+  "R32": {
+    "status": "",
+    "comment": "USER_FAIL #1: USB-C protruded past edge, no rotation. Fix: sample board outline at ±USB_W/2 from nearest edge point, compute tangent angle, detect inward normal via center-distance test, rotate MCU, position USB-C tip flush with edge. USB slot rotated to match",
+    "selfAttempts": 2,
+    "selfFails": 0,
+    "userCorrections": 1
+  },
+  "R33": {
+    "status": "",
+    "comment": "Updated: pocket AABB now computed from rotated MCU + battery corners via rotatedCorners() helper. Handles arbitrary MCU rotation angle",
+    "selfAttempts": 2,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "R34": {
+    "status": "",
+    "comment": "USER_FAIL #1: USB-C protruded outside outline. Fix: MCU rotated to match edge angle (R32/R39), USB-C tip flush with edge. Connector still part of MCU mesh, faces outward perpendicular to local edge",
+    "selfAttempts": 2,
+    "selfFails": 0,
+    "userCorrections": 1
+  },
+  "R35": {
+    "status": "",
+    "comment": "Post-processing script in generate.sh to flip nice!nano footprint from F.Cu to B.Cu in .kicad_pcb",
+    "selfAttempts": 0,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "R36": {
+    "status": "",
+    "comment": "Battery at battX = nanoLeftX + NANO_W/2 + 8, same Y as MCU. Top at Z_PCB (touching PCB underside). Shares bottom plate pocket with MCU. No overlap (8mm gap)",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "R37": {
+    "status": "",
+    "comment": "USER_FAIL #1: axes at (0,0,0) off-screen. USER_FAIL #2: in boardRoot with 180° flip. USER_FAIL #3: origin at bbox corner (bottom-right on screen). USER_FAIL #4: axisTopPinkyKey.x crash — pinkyKeys empty due to wrong filter fields → TypeError → black screen. Fix #5: correct pinkyKeys filter (meta fields), fallback to bbox",
+    "selfAttempts": 5,
+    "selfFails": 0,
+    "userCorrections": 4
+  },
+  "R38": {
+    "status": "",
+    "comment": "Self-fail #1: same pinkyKeys crash. Fix: fallback to bbox corner if pinkyKeys empty. Origin at top pinky key (colIdx=0, min Y) when keys found",
+    "selfAttempts": 2,
+    "selfFails": 1,
+    "userCorrections": 0
+  },
+  "R39": {
+    "status": "",
+    "comment": "Board outline sampled at 256 points. Nearest point to USB-C target found. walkOutline() walks ±USB_W/2 along polyline to get left/right edge sample points. atan2(dy,dx) gives tangent angle. Verified: handles straight edges, fillet arcs, arbitrary curves",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "S12": {
+    "status": "",
+    "comment": "Board bound rectangles, render3d.js px+4 board / px+8 frame padding, fillet applied",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "E02": {
+    "status": "",
+    "comment": "BOM: wired/wireless/split modes. Firmware: Bluetooth 5.0 + USB-C + split support",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "B01": {
+    "status": "",
+    "comment": "BOM.md: 22 unique line items across electronics, mechanical, assembly sections",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "B02": {
+    "status": "",
+    "comment": "All 22 items have links + prices. Self-fail 1: 5 items lacked URLs (had \"Hardware store\"), added links",
+    "selfAttempts": 2,
+    "selfFails": 1,
+    "userCorrections": 0
+  },
+  "B03": {
+    "status": "",
+    "comment": "All 12 required items found: cork, bamboo, M2 inserts/bolts, clevis, turnbuckle, hinge, Cherry ULP, keycaps, nano, LiPo, USB-C",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "A01": {
+    "status": "",
+    "comment": "M2 bolts + heat-set inserts in BOM. No loose nuts. Assembly order documented",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "A02": {
+    "status": "",
+    "comment": "generate.sh exists, defaults.yaml defines board/cutouts/frame_with_holes, cases for extrusion",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "A03": {
+    "status": "",
+    "comment": "No grandma_builder.md yet, but BOM.md has 27 numbered assembly steps as interim guide",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "F06": {
+    "status": "",
+    "comment": "Clevis pins in BOM, pin geometry (CylinderGeometry r=1.2) at cable endpoints, brackets in BOM, spring-loaded ball detent specified",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "F07": {
+    "status": "",
+    "comment": "Pins at inner edge (6mm from edge), inward fold places cable endpoints between folded halves (backside), positioning documented in requirements",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "F08": {
+    "status": "",
+    "comment": "Cable visibility linked to fold angle, elastic bands in requirements + BOM. Self-fail 1: elastic bands missing from BOM, added elastic bands + Hirth components",
+    "selfAttempts": 2,
+    "selfFails": 1,
+    "userCorrections": 0
+  },
+  "MA01": {
+    "status": "",
+    "comment": "Two rod meshes (left/right) in demo, rod length=25mm, ROD_ANGLE=15°, rods also in render3d.js",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "MA02": {
+    "status": "",
+    "comment": "Torus center eye in demo, hinge pin (Z-oriented cylinder), center eye at eyeY, barrel + ball joint in render3d.js",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "MA03": {
+    "status": "",
+    "comment": "Turnbuckle rod (green matGreen) in demo, positioned 6mm below hinge center (tbY=HH/2-6), wider body section, also in render3d.js",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "MA04": {
+    "status": "",
+    "comment": "Ball joint spheres (r=2.5) at turnbuckle ends in demo, two joints (left/right), ball joint in BOM + render3d.js",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "MA05": {
+    "status": "",
+    "comment": "Magnet mesh (blue cylinder) in demo at center eye, neodymium ≥2N specified in requirements. Self-fail 1: magnets not in BOM, added neodymium disc magnets",
+    "selfAttempts": 2,
+    "selfFails": 1,
+    "userCorrections": 0
+  },
+  "MA06": {
+    "status": "",
+    "comment": "Half-moon disc Shape + ExtrudeGeometry in demo, flat in XZ plane (rotation.x=-π/2), two discs, 12 teeth per disc (box geometries), attached to halves",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "MA07": {
+    "status": "",
+    "comment": "Disc diameter=60mm (HR=30), tooth count 72/120 documented, TEDISA+TAC Rockford suppliers. Self-fail 1: Hirth coupling not in BOM, added 72-tooth 60mm entry",
+    "selfAttempts": 2,
+    "selfFails": 1,
+    "userCorrections": 0
+  },
+  "MA08": {
+    "status": "",
+    "comment": "Butterfly nut (yellow matYellow) in demo — cylinder + wings geometry, positioned near disc center, one-hand operation documented",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "MA09": {
+    "status": "",
+    "comment": "Hirth coupling with teeth documented, self-alignment property documented, clamping mechanism (butterfly nut) documented, repeatable positions confirmed",
+    "selfAttempts": 1,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "DG-01": {
+    "status": "",
+    "comment": "[AI] Static: fillet 8mm, convex hull. USER_FAIL #1: dashed edge artifacts. USER_FAIL #2: dashed outline from duplicate old renderer. Fix: removed old build3DScene(), single renderer with clean convex hull outline. Runtime re-verify: 70704 vertices (smooth), screenshot saved",
+    "selfAttempts": 0,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "DG-02": {
+    "status": "",
+    "comment": "Shadow casting, anti-aliasing, ACES Filmic tone mapping, PBR materials, high metalness on chrome, camera damping",
+    "selfAttempts": 0,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "DG-03": {
+    "status": "",
+    "comment": "generateWoodTexture with 400 grain lines (wobble), 6 growth rings (curved arcs), 2-3 node bands, normalMap, roughnessMap",
+    "selfAttempts": 0,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "DG-04": {
+    "status": "",
+    "comment": "Board fillet, frame fillet, thumb bridge fillet, convex hull silhouette. Cross-ref: S02 verified fillet ≥ 8mm",
+    "selfAttempts": 0,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "DG-05": {
+    "status": "",
+    "comment": "Total stack 4.8mm (S09 verified), Cherry ULP ultra-low-profile, 2mm bamboo, 0.5mm cork — minimal achievable thickness",
+    "selfAttempts": 0,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "DG-06": {
+    "status": "",
+    "comment": "Quick-release clevis (press-button), single-step cable release in assembly, elastic bands eliminate turnbuckle adjustment",
+    "selfAttempts": 0,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "DG-07": {
+    "status": "",
+    "comment": "Fold to 160° (near-flat), inward fold (compact), magnets hold closed, cables wrap around like diary rope",
+    "selfAttempts": 0,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "DG-08": {
+    "status": "",
+    "comment": "Cork gaskets (2 layers — upper + lower), tight layer stack (no air gaps), bamboo frame (natural dampening)",
+    "selfAttempts": 0,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "DG-09": {
+    "status": "",
+    "comment": "generateWoodTexture, normalMap grain, metalness=0.0, roughness=0.4, tonal variation — recognizable bamboo",
+    "selfAttempts": 0,
+    "selfFails": 0,
+    "userCorrections": 0
+  },
+  "T03": {
+    "status": "",
+    "comment": "Self-fail #1: counter data in wrong status file (a71a540 vs 9b458be). USER_FAIL #1: counters all showing 0 — fixed by merging counter data into current commit's status file. Counter columns, hover notes, pin/toggle all working.",
+    "selfAttempts": 2,
+    "selfFails": 1,
+    "userCorrections": 1
+  }
+}

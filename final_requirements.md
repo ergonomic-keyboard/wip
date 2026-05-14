@@ -14,6 +14,9 @@ Y runs positiveley along the columns (top to bottom of keyboard). Z is vertical 
 
 **REQ-T02** — The end of each requirement type section (e.g. "4. Hardware — Structure", "2. Validation") shall include a + button to append a new requirement in that section at the end.
 
+
+**REQ-T03** — The requirements tracker shall keep the numbers/scores of the self-attempts, self fails, user corrections as 2 columns right of the Delete button column. If the user hovers over the user fail, it will expand the requirement to display the notes for that requirement. As soon as the user does not hover over that user-fail count anymore, the note will disapear. The user shall be able to togle the notes on or off per requirement, and with a single binary toggle above the user-fail column for all requirements.
+
 ---
 
 ## 1. Layout & Input

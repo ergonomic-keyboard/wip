@@ -532,27 +532,45 @@
     "comment": "User reports tenting pole artifacts still visible at board corners; non-key point filtering added but artifacts persist"
   },
   "S07": {
-    "status": "ASSUME",
-    "comment": "5 screws on rotation-aware switch diagonals (left-half coords, mirrored to right). Corner offsets rotated by key.r to follow actual splay. Playwright verified all at 3mm from corners (≤10mm). Purple outlines fixed for both halves. Awaiting user confirmation."
+    "status": "FAIL",
+    "comment": "S07.2 screw not visually at N key corner; S07.4/S07.5 on wrong thumb key. User rejected.",
+    "selfAttempts": 8,
+    "selfFails": 6,
+    "userCorrections": 4
   },
   "S07.1": {
     "status": "ASSUME",
-    "comment": "On rotated diagonal through top-left corner of Y key (20.3° splay), 3mm outside. Verified via playwright."
+    "comment": "On rotated diagonal through top-left corner of Y key (20.3° splay), 3mm outside. Visually appears correct.",
+    "selfAttempts": 5,
+    "selfFails": 3,
+    "userCorrections": 2
   },
   "S07.2": {
-    "status": "ASSUME",
-    "comment": "On rotated diagonal through bottom-left corner of N key (20.3° splay), 3mm outside. Verified via playwright."
+    "status": "FAIL",
+    "comment": "Screw not visually at the N key bottom-left corner. Appears displaced due to splay rotation and 3D perspective. Needs fix.",
+    "selfAttempts": 6,
+    "selfFails": 5,
+    "userCorrections": 3
   },
   "S07.3": {
     "status": "ASSUME",
-    "comment": "On rotated diagonal through top-right corner of P key (-10.2° splay), 3mm outside. Verified via playwright."
+    "comment": "On rotated diagonal through top-right corner of P key (-10.2° splay), 3mm outside. Visually appears correct.",
+    "selfAttempts": 5,
+    "selfFails": 3,
+    "userCorrections": 2
   },
   "S07.4": {
-    "status": "ASSUME",
-    "comment": "On rotated diagonal through top-right corner of outermost thumb key (thumb_t_inner_cluster, -54.5° splay), 3mm outside. Verified via playwright."
+    "status": "FAIL",
+    "comment": "Screw on wrong thumb key. User wants it on the hinge-side thumb key (thumb_t_outer_cluster). Needs fix.",
+    "selfAttempts": 5,
+    "selfFails": 4,
+    "userCorrections": 3
   },
   "S07.5": {
-    "status": "ASSUME",
-    "comment": "On rotated diagonal through bottom-right corner of outermost thumb key (thumb_t_inner_cluster, -54.5° splay), 3mm outside. Verified via playwright."
+    "status": "FAIL",
+    "comment": "Screw on wrong thumb key. User wants it on the hinge-side thumb key (thumb_t_outer_cluster). Needs fix.",
+    "selfAttempts": 5,
+    "selfFails": 4,
+    "userCorrections": 3
   }
 }
