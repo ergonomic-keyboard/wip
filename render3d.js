@@ -1188,10 +1188,15 @@ function buildNewScene(ergogenResults, config, container) {
 
     const SW = 7.1, SH = 6.4; // switch half-dimensions
 
+    // Key label mapping: on the right half (mirrored), C0=pinky shows Y/N labels,
+    // and C4=inner shows P label. Since left half is mirrored to create right half,
+    // screw positions reference left-half columns that will mirror to the correct
+    // right-half labels: Y/N → C0 (pinky), P → C4 (inner).
+    const pinkyCol = c0.length > 0 ? c0 : [];
     const innerCol = c4.length > 0 ? c4 : c3;
-    const yKey = innerCol.length > 0 ? innerCol[0] : null;                    // Y (top inner)
-    const nKey = innerCol.length > 0 ? innerCol[innerCol.length - 1] : null;  // N (bottom inner)
-    const pKey = c0.length > 0 ? c0[0] : null;                                // P (top pinky)
+    const yKey = pinkyCol.length > 0 ? pinkyCol[0] : null;                     // Y (top pinky) — mirrors to right C0 top = Y
+    const nKey = pinkyCol.length > 0 ? pinkyCol[pinkyCol.length - 1] : null;   // N (bottom pinky) — mirrors to right C0 bottom = N
+    const pKey = innerCol.length > 0 ? innerCol[0] : null;                      // P (top inner) — mirrors to right C4 top = P
     // Log all thumb keys for debugging
     tKeys.forEach(tk => console.log(`  thumb key: "${tk.name}" pos=(${tk.x.toFixed(1)}, ${tk.y.toFixed(1)}) r=${tk.r.toFixed(1)}°`));
     // Log column contents and key selections for debugging
@@ -1201,9 +1206,10 @@ function buildNewScene(ergogenResults, config, container) {
     if (yKey) console.log(`  yKey="${yKey.name}" pos=(${yKey.x.toFixed(1)}, ${yKey.y.toFixed(1)}) r=${yKey.r.toFixed(1)}°`);
     if (nKey) console.log(`  nKey="${nKey.name}" pos=(${nKey.x.toFixed(1)}, ${nKey.y.toFixed(1)}) r=${nKey.r.toFixed(1)}°`);
     if (pKey) console.log(`  pKey="${pKey.name}" pos=(${pKey.x.toFixed(1)}, ${pKey.y.toFixed(1)}) r=${pKey.r.toFixed(1)}°`);
-    // S07.4/S07.5 thumb key = hinge-side thumb key (lowest model X = closest to hinge in user view)
+    // S07.4/S07.5 thumb key = outermost thumb (farthest from hinge).
+    // With boardRoot 180° Z rotation: highest model X = farthest from hinge in user view.
     const thumbScrewKey = tKeys.length > 0
-      ? tKeys.reduce((a, b) => a.x < b.x ? a : b)  // lowest model X = closest to hinge in user view
+      ? tKeys.reduce((a, b) => a.x > b.x ? a : b)  // highest model X = farthest from hinge in user view
       : null;
     if (thumbScrewKey) console.log(`  thumbScrewKey="${thumbScrewKey.name}" pos=(${thumbScrewKey.x.toFixed(1)}, ${thumbScrewKey.y.toFixed(1)}) r=${thumbScrewKey.r.toFixed(1)}°`);
 

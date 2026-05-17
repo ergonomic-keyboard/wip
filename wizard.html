@@ -1409,9 +1409,9 @@ const BOM = [
     { qty: 2, component: 'Clevis bracket (recessed)', price: 1, total: 2, url: '' },
     { qty: 4, component: 'Cable crimp eyelet', price: 0.20, total: 0.80, url: '' },
   ]},
-  { name: 'Phase 2: Assembly Hardware', total: 2.80, items: [
-    { qty: 14, component: 'M2x5mm countersunk flat-head screw', price: 0.05, total: 0.70, url: 'https://www.aliexpress.com/w/wholesale-m2-5mm-countersunk-screw.html' },
-    { qty: 14, component: 'M2 heat-set brass threaded insert', price: 0.15, total: 2.10, url: 'https://www.aliexpress.com/w/wholesale-m2-heat-set-insert.html' },
+  { name: 'Phase 2: Assembly Hardware', total: 2.00, items: [
+    { qty: 10, component: 'M2x5mm countersunk flat-head screw', price: 0.05, total: 0.50, url: 'https://www.aliexpress.com/w/wholesale-m2-5mm-countersunk-screw.html' },
+    { qty: 10, component: 'M2 heat-set brass threaded insert', price: 0.15, total: 1.50, url: 'https://www.aliexpress.com/w/wholesale-m2-heat-set-insert.html' },
   ]}
 ];
 
@@ -2912,12 +2912,64 @@ function build3DScene() {
   batteryGroup.add(addBattery(hingeX - 35, center.y - 10));
   boardGroup.add(batteryGroup);
 
-  // ── M2 screws and heat-set inserts ──
+  // ── M2 screws and heat-set inserts (S07.1–S07.5) ──
+  // Place mounting bolts at specific switch corners per requirements.
+  // Positions are defined for the left half; the right half gets them via mirror.
+  // Each bolt sits on the key diagonal line, outside the switch, ≤10mm from the corner.
   const screwPositions = [];
-  const bx0 = bbox.min.x + 10, bx1 = bbox.max.x - 10;
-  const by0 = bbox.min.y + 10, by1 = bbox.max.y - 10;
-  const bmx = (bbox.min.x + bbox.max.x) / 2, bmy = center.y;
-  [[bx0, by0], [bx0, by1], [bx0, bmy], [bx1, by0], [bx1, by1], [bx1, bmy], [bmx, by0]].forEach(([x, y]) => screwPositions.push({ x, y }));
+  const KEY_HALF = 7; // half of 14mm MX switch footprint
+  const SCREW_OFFSET = 7; // mm from corner along diagonal (≤10mm per S07)
+
+  // Helper: given an ergogen point name, return world-space (x, y, rotation)
+  // Falls back to column_net + row_net + zone search if exact name not found.
+  function keyWorldPos(pointName) {
+    let entry = leftPtEntries.find(([n]) => n === pointName);
+    if (!entry) {
+      // Fallback: try partial match (e.g., name ends with the expected suffix)
+      entry = leftPtEntries.find(([n]) => n.endsWith(pointName) || pointName.endsWith(n));
+    }
+    if (!entry) { console.warn('S07: key not found:', pointName); return null; }
+    const pt = entry[1];
+    return { x: pt.x + offX, y: -pt.y + offY, r: -pt.r * Math.PI / 180 };
+  }
+  // Helper: compute screw position at a corner of a key, offset along the diagonal
+  // cornerLocalX/Y: ±KEY_HALF in key-local frame (before rotation)
+  function screwAtCorner(pointName, cornerLocalX, cornerLocalY) {
+    const kp = keyWorldPos(pointName);
+    if (!kp) return null;
+    const cos = Math.cos(kp.r), sin = Math.sin(kp.r);
+    // Corner in world space
+    const cx = kp.x + cornerLocalX * cos - cornerLocalY * sin;
+    const cy = kp.y + cornerLocalX * sin + cornerLocalY * cos;
+    // Diagonal direction (center→corner) in world space, normalized
+    const len = Math.sqrt(cornerLocalX * cornerLocalX + cornerLocalY * cornerLocalY);
+    const dxN = (cornerLocalX * cos - cornerLocalY * sin) / len;
+    const dyN = (cornerLocalX * sin + cornerLocalY * cos) / len;
+    // Screw center = corner + offset along diagonal (outside switch)
+    return { x: cx + SCREW_OFFSET * dxN, y: cy + SCREW_OFFSET * dyN };
+  }
+
+  // Requirements reference right-half key labels (Y, N, P) but screws are placed
+  // on the left half (code builds left, mirrors to right). Directions are mapped
+  // through the X-mirror: right "left"→left "right", right "right"→left "left".
+  //
+  // S07.1: Y key (right pinky col, top row) top-left corner
+  // → left half: matrix_pinky_top, top-right corner (+X, +Y)
+  const s071 = screwAtCorner('matrix_pinky_top', KEY_HALF, KEY_HALF);
+  // S07.2: N key (right pinky col, bottom row) bottom-left corner
+  // → left half: matrix_pinky_bottom, bottom-right corner (+X, -Y)
+  const s072 = screwAtCorner('matrix_pinky_bottom', KEY_HALF, -KEY_HALF);
+  // S07.3: P key (right inner col, top row) top-right corner
+  // → left half: matrix_inner_top, top-left corner (-X, +Y)
+  const s073 = screwAtCorner('matrix_inner_top', -KEY_HALF, KEY_HALF);
+  // S07.4: outermost thumb key, top-right corner (toward outside on right half)
+  // → left half: thumb_t_outer_cluster, top-left corner (-X, +Y)
+  const s074 = screwAtCorner('thumb_t_outer_cluster', -KEY_HALF, KEY_HALF);
+  // S07.5: outermost thumb key, bottom-right corner (toward outside on right half)
+  // → left half: thumb_t_outer_cluster, bottom-left corner (-X, -Y)
+  const s075 = screwAtCorner('thumb_t_outer_cluster', -KEY_HALF, -KEY_HALF);
+
+  [s071, s072, s073, s074, s075].forEach(sp => { if (sp) screwPositions.push(sp); });
 
   const screwHeadGeo = new THREE.CylinderGeometry(2, 1, 1, 16);
   screwHeadGeo.rotateX(Math.PI / 2);
