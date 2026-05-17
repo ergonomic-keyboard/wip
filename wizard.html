@@ -2953,21 +2953,16 @@ function build3DScene() {
   // on the left half (code builds left, mirrors to right). Directions are mapped
   // through the X-mirror: right "left"→left "right", right "right"→left "left".
   //
-  // S07.1: Y key (right pinky col, top row) top-left corner
-  // → left half: matrix_pinky_top, top-right corner (+X, +Y)
-  const s071 = screwAtCorner('matrix_pinky_top', KEY_HALF, KEY_HALF);
-  // S07.2: N key (right pinky col, bottom row) bottom-left corner
-  // → left half: matrix_pinky_bottom, bottom-right corner (+X, -Y)
-  const s072 = screwAtCorner('matrix_pinky_bottom', KEY_HALF, -KEY_HALF);
-  // S07.3: P key (right inner col, top row) top-right corner
-  // → left half: matrix_inner_top, top-left corner (-X, +Y)
-  const s073 = screwAtCorner('matrix_inner_top', -KEY_HALF, KEY_HALF);
-  // S07.4: outermost thumb key, top-right corner (toward outside on right half)
-  // → left half: thumb_t_outer_cluster, top-left corner (-X, +Y)
-  const s074 = screwAtCorner('thumb_t_outer_cluster', -KEY_HALF, KEY_HALF);
-  // S07.5: outermost thumb key, bottom-right corner (toward outside on right half)
-  // → left half: thumb_t_outer_cluster, bottom-left corner (-X, -Y)
-  const s075 = screwAtCorner('thumb_t_outer_cluster', -KEY_HALF, -KEY_HALF);
+  // S07.1: Y key — top-right corner (CCW 1 edge from top-left, viewed from above)
+  const s071 = screwAtCorner('matrix_pinky_top', -KEY_HALF, -KEY_HALF);
+  // S07.2: N key — bottom-right corner (CW 1 edge from bottom-left, viewed from above)
+  const s072 = screwAtCorner('matrix_pinky_bottom', -KEY_HALF, KEY_HALF);
+  // S07.3: P key — top-left corner (CW 1 edge from top-right, viewed from above)
+  const s073 = screwAtCorner('matrix_inner_top', KEY_HALF, KEY_HALF);
+  // S07.4: outermost thumb — bottom-right corner (CCW 1 edge from top-right, viewed from above)
+  const s074 = screwAtCorner('thumb_t_outer_cluster', -KEY_HALF, -KEY_HALF);
+  // S07.5: outermost thumb — bottom-left corner (CCW 1 edge from bottom-right, viewed from above)
+  const s075 = screwAtCorner('thumb_t_outer_cluster', KEY_HALF, -KEY_HALF);
 
   [s071, s072, s073, s074, s075].forEach(sp => { if (sp) screwPositions.push(sp); });
 

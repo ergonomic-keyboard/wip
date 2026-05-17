@@ -1239,42 +1239,42 @@ function buildNewScene(ergogenResults, config, container) {
       return { x: bx, y: by };
     }
 
-    // S07.1 — on diagonal through top-left corner of Y, outside switch
-    // User top-left = model (+SW, -SH) (before key rotation)
+    // S07.1 — Y key, top-right corner (CCW 1 edge from top-left, viewed from above)
+    // User top-right = model (-SW, -SH)
     if (yKey) {
-      screwPositions.push(placeScrewOnDiag(yKey, { x: SW, y: -SH }, 'S07.1 Y top-left'));
-    } else {
-      screwPositions.push({ x: bbox.max.x - INSET, y: bbox.min.y + INSET });
-    }
-
-    // S07.2 — on diagonal through bottom-left corner of N, outside switch
-    // User bottom-left = model (+SW, +SH) (before key rotation)
-    if (nKey) {
-      screwPositions.push(placeScrewOnDiag(nKey, { x: SW, y: SH }, 'S07.2 N bot-left'));
-    } else {
-      screwPositions.push({ x: bbox.max.x - INSET, y: bbox.max.y - INSET });
-    }
-
-    // S07.3 — on diagonal through top-right corner of P, outside switch
-    // User top-right = model (-SW, -SH) (before key rotation)
-    if (pKey) {
-      screwPositions.push(placeScrewOnDiag(pKey, { x: -SW, y: -SH }, 'S07.3 P top-right'));
+      screwPositions.push(placeScrewOnDiag(yKey, { x: -SW, y: -SH }, 'S07.1 Y top-right'));
     } else {
       screwPositions.push({ x: bbox.min.x + INSET, y: bbox.min.y + INSET });
     }
 
-    // S07.4 — on diagonal through top-right corner of outermost thumb key, outside
-    // User top-right = model (-SW, -SH) (before key rotation)
-    if (thumbScrewKey) {
-      screwPositions.push(placeScrewOnDiag(thumbScrewKey, { x: -SW, y: -SH }, 'S07.4 Thumb top-right'));
+    // S07.2 — N key, bottom-right corner (CW 1 edge from bottom-left, viewed from above)
+    // User bottom-right = model (-SW, +SH)
+    if (nKey) {
+      screwPositions.push(placeScrewOnDiag(nKey, { x: -SW, y: SH }, 'S07.2 N bot-right'));
     } else {
       screwPositions.push({ x: bbox.min.x + INSET, y: bbox.max.y - INSET });
     }
 
-    // S07.5 — on diagonal through bottom-right corner of outermost thumb key, outside
-    // User bottom-right = model (-SW, +SH) (before key rotation)
+    // S07.3 — P key, top-left corner (CW 1 edge from top-right, viewed from above)
+    // User top-left = model (+SW, -SH)
+    if (pKey) {
+      screwPositions.push(placeScrewOnDiag(pKey, { x: SW, y: -SH }, 'S07.3 P top-left'));
+    } else {
+      screwPositions.push({ x: bbox.max.x - INSET, y: bbox.min.y + INSET });
+    }
+
+    // S07.4 — outermost thumb, bottom-right corner (CCW 1 edge from top-right, viewed from above)
+    // User bottom-right = model (-SW, +SH)
     if (thumbScrewKey) {
-      screwPositions.push(placeScrewOnDiag(thumbScrewKey, { x: -SW, y: SH }, 'S07.5 Thumb bot-right'));
+      screwPositions.push(placeScrewOnDiag(thumbScrewKey, { x: -SW, y: SH }, 'S07.4 Thumb bot-right'));
+    } else {
+      screwPositions.push({ x: bbox.min.x + INSET, y: bbox.max.y - INSET });
+    }
+
+    // S07.5 — outermost thumb, bottom-left corner (CCW 1 edge from bottom-right, viewed from above)
+    // User bottom-left = model (+SW, +SH)
+    if (thumbScrewKey) {
+      screwPositions.push(placeScrewOnDiag(thumbScrewKey, { x: SW, y: SH }, 'S07.5 Thumb bot-left'));
     } else {
       screwPositions.push({ x: bbox.max.x - INSET, y: bbox.max.y - INSET });
     }
