@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { HARDWARE_CATALOG, DEFAULT_SELECTION } from './hardware-catalog.js';
+import { HARDWARE_CATALOG, DEFAULT_SELECTION, PIVOT_GEOMETRY } from './hardware-catalog.js';
 import { buildHardwareAssembly } from './hardware-builders.js';
 
 // ══════════════════════════════════════════════════════════════════
@@ -652,9 +652,10 @@ function buildNewScene(ergogenResults, config, container) {
   const bbox = new THREE.Box3().setFromObject(boardGroup);
   const center = new THREE.Vector3(); bbox.getCenter(center);
   let hingeX = bbox.max.x;
-  // Hinge pivot at top surface so halves fold together cleanly (keycap-to-keycap)
-  // without inner edges colliding
-  const hingeZ = Z_SWITCH_PLATE_TOP;
+  // Hinge pivot raised above top surface so halves fold 180° without inner edges
+  // colliding. The angled brackets bridge from board edge to the raised pivot center.
+  // See hinge-design.md for clearance geometry.
+  const hingeZ = Z_SWITCH_PLATE_TOP + PIVOT_GEOMETRY.pivotOffset;
   const hingeCenterY = center.y;
 
   console.log(`render3d board bbox: min=(${bbox.min.x.toFixed(1)}, ${bbox.min.y.toFixed(1)}, ${bbox.min.z.toFixed(1)}) max=(${bbox.max.x.toFixed(1)}, ${bbox.max.y.toFixed(1)}, ${bbox.max.z.toFixed(1)})`);
@@ -1480,7 +1481,7 @@ function buildNewScene(ergogenResults, config, container) {
   let hwSelection = { ...DEFAULT_SELECTION };
   const hwMats = { steel: steelMat, brass: brassMat, chrome: chromeMat, copper: copperMat, cable: cableMat };
   const hwGeo = {
-    hingeX, hingeCenterY: center.y, hingeZ,
+    hingeX, hingeCenterY: center.y, hingeZ: Z_SWITCH_PLATE_TOP, // pass board top Z; builders add pivotOffset internally
     bbox, boardSpan: bbox.max.y - bbox.min.y,
     cableAttachPoints: { nearLeftX, nearRightX, farLeftX, farRightX, nearCableY, farCableY },
     cableZ,
@@ -1535,7 +1536,10 @@ function buildNewScene(ergogenResults, config, container) {
   addLeaderLabel('Cherry MX ULP', hingeX, center.y, Z_KEYCAP, 'layers', 'keycaps');
   addLeaderLabel('nice!nano v2', nanoLeftX, center.y, Z_PCB - 4, 'electronics', 'pcb');
   addLeaderLabel('USB-C Port', nanoLeftX, bbox.min.y + 5, Z_PCB - 4, 'electronics', 'pcb');
-  addLeaderLabel(HARDWARE_CATALOG.hinges[hwSelection.hinge]?.name || 'Hinge', hingeX, hy, hz, 'hardware');
+  const foldHingeName = HARDWARE_CATALOG.foldHinges[hwSelection.foldHinge]?.name || 'Fold Hinge';
+  const bflyJointName = HARDWARE_CATALOG.butterflyJoints[hwSelection.butterflyJoint]?.name || 'Butterfly Joint';
+  addLeaderLabel(foldHingeName, hingeX, hy, hz, 'hardware');
+  addLeaderLabel(bflyJointName, hingeX, hy, hz + 6, 'hardware');
   addLeaderLabel('LiPo Battery', battX, center.y, Z_CORK_LOWER + 3, 'electronics', 'corkLower');
 
   // Screw labels (one per screw position, group = 'screws')
@@ -2168,7 +2172,14 @@ function buildNewScene(ergogenResults, config, container) {
       rightContent.traverse(obj => { if (obj.name === 'stage1Outlines') obj.visible = v; });
     },
     setCablesVisible: (v) => { hwAssembly.cablesGroup.visible = v; },
-    setHingeVisible: (v) => { hwAssembly.hingeResult.group.visible = v; },
+    setHingeVisible: (v) => {
+      // Toggle all hinge/butterfly/bracket/clamp parts, but not cables
+      hwAssembly.group.traverse(c => {
+        const t = c.userData.hwType;
+        if (t && t !== 'cable') c.visible = v;
+      });
+      hwAssembly.hingeResult.group.visible = v;
+    },
     rebuildHardware,
     getHardwareSelection: () => ({ ...hwSelection }),
     HARDWARE_CATALOG,

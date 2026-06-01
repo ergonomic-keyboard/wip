@@ -177,7 +177,8 @@ header { display: flex; align-items: center; justify-content: space-between; pad
     <label><input type="checkbox" id="show-outlines"> Outlines</label>
     <div style="width:1px;height:20px;background:#444;margin:0 4px;"></div>
     <span style="font-size:0.85em;color:#999;margin-right:4px;">Hardware:</span>
-    <label style="font-size:11px;color:#aaa;">Hinge: <select id="hw-hinge" style="font-size:11px;background:#333;color:#ccc;border:1px solid #555;border-radius:3px;"></select></label>
+    <label style="font-size:11px;color:#aaa;">Fold: <select id="hw-hinge" style="font-size:11px;background:#333;color:#ccc;border:1px solid #555;border-radius:3px;"></select></label>
+    <label style="font-size:11px;color:#aaa;">Butterfly: <select id="hw-butterfly" style="font-size:11px;background:#333;color:#ccc;border:1px solid #555;border-radius:3px;"></select></label>
     <label style="font-size:11px;color:#aaa;">Turnbuckle: <select id="hw-turnbuckle" style="font-size:11px;background:#333;color:#ccc;border:1px solid #555;border-radius:3px;"></select></label>
     <div style="width:1px;height:20px;background:#444;margin:0 4px;"></div>
     <span style="font-size:0.85em;color:#999;margin-right:4px;">Layers:</span>
@@ -3443,14 +3444,24 @@ function populateHardwareDropdowns() {
   const cat = ctrl.HARDWARE_CATALOG;
   const sel = ctrl.getHardwareSelection();
 
-  // Populate hinge dropdown
+  // Populate fold hinge dropdown
   const hingeSelect = document.getElementById('hw-hinge');
   hingeSelect.innerHTML = '';
-  Object.entries(cat.hinges).forEach(([id, entry]) => {
+  Object.entries(cat.foldHinges).forEach(([id, entry]) => {
     const opt = document.createElement('option');
     opt.value = id; opt.textContent = entry.name;
-    if (id === sel.hinge) opt.selected = true;
+    if (id === sel.foldHinge) opt.selected = true;
     hingeSelect.appendChild(opt);
+  });
+
+  // Populate butterfly joint dropdown
+  const bflySelect = document.getElementById('hw-butterfly');
+  bflySelect.innerHTML = '';
+  Object.entries(cat.butterflyJoints).forEach(([id, entry]) => {
+    const opt = document.createElement('option');
+    opt.value = id; opt.textContent = entry.name;
+    if (id === sel.butterflyJoint) opt.selected = true;
+    bflySelect.appendChild(opt);
   });
 
   // Populate turnbuckle dropdown
@@ -3467,9 +3478,16 @@ function populateHardwareDropdowns() {
 document.getElementById('hw-hinge').addEventListener('change', () => {
   if (!window._newSceneCtrl) return;
   const sel = window._newSceneCtrl.getHardwareSelection();
-  sel.hinge = document.getElementById('hw-hinge').value;
+  sel.foldHinge = document.getElementById('hw-hinge').value;
   window._newSceneCtrl.rebuildHardware(sel);
-  // Reapply current fold/butterfly
+  window._newSceneCtrl.applyFold(+document.getElementById('fold-slider').value);
+});
+
+document.getElementById('hw-butterfly').addEventListener('change', () => {
+  if (!window._newSceneCtrl) return;
+  const sel = window._newSceneCtrl.getHardwareSelection();
+  sel.butterflyJoint = document.getElementById('hw-butterfly').value;
+  window._newSceneCtrl.rebuildHardware(sel);
   window._newSceneCtrl.applyFold(+document.getElementById('fold-slider').value);
 });
 
