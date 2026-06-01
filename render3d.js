@@ -1392,7 +1392,10 @@ function buildNewScene(ergogenResults, config, container) {
       const thumbIdx = thumbKeys.indexOf(key);
       idx = thumbBase + (isRight ? 3 : 0) + thumbIdx;
     } else {
-      idx = key.rowIdx * (nColsHalf * 2) + (isRight ? nColsHalf : 0) + key.colIdx;
+      // Right half: colIdx 0=pinky(outer) but layer0 stores right keys inner→outer,
+      // so reverse: colIdx 0 → nColsHalf-1, colIdx 4 → 0
+      const col = isRight ? (nColsHalf - 1 - key.colIdx) : key.colIdx;
+      idx = key.rowIdx * (nColsHalf * 2) + (isRight ? nColsHalf : 0) + col;
     }
     if (idx < 0 || idx >= layer0.length) return null;
     return zmkToLabel[layer0[idx]] || layer0[idx];

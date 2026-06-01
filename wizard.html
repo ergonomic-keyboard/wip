@@ -3332,8 +3332,11 @@ function build3DScene() {
       idx = thumbBase + (isRight ? 3 : 0) + thumbIdx;
     } else {
       // Matrix: rowIdx 0 = top (R0), 1 = home (R1), 2 = bottom (R2)
+      // Right half: colIdx 0=pinky(outer) but layer0 stores right keys inner→outer,
+      // so reverse: colIdx 0 → nColsHalf-1, colIdx 4 → 0
       const row = key.rowIdx;
-      idx = row * (nColsHalf * 2) + (isRight ? nColsHalf : 0) + key.colIdx;
+      const col = isRight ? (nColsHalf - 1 - key.colIdx) : key.colIdx;
+      idx = row * (nColsHalf * 2) + (isRight ? nColsHalf : 0) + col;
     }
     if (idx < 0 || idx >= layer0.length) return null;
     const zmk = layer0[idx];
@@ -4195,8 +4198,8 @@ function initPage5() {
       });
       // Gap
       html += '<div class="keymap-key spacer"></div>';
-      // Right half keys for this row
-      const rightInRow = map.rightKeys.filter(k => k.zone === 'matrix' && k.rowIdx === row).sort((a,b) => a.colIdx - b.colIdx);
+      // Right half keys for this row (descending colIdx: inner→outer to match layer0 order)
+      const rightInRow = map.rightKeys.filter(k => k.zone === 'matrix' && k.rowIdx === row).sort((a,b) => b.colIdx - a.colIdx);
       rightInRow.forEach(k => {
         const label = (layer[keyIdx] || '').replace('TRANS','--').replace('NONE','');
         html += `<div class="keymap-key">${label}</div>`;
@@ -4207,7 +4210,7 @@ function initPage5() {
 
     // Thumb row
     const leftThumbs = map.leftKeys.filter(k => k.zone === 'thumb').sort((a,b) => a.colIdx - b.colIdx);
-    const rightThumbs = map.rightKeys.filter(k => k.zone === 'thumb').sort((a,b) => a.colIdx - b.colIdx);
+    const rightThumbs = map.rightKeys.filter(k => k.zone === 'thumb').sort((a,b) => b.colIdx - a.colIdx);
     if (leftThumbs.length || rightThumbs.length) {
       html += '<div class="keymap-row">';
       // Spacers to push thumbs to center
