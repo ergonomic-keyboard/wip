@@ -352,7 +352,16 @@ function buildKeyPositionMap(points) {
   return { leftKeys, rightKeys, allKeys: [...leftKeys, ...rightKeys], nColsPerHalf, nRows };
 }
 
-const DEFAULT_KEYMAPS = {
+// Use configured keymap from wizard if available, otherwise fall back to QWERTY (REQ-KM08.1)
+function getActiveKeymaps() {
+  if (window.configuredKeymap) {
+    return {
+      layer0: window.configuredKeymap.layer0 || _FALLBACK_KEYMAPS.layer0
+    };
+  }
+  return _FALLBACK_KEYMAPS;
+}
+const _FALLBACK_KEYMAPS = {
   layer0: [
     'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P',
     'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'SEMI',
@@ -361,7 +370,12 @@ const DEFAULT_KEYMAPS = {
   ]
 };
 
-const zmkToLabel = {
+// Use shared ZMK_TO_LABEL from wizard if available, otherwise use local copy
+function getZmkToLabel() {
+  if (window.ZMK_TO_LABEL) return window.ZMK_TO_LABEL;
+  return _fallbackZmkToLabel;
+}
+const _fallbackZmkToLabel = {
   'Q': 'Q', 'W': 'W', 'E': 'E', 'R': 'R', 'T': 'T', 'Y': 'Y', 'U': 'U', 'I': 'I', 'O': 'O', 'P': 'P',
   'A': 'A', 'S': 'S', 'D': 'D', 'F': 'F', 'G': 'G', 'H': 'H', 'J': 'J', 'K': 'K', 'L': 'L',
   'SEMI': ';', 'Z': 'Z', 'X': 'X', 'C': 'C', 'V': 'V', 'B': 'B', 'N': 'N', 'M': 'M',
@@ -1363,10 +1377,12 @@ function buildNewScene(ergogenResults, config, container) {
   });
   rightHalf.add(rightContent);
 
-  // ── Key labels ──
+  // ── Key labels (REQ-KM08.1: use configured keymap) ──
   const keyMap = buildKeyPositionMap(pts);
   const nColsHalf = 5;
-  const layer0 = DEFAULT_KEYMAPS.layer0;
+  const activeKeymaps = getActiveKeymaps();
+  const layer0 = activeKeymaps.layer0;
+  const zmkToLabel = getZmkToLabel();
   function getKeymapLabel(key) {
     const isRight = key.mirrored, isThumb = key.zone !== 'matrix';
     let idx;

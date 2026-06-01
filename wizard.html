@@ -58,34 +58,68 @@ header { display: flex; align-items: center; justify-content: space-between; pad
 .modal-box .ppm-display { font-size: 11px; color: #666; margin-top: 8px; }
 
 /* ── Page 2: 3D View ── */
-#page2 .toolbar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #1a1a1a; border-bottom: 1px solid #333; flex-wrap: wrap; }
-#page2 .toolbar label { font-size: 12px; color: #aaa; display: flex; align-items: center; gap: 4px; }
-#page2 .toolbar input[type=range] { width: 120px; }
-#page2 .toolbar input[type=checkbox] { accent-color: #4a8abf; }
-#page2 { position: relative; }
+#page3 .toolbar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #1a1a1a; border-bottom: 1px solid #333; flex-wrap: wrap; }
+#page3 .toolbar label { font-size: 12px; color: #aaa; display: flex; align-items: center; gap: 4px; }
+#page3 .toolbar input[type=range] { width: 120px; }
+#page3 .toolbar input[type=checkbox] { accent-color: #4a8abf; }
+#page3 { position: relative; }
 #viewport-new { flex: 1; position: relative; background: #0a0a0a; }
 #viewport-new canvas { display: block; }
 #loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #888; font-size: 16px; }
 
 /* ── Page 3: BOM ── */
-#page3 { overflow-y: auto; padding: 20px; }
-#page3 h2 { margin: 20px 0 10px; font-size: 18px; color: #adf; }
-#page3 h2:first-child { margin-top: 0; }
-#page3 table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 13px; }
-#page3 th { text-align: left; padding: 6px 10px; background: #222; border-bottom: 2px solid #444; color: #aaa; font-weight: 600; }
-#page3 td { padding: 6px 10px; border-bottom: 1px solid #2a2a2a; }
-#page3 tr:hover td { background: #1a1a2a; }
-#page3 .phase-total { text-align: right; font-weight: 600; color: #8c8; padding: 8px 10px; }
-#page3 .grand-total { font-size: 18px; font-weight: 700; color: #adf; text-align: right; padding: 16px 0; border-top: 2px solid #444; margin-top: 8px; }
+#page4 { overflow-y: auto; padding: 20px; }
+#page4 h2 { margin: 20px 0 10px; font-size: 18px; color: #adf; }
+#page4 h2:first-child { margin-top: 0; }
+#page4 table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 13px; }
+#page4 th { text-align: left; padding: 6px 10px; background: #222; border-bottom: 2px solid #444; color: #aaa; font-weight: 600; }
+#page4 td { padding: 6px 10px; border-bottom: 1px solid #2a2a2a; }
+#page4 tr:hover td { background: #1a1a2a; }
+#page4 .phase-total { text-align: right; font-weight: 600; color: #8c8; padding: 8px 10px; }
+#page4 .grand-total { font-size: 18px; font-weight: 700; color: #adf; text-align: right; padding: 16px 0; border-top: 2px solid #444; margin-top: 8px; }
 .download-row { display: flex; gap: 12px; margin-top: 16px; }
 .download-row button { padding: 10px 24px; border-radius: 6px; font-size: 14px; border: 1px solid #4a8adf; background: #2a5a9f; color: #fff; cursor: pointer; }
 .download-row button:hover { background: #3a6abf; }
 
-/* ── Page 4: Firmware & Test ── */
-#page4 { overflow-y: auto; padding: 20px; }
-#page4 h2 { margin: 20px 0 10px; font-size: 18px; color: #adf; }
-#page4 h2:first-child { margin-top: 0; }
-#page4 h3 { margin: 16px 0 8px; font-size: 14px; color: #8cf; }
+/* ── Page 1.5 / Step 2: Key Mapping ── */
+#page1b { overflow-y: auto; padding: 20px; }
+#page1b h2 { margin: 0 0 12px; font-size: 18px; color: #adf; }
+#page1b .km-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+#page1b .km-toolbar label { font-size: 12px; color: #aaa; }
+#page1b .km-toolbar select { font-size: 12px; background: #333; color: #ccc; border: 1px solid #555; border-radius: 3px; padding: 4px 8px; }
+#page1b .km-toolbar .tool-btn { padding: 4px 10px; border-radius: 3px; font-size: 11px; border: 1px solid #555; background: #333; color: #ccc; cursor: pointer; }
+#page1b .km-toolbar .tool-btn:hover { background: #444; }
+#page1b .km-name-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+#page1b .km-name-row label { font-size: 12px; color: #aaa; }
+#page1b .km-name-row input { font-size: 12px; background: #222; color: #eee; border: 1px solid #555; border-radius: 3px; padding: 4px 8px; width: 160px; font-family: monospace; }
+#page1b .km-name-row .km-name-err { font-size: 11px; color: #f66; }
+.km-layer-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
+.km-layer-tab { padding: 4px 12px; border-radius: 3px; font-size: 12px; border: 1px solid #444; background: #222; color: #888; cursor: pointer; }
+.km-layer-tab.active { background: #2a4a6a; color: #fff; border-color: #4a8abf; }
+.km-grid { margin-bottom: 20px; }
+.km-row { display: flex; gap: 3px; justify-content: center; margin-bottom: 3px; }
+.km-key { width: 56px; height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 4px; font-family: monospace; border: 1px solid #444; background: #2a2a2a; color: #ccc; cursor: pointer; position: relative; transition: border-color 0.15s, background 0.15s; }
+.km-key:hover { background: #3a3a3a; border-color: #6ae; }
+.km-key.thumb { background: #2a2a3a; border-color: #4a4a6a; }
+.km-key.thumb:hover { background: #3a3a4a; border-color: #6ae; }
+.km-key.custom { border-color: #e8a735; }
+.km-key.spacer { visibility: hidden; cursor: default; }
+.km-key .km-label { font-size: 12px; font-weight: 600; }
+.km-key .km-pos { font-size: 8px; color: #666; margin-top: 1px; }
+.km-key.editing { border-color: #4ae; background: #1a2a3a; }
+/* Key picker dropdown */
+.km-picker { position: fixed; z-index: 200; background: #1e1e22; border: 1px solid #555; border-radius: 6px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); padding: 8px; max-height: 320px; overflow-y: auto; width: 300px; }
+.km-picker .km-picker-group { margin-bottom: 6px; }
+.km-picker .km-picker-group-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 1px; padding: 2px 4px; margin-bottom: 2px; }
+.km-picker .km-picker-keys { display: flex; flex-wrap: wrap; gap: 2px; }
+.km-picker .km-picker-btn { padding: 3px 6px; border-radius: 3px; font-size: 11px; font-family: monospace; border: 1px solid #444; background: #2a2a2a; color: #ccc; cursor: pointer; min-width: 28px; text-align: center; }
+.km-picker .km-picker-btn:hover { background: #3a4a5a; border-color: #6ae; }
+
+/* ── Page 5: Firmware & Test ── */
+#page5 { overflow-y: auto; padding: 20px; }
+#page5 h2 { margin: 20px 0 10px; font-size: 18px; color: #adf; }
+#page5 h2:first-child { margin-top: 0; }
+#page5 h3 { margin: 16px 0 8px; font-size: 14px; color: #8cf; }
 .file-tabs { display: flex; gap: 2px; margin-bottom: 0; flex-wrap: wrap; }
 .file-tab { padding: 6px 14px; border-radius: 4px 4px 0 0; font-size: 12px; font-family: monospace; border: 1px solid #333; border-bottom: none; background: #1a1a1a; color: #888; cursor: pointer; }
 .file-tab.active { background: #222; color: #eee; border-color: #555; }
@@ -113,9 +147,10 @@ header { display: flex; align-items: center; justify-content: space-between; pad
 <header>
   <div class="steps">
     <div class="step-btn active" data-step="1">1. Finger Positions</div>
-    <div class="step-btn" data-step="2">2. 3D Preview</div>
-    <div class="step-btn" data-step="3">3. Bill of Materials</div>
-    <div class="step-btn" data-step="4">4. Firmware & Test</div>
+    <div class="step-btn" data-step="2">2. Key Mapping</div>
+    <div class="step-btn" data-step="3">3. 3D Preview</div>
+    <div class="step-btn" data-step="4">4. Bill of Materials</div>
+    <div class="step-btn" data-step="5">5. Firmware & Test</div>
   </div>
   <div class="nav-btns">
     <button id="btn-back" disabled>Back</button>
@@ -155,8 +190,25 @@ header { display: flex; align-items: center; justify-content: space-between; pad
   </div>
 </div>
 
-<!-- ═══════════════ PAGE 2: 3D Preview ═══════════════ -->
-<div id="page2" class="page">
+<!-- ═══════════════ PAGE 1b: Key Mapping (REQ-KM01) ═══════════════ -->
+<div id="page1b" class="page">
+  <h2>Key Mapping</h2>
+  <div class="km-toolbar" id="km-toolbar">
+    <label>Preset: <select id="km-preset-select"></select></label>
+    <div class="km-name-row">
+      <label>Layout name: <input type="text" id="km-name-input" value="qwerty" pattern="[a-z]+" title="Lowercase letters only"></label>
+      <span class="km-name-err" id="km-name-err"></span>
+    </div>
+    <div style="width:1px;height:20px;background:#444;margin:0 4px;"></div>
+    <div class="tool-btn" id="km-save-btn">Save Layout</div>
+    <div class="tool-btn" id="km-load-btn">Load Layout</div>
+  </div>
+  <div class="km-layer-tabs" id="km-layer-tabs"></div>
+  <div id="km-grid-container"></div>
+</div>
+
+<!-- ═══════════════ PAGE 3: 3D Preview ═══════════════ -->
+<div id="page3" class="page">
   <div class="toolbar">
     <label>Fold: <input type="range" id="fold-slider" min="0" max="270" step="5" value="180"> <span id="fold-val">180</span>&deg;</label>
     <label>Butterfly: <input type="range" id="butterfly-slider" min="0" max="45" step="1" value="0"> <span id="butterfly-val">0</span>&deg; <span id="butterfly-limit" style="color:#888;font-size:0.85em">(max 45&deg;)</span></label>
@@ -202,16 +254,16 @@ header { display: flex; align-items: center; justify-content: space-between; pad
   </div>
 </div>
 
-<!-- ═══════════════ PAGE 3: BOM ═══════════════ -->
-<div id="page3" class="page">
+<!-- ═══════════════ PAGE 4: BOM ═══════════════ -->
+<div id="page4" class="page">
   <div id="bom-content"></div>
   <div class="download-row">
     <button id="btn-download">Download Design Files (.zip)</button>
   </div>
 </div>
 
-<!-- ═══════════════ PAGE 4: Firmware & Test ═══════════════ -->
-<div id="page4" class="page">
+<!-- ═══════════════ PAGE 5: Firmware & Test ═══════════════ -->
+<div id="page5" class="page">
   <div id="firmware-content"></div>
 </div>
 
@@ -1012,8 +1064,9 @@ ${rightColLines}
 };
 `;
 
-  // ── keyboard.keymap ──
+  // ── keyboard.keymap (REQ-KM08.2: use configured keymap) ──
   // Adapt keymap to actual key count
+  const activeKeymap = window.configuredKeymap || DEFAULT_KEYMAPS;
   function buildLayerBindings(layerKeys) {
     const keys = layerKeys.slice(0, nKeys);
     while (keys.length < nKeys) keys.push('NONE');
@@ -1025,7 +1078,7 @@ ${rightColLines}
   }
 
   const keymap = `/*
- * keyboard.keymap — default 3-layer keymap
+ * keyboard.keymap — ${activeKeymap.name || 'default'} 3-layer keymap
  * Generated by Keyboard Builder Wizard
  */
 
@@ -1038,15 +1091,15 @@ ${rightColLines}
         compatible = "zmk,keymap";
 
         default_layer {
-            bindings = <${buildLayerBindings(DEFAULT_KEYMAPS.layer0)}>;
+            bindings = <${buildLayerBindings(activeKeymap.layer0)}>;
         };
 
         lower_layer {
-            bindings = <${buildLayerBindings(DEFAULT_KEYMAPS.layer1)}>;
+            bindings = <${buildLayerBindings(activeKeymap.layer1)}>;
         };
 
         raise_layer {
-            bindings = <${buildLayerBindings(DEFAULT_KEYMAPS.layer2)}>;
+            bindings = <${buildLayerBindings(activeKeymap.layer2)}>;
         };
     };
 };
@@ -1098,8 +1151,9 @@ function generateTestSuite(points, config) {
   const nKeys = map.allKeys.length;
   const nColsPerHalf = map.nColsPerHalf;
 
-  // Build position-to-keycode mapping for layer 0
-  const keycodes = DEFAULT_KEYMAPS.layer0.slice(0, nKeys);
+  // Build position-to-keycode mapping for layer 0 (REQ-KM08.3: use configured keymap)
+  const testKeymap = window.configuredKeymap || DEFAULT_KEYMAPS;
+  const keycodes = testKeymap.layer0.slice(0, nKeys);
   while (keycodes.length < nKeys) keycodes.push('NONE');
 
   // RC positions for left then right keys (matching the transform)
@@ -1139,7 +1193,7 @@ ${mockEvents}    >;
   if (thumbIdx >= 0) {
     const thumbRC = rcPositions[thumbIdx];
     const alphaRC = rcPositions[0]; // first key (Q → N1 on layer1)
-    const altKc = DEFAULT_KEYMAPS.layer1[0] || 'N1';
+    const altKc = testKeymap.layer1[0] || 'N1';
     layerSwitchKeymap = `#include "../behavior_keymap.dtsi"
 
 &kscan0 {
@@ -1372,7 +1426,9 @@ function hidKeycode(zmkKey) {
     'F6':'3F','F7':'40','F8':'41','F9':'42','F10':'43','F11':'44','F12':'45',
     'PSCRN':'46','INS':'49','HOME':'4A','PG_UP':'4B','DEL':'4C','END':'4D',
     'PG_DN':'4E','RIGHT':'4F','LEFT':'50','DOWN':'51','UP':'52',
-    'LGUI':'E3','RALT':'E6',
+    'LGUI':'E3','RGUI':'E7','LALT':'E2','RALT':'E6',
+    'LCTRL':'E0','RCTRL':'E4','LSHFT':'E1','RSHFT':'E5',
+    'ESC':'29',
     'EXCL':'1E','AT':'1F','HASH':'20','DLLR':'21','PRCNT':'22',
     'CARET':'23','AMPS':'24','STAR':'25','LPAR':'26','RPAR':'27',
     'TILDE':'35','PIPE':'31','LBRC':'2F','RBRC':'30',
@@ -1446,30 +1502,31 @@ window.generatedConfig = null;
 // WIZARD NAVIGATION
 // ══════════════════════════════════════════════════════════════════
 
-const pages = [null, document.getElementById('page1'), document.getElementById('page2'), document.getElementById('page3'), document.getElementById('page4')];
+const pages = [null, document.getElementById('page1'), document.getElementById('page1b'), document.getElementById('page3'), document.getElementById('page4'), document.getElementById('page5')];
 const stepBtns = document.querySelectorAll('.step-btn');
 const btnBack = document.getElementById('btn-back');
 const btnNext = document.getElementById('btn-next');
 
 function goToPage(n) {
-  if (n < 1 || n > 4) return;
+  if (n < 1 || n > 5) return;
   pages[currentPage].classList.remove('active');
   currentPage = n;
   pages[currentPage].classList.add('active');
   stepBtns.forEach(s => { const sn = +s.dataset.step; s.classList.toggle('active', sn === n); s.classList.toggle('done', sn < n); });
   btnBack.disabled = n === 1;
-  btnNext.disabled = (n === 1 && !canAdvance()) || n === 4;
-  btnNext.textContent = n === 4 ? 'Done' : 'Next';
-  if (n === 2) initPage2();
-  if (n === 3) renderBOM();
-  if (n === 4) initPage4();
+  btnNext.disabled = (n === 1 && !canAdvance()) || n === 5;
+  btnNext.textContent = n === 5 ? 'Done' : 'Next';
+  if (n === 2) initPage1b();
+  if (n === 3) initPage3();
+  if (n === 4) renderBOM();
+  if (n === 5) initPage5();
 }
 
 function canAdvance() {
   return COLUMNS.every(c => positions[c.id].length >= MIN_KEYS_PER_COL) && validationErrors.length === 0;
 }
 
-btnNext.addEventListener('click', () => { if (currentPage < 4 && (currentPage !== 1 || canAdvance())) goToPage(currentPage + 1); });
+btnNext.addEventListener('click', () => { if (currentPage < 5 && (currentPage !== 1 || canAdvance())) goToPage(currentPage + 1); });
 btnBack.addEventListener('click', () => { if (currentPage > 1) goToPage(currentPage - 1); });
 stepBtns.forEach(s => s.addEventListener('click', () => { const sn = +s.dataset.step; if (sn < currentPage) goToPage(sn); }));
 
@@ -1612,6 +1669,15 @@ function exportPositions() {
     calibratedPPM: currentScalePPM(),
     canvasWidth: canvas.width,
     canvasHeight: canvas.height,
+    // REQ-KM07.3: include configured keymap in project export
+    keymap: {
+      name: configuredKeymap.name,
+      preset: configuredKeymap.preset,
+      customOverrides: configuredKeymap.customOverrides,
+      layer0: configuredKeymap.layer0,
+      layer1: configuredKeymap.layer1,
+      layer2: configuredKeymap.layer2,
+    },
   };
   const json = JSON.stringify(data, null, 2);
   const blob = new Blob([json], { type: 'application/json' });
@@ -1664,6 +1730,15 @@ function loadPositions() {
           });
         }
         if (data.thumbParams) thumbParams = data.thumbParams;
+        // REQ-KM07.4: restore configured keymap from project import
+        if (data.keymap && data.keymap.layer0) {
+          configuredKeymap.name = data.keymap.name || 'qwerty';
+          configuredKeymap.preset = data.keymap.preset || null;
+          configuredKeymap.customOverrides = data.keymap.customOverrides || {};
+          configuredKeymap.layer0 = data.keymap.layer0;
+          configuredKeymap.layer1 = data.keymap.layer1 || LAYOUT_PRESETS.qwerty.layer1;
+          configuredKeymap.layer2 = data.keymap.layer2 || LAYOUT_PRESETS.qwerty.layer2;
+        }
         computeErgogenPreview();
         drawCanvas();
         updateToolbar();
@@ -2127,14 +2202,499 @@ function updateValidationDisplay() {
 
 
 // ══════════════════════════════════════════════════════════════════
-// PAGE 2: 3D PREVIEW — REALISTIC RENDERING
+// PAGE 2: KEY MAPPING (REQ-KM01 through REQ-KM10)
+// ══════════════════════════════════════════════════════════════════
+
+// ── Switch position names (REQ-KM02) ──
+// Stable names: {half}{column}{row} using lowercase alpha only
+const SWITCH_POS_NAMES = (() => {
+  const halves = ['l', 'r'];
+  const colCodes = { pinky: 'p', ring: 'r', middle: 'm', index: 'i', index_far: 'n', thumb: 't' };
+  const rowCodes = ['t', 'h', 'b']; // top, home, bottom
+  const names = {};
+  halves.forEach(h => {
+    Object.entries(colCodes).forEach(([colId, cc]) => {
+      rowCodes.forEach((rc, ri) => {
+        const posName = h + cc + rc;
+        if (!names[h]) names[h] = {};
+        if (!names[h][colId]) names[h][colId] = [];
+        names[h][colId].push(posName);
+      });
+    });
+  });
+  return names;
+})();
+
+// Get position name for a key at half/col/row
+function getSwitchPosName(half, colId, rowIdx) {
+  const colCodes = { pinky: 'p', ring: 'r', middle: 'm', index: 'i', index_far: 'n', inner: 'n', thumb: 't' };
+  const rowCodes = ['t', 'h', 'b'];
+  const h = half === 'right' ? 'r' : 'l';
+  const cc = colCodes[colId] || colId[0];
+  const rc = rowCodes[rowIdx] || rowIdx;
+  return h + cc + rc;
+}
+
+// ── Layout presets (REQ-KM03) ──
+const LAYOUT_PRESETS = {
+  qwerty: {
+    label: 'QWERTY',
+    layer0: [
+      'Q','W','E','R','T',  'Y','U','I','O','P',
+      'A','S','D','F','G',  'H','J','K','L','SEMI',
+      'Z','X','C','V','B',  'N','M','COMMA','DOT','FSLH',
+                  'LGUI','SPACE','TAB',  'RET','BSPC','RALT'
+    ],
+    layer1: [
+      'N1','N2','N3','N4','N5',  'N6','N7','N8','N9','N0',
+      'EXCL','AT','HASH','DLLR','PRCNT',  'CARET','AMPS','STAR','LPAR','RPAR',
+      'GRAVE','TILDE','PIPE','BSLH','MINUS',  'EQUAL','LBKT','RBKT','LBRC','RBRC',
+                  'TRANS','TRANS','TRANS',  'TRANS','TRANS','TRANS'
+    ],
+    layer2: [
+      'F1','F2','F3','F4','F5',  'F6','F7','F8','F9','F10',
+      'F11','F12','PSCRN','INS','DEL',  'LEFT','DOWN','UP','RIGHT','HOME',
+      'CAPS','NONE','NONE','NONE','NONE',  'END','PG_DN','PG_UP','NONE','NONE',
+                  'TRANS','TRANS','TRANS',  'TRANS','TRANS','TRANS'
+    ]
+  },
+  dvorak: {
+    label: 'Dvorak',
+    layer0: [
+      'SQT','COMMA','DOT','P','Y',  'F','G','C','R','L',
+      'A','O','E','U','I',  'D','H','T','N','S',
+      'SEMI','Q','J','K','X',  'B','M','W','V','Z',
+                  'LGUI','SPACE','TAB',  'RET','BSPC','RALT'
+    ],
+    layer1: [
+      'N1','N2','N3','N4','N5',  'N6','N7','N8','N9','N0',
+      'EXCL','AT','HASH','DLLR','PRCNT',  'CARET','AMPS','STAR','LPAR','RPAR',
+      'GRAVE','TILDE','PIPE','BSLH','MINUS',  'EQUAL','LBKT','RBKT','LBRC','RBRC',
+                  'TRANS','TRANS','TRANS',  'TRANS','TRANS','TRANS'
+    ],
+    layer2: [
+      'F1','F2','F3','F4','F5',  'F6','F7','F8','F9','F10',
+      'F11','F12','PSCRN','INS','DEL',  'LEFT','DOWN','UP','RIGHT','HOME',
+      'CAPS','NONE','NONE','NONE','NONE',  'END','PG_DN','PG_UP','NONE','NONE',
+                  'TRANS','TRANS','TRANS',  'TRANS','TRANS','TRANS'
+    ]
+  },
+  colemak: {
+    label: 'Colemak',
+    layer0: [
+      'Q','W','F','P','G',  'J','L','U','Y','SEMI',
+      'A','R','S','T','D',  'H','N','E','I','O',
+      'Z','X','C','V','B',  'K','M','COMMA','DOT','FSLH',
+                  'LGUI','SPACE','TAB',  'RET','BSPC','RALT'
+    ],
+    layer1: [
+      'N1','N2','N3','N4','N5',  'N6','N7','N8','N9','N0',
+      'EXCL','AT','HASH','DLLR','PRCNT',  'CARET','AMPS','STAR','LPAR','RPAR',
+      'GRAVE','TILDE','PIPE','BSLH','MINUS',  'EQUAL','LBKT','RBKT','LBRC','RBRC',
+                  'TRANS','TRANS','TRANS',  'TRANS','TRANS','TRANS'
+    ],
+    layer2: [
+      'F1','F2','F3','F4','F5',  'F6','F7','F8','F9','F10',
+      'F11','F12','PSCRN','INS','DEL',  'LEFT','DOWN','UP','RIGHT','HOME',
+      'CAPS','NONE','NONE','NONE','NONE',  'END','PG_DN','PG_UP','NONE','NONE',
+                  'TRANS','TRANS','TRANS',  'TRANS','TRANS','TRANS'
+    ]
+  },
+  colemakdh: {
+    label: 'Colemak-DH',
+    layer0: [
+      'Q','W','F','P','B',  'J','L','U','Y','SEMI',
+      'A','R','S','T','G',  'M','N','E','I','O',
+      'Z','X','C','D','V',  'K','H','COMMA','DOT','FSLH',
+                  'LGUI','SPACE','TAB',  'RET','BSPC','RALT'
+    ],
+    layer1: [
+      'N1','N2','N3','N4','N5',  'N6','N7','N8','N9','N0',
+      'EXCL','AT','HASH','DLLR','PRCNT',  'CARET','AMPS','STAR','LPAR','RPAR',
+      'GRAVE','TILDE','PIPE','BSLH','MINUS',  'EQUAL','LBKT','RBKT','LBRC','RBRC',
+                  'TRANS','TRANS','TRANS',  'TRANS','TRANS','TRANS'
+    ],
+    layer2: [
+      'F1','F2','F3','F4','F5',  'F6','F7','F8','F9','F10',
+      'F11','F12','PSCRN','INS','DEL',  'LEFT','DOWN','UP','RIGHT','HOME',
+      'CAPS','NONE','NONE','NONE','NONE',  'END','PG_DN','PG_UP','NONE','NONE',
+                  'TRANS','TRANS','TRANS',  'TRANS','TRANS','TRANS'
+    ]
+  }
+};
+
+// ── All available ZMK keycodes for the picker (REQ-KM04.1) ──
+const ZMK_KEYCODE_GROUPS = [
+  { label: 'Alpha', codes: ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'] },
+  { label: 'Numbers', codes: ['N0','N1','N2','N3','N4','N5','N6','N7','N8','N9'] },
+  { label: 'Symbols', codes: ['SEMI','SQT','COMMA','DOT','FSLH','BSLH','MINUS','EQUAL','LBKT','RBKT','LBRC','RBRC','GRAVE','TILDE','PIPE','EXCL','AT','HASH','DLLR','PRCNT','CARET','AMPS','STAR','LPAR','RPAR'] },
+  { label: 'Modifiers', codes: ['LGUI','RGUI','LALT','RALT','LCTRL','RCTRL','LSHFT','RSHFT'] },
+  { label: 'Navigation', codes: ['LEFT','DOWN','UP','RIGHT','HOME','END','PG_UP','PG_DN','INS','DEL'] },
+  { label: 'Editing', codes: ['SPACE','RET','TAB','BSPC','CAPS','PSCRN','ESC'] },
+  { label: 'Function', codes: ['F1','F2','F3','F4','F5','F6','F7','F8','F9','F10','F11','F12'] },
+  { label: 'Special', codes: ['TRANS','NONE'] },
+];
+
+// ── ZMK-to-label mapping (shared with render3d.js) ──
+const ZMK_TO_LABEL = {
+  'Q':'Q','W':'W','E':'E','R':'R','T':'T','Y':'Y','U':'U','I':'I','O':'O','P':'P',
+  'A':'A','S':'S','D':'D','F':'F','G':'G','H':'H','J':'J','K':'K','L':'L',
+  'SEMI':';','Z':'Z','X':'X','C':'C','V':'V','B':'B','N':'N','M':'M',
+  'COMMA':',','DOT':'.','FSLH':'/','BSLH':'\\','MINUS':'-','EQUAL':'=',
+  'LBKT':'[','RBKT':']','LBRC':'{','RBRC':'}','GRAVE':'`','TILDE':'~','PIPE':'|',
+  'EXCL':'!','AT':'@','HASH':'#','DLLR':'$','PRCNT':'%','CARET':'^','AMPS':'&',
+  'STAR':'*','LPAR':'(','RPAR':')','SQT':"'",
+  'LGUI':'\u2318','RGUI':'\u2318','LALT':'Alt','RALT':'Alt',
+  'LCTRL':'Ctrl','RCTRL':'Ctrl','LSHFT':'Shift','RSHFT':'Shift',
+  'SPACE':'\u2423','TAB':'\u21e5','RET':'\u21b5','BSPC':'\u232b','ESC':'Esc',
+  'CAPS':'Caps','PSCRN':'PrSc','INS':'Ins','DEL':'Del',
+  'LEFT':'\u2190','DOWN':'\u2193','UP':'\u2191','RIGHT':'\u2192',
+  'HOME':'Home','END':'End','PG_UP':'PgU','PG_DN':'PgD',
+  'F1':'F1','F2':'F2','F3':'F3','F4':'F4','F5':'F5','F6':'F6',
+  'F7':'F7','F8':'F8','F9':'F9','F10':'F10','F11':'F11','F12':'F12',
+  'N0':'0','N1':'1','N2':'2','N3':'3','N4':'4','N5':'5',
+  'N6':'6','N7':'7','N8':'8','N9':'9',
+  'TRANS':'--','NONE':''
+};
+
+// ── Configured keymap global state (REQ-KM09) ──
+const configuredKeymap = {
+  name: 'qwerty',
+  preset: 'qwerty',
+  customOverrides: {}, // { "layer0_5": "Z" } — keys that differ from preset
+  layer0: [...LAYOUT_PRESETS.qwerty.layer0],
+  layer1: [...LAYOUT_PRESETS.qwerty.layer1],
+  layer2: [...LAYOUT_PRESETS.qwerty.layer2],
+};
+window.configuredKeymap = configuredKeymap;
+window.ZMK_TO_LABEL = ZMK_TO_LABEL;
+
+// ── Page 1b (Key Mapping) ──
+let page1bInitialized = false;
+let activeKmLayer = 0;
+let kmPickerEl = null; // floating key picker element
+
+function initPage1b() {
+  const presetSelect = document.getElementById('km-preset-select');
+  const nameInput = document.getElementById('km-name-input');
+  const nameErr = document.getElementById('km-name-err');
+  const layerTabsEl = document.getElementById('km-layer-tabs');
+  const gridContainer = document.getElementById('km-grid-container');
+
+  // Populate preset dropdown
+  if (presetSelect.options.length === 0) {
+    Object.entries(LAYOUT_PRESETS).forEach(([key, preset]) => {
+      const opt = document.createElement('option');
+      opt.value = key;
+      opt.textContent = preset.label;
+      if (key === configuredKeymap.preset) opt.selected = true;
+      presetSelect.appendChild(opt);
+    });
+    const customOpt = document.createElement('option');
+    customOpt.value = '_custom';
+    customOpt.textContent = '(Custom)';
+    if (!configuredKeymap.preset) customOpt.selected = true;
+    presetSelect.appendChild(customOpt);
+
+    presetSelect.addEventListener('change', () => {
+      const val = presetSelect.value;
+      if (val === '_custom') return;
+      const preset = LAYOUT_PRESETS[val];
+      if (!preset) return;
+      configuredKeymap.preset = val;
+      configuredKeymap.name = val;
+      configuredKeymap.customOverrides = {};
+      configuredKeymap.layer0 = [...preset.layer0];
+      configuredKeymap.layer1 = [...preset.layer1];
+      configuredKeymap.layer2 = [...preset.layer2];
+      nameInput.value = val;
+      renderKmGrid();
+    });
+
+    // Name input validation (REQ-KM05.1)
+    nameInput.addEventListener('input', () => {
+      const v = nameInput.value;
+      if (/^[a-z]+$/.test(v)) {
+        nameErr.textContent = '';
+        configuredKeymap.name = v;
+      } else if (v === '') {
+        nameErr.textContent = 'Name required';
+      } else {
+        nameErr.textContent = 'Lowercase letters only (a-z)';
+      }
+    });
+
+    // Save/Load buttons (REQ-KM07)
+    document.getElementById('km-save-btn').addEventListener('click', saveKeymap);
+    document.getElementById('km-load-btn').addEventListener('click', loadKeymap);
+  }
+
+  nameInput.value = configuredKeymap.name;
+
+  // Build layer tabs (REQ-KM06)
+  if (!page1bInitialized) {
+    const layerNames = ['Base', 'Symbols', 'Nav'];
+    layerNames.forEach((name, i) => {
+      const tab = document.createElement('div');
+      tab.className = 'km-layer-tab' + (i === activeKmLayer ? ' active' : '');
+      tab.textContent = `Layer ${i}: ${name}`;
+      tab.dataset.layer = i;
+      tab.addEventListener('click', () => {
+        activeKmLayer = i;
+        layerTabsEl.querySelectorAll('.km-layer-tab').forEach(t => t.classList.toggle('active', +t.dataset.layer === i));
+        renderKmGrid();
+      });
+      layerTabsEl.appendChild(tab);
+    });
+    // Close picker on click outside
+    document.addEventListener('click', (e) => {
+      if (kmPickerEl && !kmPickerEl.contains(e.target) && !e.target.closest('.km-key')) {
+        closeKmPicker();
+      }
+    });
+  }
+
+  page1bInitialized = true;
+  renderKmGrid();
+}
+
+function renderKmGrid() {
+  const gridContainer = document.getElementById('km-grid-container');
+  const layerKey = 'layer' + activeKmLayer;
+  const layer = configuredKeymap[layerKey];
+  const preset = configuredKeymap.preset ? LAYOUT_PRESETS[configuredKeymap.preset] : null;
+  const presetLayer = preset ? preset[layerKey] : null;
+
+  // Matrix columns (left half): pinky(0), ring(1), middle(2), index(3), inner(4)
+  // Rows: top(0), home(1), bottom(2)
+  // Layout of layer array: row-major, left then right per row, then thumbs
+  // [row0_L0..L4, row0_R0..R4, row1_L0..L4, row1_R0..R4, row2_L0..L4, row2_R0..R4, thumbL0..L2, thumbR0..R2]
+  const nColsHalf = 5;
+  const colIds = ['pinky', 'ring', 'middle', 'index', 'index_far'];
+  const rowNames = ['top', 'home', 'bottom'];
+
+  let html = '';
+
+  // Matrix rows
+  for (let row = 0; row < 3; row++) {
+    html += '<div class="km-row">';
+    // Left half
+    for (let col = 0; col < nColsHalf; col++) {
+      const idx = row * (nColsHalf * 2) + col;
+      const code = layer[idx] || 'NONE';
+      const label = ZMK_TO_LABEL[code] || code;
+      const posName = getSwitchPosName('left', colIds[col], row);
+      const isCustom = presetLayer && presetLayer[idx] !== layer[idx];
+      html += `<div class="km-key${isCustom ? ' custom' : ''}" data-idx="${idx}" title="${code}">`;
+      html += `<span class="km-label">${label}</span>`;
+      html += `<span class="km-pos">${posName}</span>`;
+      html += '</div>';
+    }
+    // Spacer
+    html += '<div class="km-key spacer"></div>';
+    // Right half
+    for (let col = 0; col < nColsHalf; col++) {
+      const idx = row * (nColsHalf * 2) + nColsHalf + col;
+      const code = layer[idx] || 'NONE';
+      const label = ZMK_TO_LABEL[code] || code;
+      const posName = getSwitchPosName('right', colIds[col], row);
+      const isCustom = presetLayer && presetLayer[idx] !== layer[idx];
+      html += `<div class="km-key${isCustom ? ' custom' : ''}" data-idx="${idx}" title="${code}">`;
+      html += `<span class="km-label">${label}</span>`;
+      html += `<span class="km-pos">${posName}</span>`;
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
+  // Thumb row
+  html += '<div class="km-row">';
+  // Left spacers to push thumbs center
+  for (let s = 0; s < nColsHalf - 3; s++) html += '<div class="km-key spacer"></div>';
+  // Left thumbs
+  for (let t = 0; t < 3; t++) {
+    const idx = 3 * (nColsHalf * 2) + t;
+    const code = layer[idx] || 'NONE';
+    const label = ZMK_TO_LABEL[code] || code;
+    const posName = getSwitchPosName('left', 'thumb', t);
+    const isCustom = presetLayer && presetLayer[idx] !== layer[idx];
+    html += `<div class="km-key thumb${isCustom ? ' custom' : ''}" data-idx="${idx}" title="${code}">`;
+    html += `<span class="km-label">${label}</span>`;
+    html += `<span class="km-pos">${posName}</span>`;
+    html += '</div>';
+  }
+  // Spacer
+  html += '<div class="km-key spacer"></div>';
+  // Right thumbs
+  for (let t = 0; t < 3; t++) {
+    const idx = 3 * (nColsHalf * 2) + 3 + t;
+    const code = layer[idx] || 'NONE';
+    const label = ZMK_TO_LABEL[code] || code;
+    const posName = getSwitchPosName('right', 'thumb', t);
+    const isCustom = presetLayer && presetLayer[idx] !== layer[idx];
+    html += `<div class="km-key thumb${isCustom ? ' custom' : ''}" data-idx="${idx}" title="${code}">`;
+    html += `<span class="km-label">${label}</span>`;
+    html += `<span class="km-pos">${posName}</span>`;
+    html += '</div>';
+  }
+  html += '</div>';
+
+  gridContainer.innerHTML = html;
+
+  // Attach click handlers for key editing (REQ-KM04)
+  gridContainer.querySelectorAll('.km-key:not(.spacer)').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const idx = +el.dataset.idx;
+      openKmPicker(el, idx);
+    });
+  });
+}
+
+function openKmPicker(anchorEl, keyIdx) {
+  closeKmPicker();
+  const layerKey = 'layer' + activeKmLayer;
+  const currentCode = configuredKeymap[layerKey][keyIdx] || 'NONE';
+
+  anchorEl.classList.add('editing');
+  kmPickerEl = document.createElement('div');
+  kmPickerEl.className = 'km-picker';
+
+  ZMK_KEYCODE_GROUPS.forEach(group => {
+    const groupDiv = document.createElement('div');
+    groupDiv.className = 'km-picker-group';
+    const labelDiv = document.createElement('div');
+    labelDiv.className = 'km-picker-group-label';
+    labelDiv.textContent = group.label;
+    groupDiv.appendChild(labelDiv);
+    const keysDiv = document.createElement('div');
+    keysDiv.className = 'km-picker-keys';
+    group.codes.forEach(code => {
+      const btn = document.createElement('div');
+      btn.className = 'km-picker-btn';
+      btn.textContent = ZMK_TO_LABEL[code] || code;
+      btn.title = code;
+      if (code === currentCode) btn.style.borderColor = '#4ae';
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        configuredKeymap[layerKey][keyIdx] = code;
+        // Track custom override
+        const preset = configuredKeymap.preset ? LAYOUT_PRESETS[configuredKeymap.preset] : null;
+        if (preset && preset[layerKey][keyIdx] !== code) {
+          configuredKeymap.customOverrides[`${layerKey}_${keyIdx}`] = code;
+          // Switch preset dropdown to custom if modified
+          const presetSelect = document.getElementById('km-preset-select');
+          if (presetSelect.value !== '_custom') {
+            // Check if still fully matches a preset
+            const stillMatches = configuredKeymap.layer0.every((k, i) => k === preset.layer0[i]) &&
+                                 configuredKeymap.layer1.every((k, i) => k === preset.layer1[i]) &&
+                                 configuredKeymap.layer2.every((k, i) => k === preset.layer2[i]);
+            if (!stillMatches) {
+              presetSelect.value = '_custom';
+              configuredKeymap.preset = null;
+            }
+          }
+        } else if (preset) {
+          delete configuredKeymap.customOverrides[`${layerKey}_${keyIdx}`];
+        }
+        closeKmPicker();
+        renderKmGrid();
+      });
+      keysDiv.appendChild(btn);
+    });
+    groupDiv.appendChild(keysDiv);
+    kmPickerEl.appendChild(groupDiv);
+  });
+
+  document.body.appendChild(kmPickerEl);
+  // Position near anchor
+  const rect = anchorEl.getBoundingClientRect();
+  let top = rect.bottom + 4;
+  let left = rect.left;
+  // Keep within viewport
+  if (top + 320 > window.innerHeight) top = rect.top - 324;
+  if (left + 300 > window.innerWidth) left = window.innerWidth - 304;
+  kmPickerEl.style.top = top + 'px';
+  kmPickerEl.style.left = left + 'px';
+}
+
+function closeKmPicker() {
+  if (kmPickerEl) {
+    kmPickerEl.remove();
+    kmPickerEl = null;
+  }
+  document.querySelectorAll('.km-key.editing').forEach(el => el.classList.remove('editing'));
+}
+
+// ── Save/Load keymap (REQ-KM07) ──
+function saveKeymap() {
+  const data = {
+    name: configuredKeymap.name,
+    preset: configuredKeymap.preset,
+    customOverrides: configuredKeymap.customOverrides,
+    layer0: configuredKeymap.layer0,
+    layer1: configuredKeymap.layer1,
+    layer2: configuredKeymap.layer2,
+  };
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `keymap-${configuredKeymap.name}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function loadKeymap() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.style.display = 'none';
+  document.body.appendChild(input);
+  input.addEventListener('change', () => {
+    const file = input.files[0];
+    if (!file) { document.body.removeChild(input); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if (!data.layer0 || !Array.isArray(data.layer0)) throw new Error('Invalid keymap file');
+        configuredKeymap.name = data.name || 'custom';
+        configuredKeymap.preset = data.preset || null;
+        configuredKeymap.customOverrides = data.customOverrides || {};
+        configuredKeymap.layer0 = data.layer0;
+        configuredKeymap.layer1 = data.layer1 || LAYOUT_PRESETS.qwerty.layer1;
+        configuredKeymap.layer2 = data.layer2 || LAYOUT_PRESETS.qwerty.layer2;
+        // Update UI
+        const presetSelect = document.getElementById('km-preset-select');
+        if (configuredKeymap.preset && LAYOUT_PRESETS[configuredKeymap.preset]) {
+          presetSelect.value = configuredKeymap.preset;
+        } else {
+          presetSelect.value = '_custom';
+        }
+        document.getElementById('km-name-input').value = configuredKeymap.name;
+        renderKmGrid();
+      } catch (e) {
+        alert('Failed to load keymap: ' + e.message);
+      }
+      document.body.removeChild(input);
+    };
+    reader.readAsText(file);
+  });
+  input.click();
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// PAGE 3: 3D PREVIEW — REALISTIC RENDERING
 // ══════════════════════════════════════════════════════════════════
 
 let scene, camera, renderer, controls;
 let leftHalf, rightHalf, cablesGroup, hingeGroup, batteryGroup;
 let hingeX = 0, hingeZ = 0, hingeCenterY = 0;
 let clipPlaneLeft, clipPlaneRight;
-let page2Initialized = false;
+let page3Initialized = false;
 let explodedView = false, showLabels = false;
 let labelSprites = [];
 let groundPlane;
@@ -2150,7 +2710,7 @@ let hoveredObj = null;
 // Layer Z positions (set during build3DScene, used by exploded view)
 let Z_SWITCH_PLATE = 0, Z_CORK_UPPER = 0, Z_PCB = 0, Z_CORK_LOWER = 0;
 
-function initPage2() {
+function initPage3() {
   const loading = document.getElementById('loading');
   loading.style.display = 'block';
   setTimeout(async () => {
@@ -2733,16 +3293,9 @@ function build3DScene() {
     boardGroup.add(inst);
   });
 
-  // ── Key letter labels ──
-  // Map ergogen point names to QWERTY keymap positions and render on keycaps
+  // ── Key letter labels (REQ-KM08.1: use configured keymap) ──
   const keyMap = buildKeyPositionMap(pts);
-  const zmkToLabel = {
-    'Q':'Q','W':'W','E':'E','R':'R','T':'T','Y':'Y','U':'U','I':'I','O':'O','P':'P',
-    'A':'A','S':'S','D':'D','F':'F','G':'G','H':'H','J':'J','K':'K','L':'L',
-    'SEMI':';','Z':'Z','X':'X','C':'C','V':'V','B':'B','N':'N','M':'M',
-    'COMMA':',','DOT':'.','FSLH':'/','LGUI':'\u2318','SPACE':'\u2423','TAB':'\u21e5',
-    'RET':'\u21b5','BSPC':'\u232b','RALT':'Alt'
-  };
+  const zmkToLabel = ZMK_TO_LABEL;
   const labelTexCache = {};
   function makeLabelTex(letter) {
     if (labelTexCache[letter]) return labelTexCache[letter];
@@ -2762,10 +3315,8 @@ function build3DScene() {
   const labelGeo = new THREE.PlaneGeometry(13, 13);
   const labelZ = Z_KEYCAP + 1.7;
   // Map keys to correct keymap positions.
-  // DEFAULT_KEYMAPS.layer0 layout: rows interleaved (5 left + 5 right per row), then 3+3 thumb.
-  // Left half keys: row0 cols 0-4, row1 cols 0-4, row2 cols 0-4, thumb cols 0-2
-  // Right half keys: row0 cols 0-4, row1 cols 0-4, row2 cols 0-4, thumb cols 0-2
-  const layer0 = DEFAULT_KEYMAPS.layer0;
+  // Configured keymap layer0: rows interleaved (5 left + 5 right per row), then 3+3 thumb.
+  const layer0 = (window.configuredKeymap || DEFAULT_KEYMAPS).layer0;
   const nColsHalf = 5;
   function getKeymapLabel(key) {
     const isRight = key.mirrored;
@@ -3185,8 +3736,8 @@ function build3DScene() {
   renderer.domElement.addEventListener('pointerdown', onKeyPress);
   renderer.domElement.addEventListener('pointermove', onHover);
 
-  if (!page2Initialized) {
-    page2Initialized = true;
+  if (!page3Initialized) {
+    page3Initialized = true;
     animate();
   }
 }
@@ -3522,7 +4073,7 @@ function renderBOM() {
 }
 
 document.getElementById('btn-download').addEventListener('click', async () => {
-  if (!ergogenResults) { alert('No design generated yet. Go back to step 2.'); return; }
+  if (!ergogenResults) { alert('No design generated yet. Go back to step 3.'); return; }
   const zip = new JSZip();
   const outlines = ergogenResults.outlines;
   for (const [name, content] of Object.entries(outlines)) {
@@ -3569,12 +4120,12 @@ document.getElementById('btn-download').addEventListener('click', async () => {
 
 
 // ══════════════════════════════════════════════════════════════════
-// PAGE 4: FIRMWARE & TEST
+// PAGE 5: FIRMWARE & TEST
 // ══════════════════════════════════════════════════════════════════
 
-let page4Initialized = false;
+let page5Initialized = false;
 
-function initPage4() {
+function initPage5() {
   if (!ergogenResults || !ergogenResults.points) return;
   const el = document.getElementById('firmware-content');
 
@@ -3614,13 +4165,16 @@ function initPage4() {
 
   // ── Keymap visualization ──
   html += '<h2>Keymap Visualization</h2>';
+  // REQ-KM08.4: use configured keymap for visualization
+  const vizKeymap = window.configuredKeymap || DEFAULT_KEYMAPS;
+  const vizName = vizKeymap.name || 'qwerty';
   html += '<div class="layer-tabs">';
-  ['Layer 0: QWERTY', 'Layer 1: Numbers', 'Layer 2: Nav'].forEach((name, i) => {
+  [`Layer 0: ${vizName}`, 'Layer 1: Symbols', 'Layer 2: Nav'].forEach((name, i) => {
     html += `<div class="layer-tab${i === 0 ? ' active' : ''}" data-layer="${i}">${name}</div>`;
   });
   html += '</div>';
 
-  const layers = [DEFAULT_KEYMAPS.layer0, DEFAULT_KEYMAPS.layer1, DEFAULT_KEYMAPS.layer2];
+  const layers = [vizKeymap.layer0, vizKeymap.layer1, vizKeymap.layer2];
   layers.forEach((layer, li) => {
     html += `<div class="keymap-grid" id="keymap-layer-${li}" style="display:${li === 0 ? 'block' : 'none'}">`;
     const keysPerRow = map.nColsPerHalf;
@@ -3686,7 +4240,7 @@ function initPage4() {
   html += '</ul>';
   html += '<h3 style="margin-top:12px;">Run tests</h3>';
   html += '<pre>cd zmk\nchmod +x run_tests.sh\n./run_tests.sh    # requires Docker</pre>';
-  html += '<p style="font-size:12px;color:#888;margin-top:8px;">Tests and shield files are included in the ZIP download from step 3.</p>';
+  html += '<p style="font-size:12px;color:#888;margin-top:8px;">Tests and shield files are included in the ZIP download from step 4.</p>';
   html += '</div>';
 
   // ── Download button ──
@@ -3780,6 +4334,15 @@ setTimeout(() => {
         });
       }
       if (data.thumbParams) thumbParams = data.thumbParams;
+      // Restore keymap from example if present
+      if (data.keymap && data.keymap.layer0) {
+        configuredKeymap.name = data.keymap.name || 'qwerty';
+        configuredKeymap.preset = data.keymap.preset || null;
+        configuredKeymap.customOverrides = data.keymap.customOverrides || {};
+        configuredKeymap.layer0 = data.keymap.layer0;
+        configuredKeymap.layer1 = data.keymap.layer1 || LAYOUT_PRESETS.qwerty.layer1;
+        configuredKeymap.layer2 = data.keymap.layer2 || LAYOUT_PRESETS.qwerty.layer2;
+      }
       computeErgogenPreview();
       drawCanvas();
       updateToolbar();
