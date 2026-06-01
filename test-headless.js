@@ -291,8 +291,9 @@ async function main() {
   // Separate left/right
   const leftKeys = [], rightKeys = [];
   for (const [name, pt] of Object.entries(points)) {
-    const entry = { name, x: pt.x, y: pt.y, r: pt.r, zone: pt.meta?.zone?.name, col: pt.meta?.col?.name, row: pt.meta?.row?.name, mirrored: !!pt.meta?.mirrored };
-    if (pt.meta?.mirrored) rightKeys.push(entry);
+    const mirrored = pt.meta?.mirrored === true || name.startsWith('mirror_');
+    const entry = { name, x: pt.x, y: pt.y, r: pt.r, zone: pt.meta?.zone?.name, col: pt.meta?.col?.name, row: pt.meta?.row?.name, mirrored };
+    if (mirrored) rightKeys.push(entry);
     else leftKeys.push(entry);
   }
 

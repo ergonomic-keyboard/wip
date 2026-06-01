@@ -927,7 +927,8 @@ function buildKeyPositionMap(points) {
     const colIdx = parseInt(colNet.replace('C', ''));
     const rowIdx = parseInt(rowNet.replace('R', ''));
     const zone = pt.meta?.zone?.name || 'matrix';
-    const mirrored = !!pt.meta?.mirrored;
+    // Use name prefix as fallback if meta.mirrored is unreliable (matches buildNewScene logic)
+    const mirrored = pt.meta?.mirrored === true || name.startsWith('mirror_');
     const entry = { name, colIdx, rowIdx, zone, mirrored, x: pt.x, y: pt.y, r: pt.r };
     if (mirrored) rightKeys.push(entry); else leftKeys.push(entry);
   }
@@ -3188,7 +3189,9 @@ function build3DScene() {
   // PCB texture uses only left-half points (right half is mirrored)
   const leftPts = {};
   for (const [name, pt] of Object.entries(ergogenResults.points)) {
-    if (!pt.meta?.mirrored) leftPts[name] = pt;
+    // Use name prefix as fallback if meta.mirrored is unreliable
+    const isMirrored = pt.meta?.mirrored === true || name.startsWith('mirror_');
+    if (!isMirrored) leftPts[name] = pt;
   }
   const pcbTex = generatePCBTexture(1024, 1024, leftPts, bbox);
   const pcbMat = new THREE.MeshStandardMaterial({ map: pcbTex.map, roughness: 0.65, metalness: 0.08 });
@@ -3197,8 +3200,9 @@ function build3DScene() {
   // ── Per-key components (InstancedMesh) ──
   const pts = ergogenResults.points;
   const ptEntries = Object.entries(pts);
-  const leftPtEntries = ptEntries.filter(([, p]) => !p.meta?.mirrored);
-  const rightPtEntries = ptEntries.filter(([, p]) => !!p.meta?.mirrored);
+  const isMirroredEntry = ([name, p]) => p.meta?.mirrored === true || name.startsWith('mirror_');
+  const leftPtEntries = ptEntries.filter(e => !isMirroredEntry(e));
+  const rightPtEntries = ptEntries.filter(e => isMirroredEntry(e));
 
   // Geometries
   const switchGeo = new THREE.ExtrudeGeometry(roundedRectShape(14.2, 12.8, 0.8), { depth: 3.5, bevelEnabled: true, bevelThickness: 0.15, bevelSize: 0.15, bevelSegments: 1 });

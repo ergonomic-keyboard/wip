@@ -337,7 +337,8 @@ function buildKeyPositionMap(points) {
     const colIdx = parseInt(colNet.replace('C', ''));
     const rowIdx = parseInt(rowNet.replace('R', ''));
     const zone = pt.meta?.zone?.name || 'matrix';
-    const mirrored = !!pt.meta?.mirrored;
+    // Use name prefix as fallback if meta.mirrored is unreliable (matches buildNewScene logic)
+    const mirrored = pt.meta?.mirrored === true || name.startsWith('mirror_');
     const entry = { name, colIdx, rowIdx, zone, mirrored, x: pt.x, y: pt.y, r: pt.r };
     if (mirrored) rightKeys.push(entry); else leftKeys.push(entry);
   }
@@ -1384,18 +1385,26 @@ function buildNewScene(ergogenResults, config, container) {
   const layer0 = activeKeymaps.layer0;
   const zmkToLabel = getZmkToLabel();
   function getKeymapLabel(key) {
-    const isRight = key.mirrored, isThumb = key.zone !== 'matrix';
+    // boardRoot has 180° Z rotation which swaps visual left↔right.
+    // Left-half geometry ends up on visual right (right hand), so needs right-half keymap labels.
+    // Right-half geometry ends up on visual left (left hand), so needs left-half keymap labels.
+    // physRight = which half this key physically belongs to (for key list lookups)
+    // mapRight = which side of the keymap array to read (inverted due to 180° rotation)
+    const physRight = key.mirrored;
+    const mapRight = !key.mirrored;
+    const isThumb = key.zone !== 'matrix';
     let idx;
     if (isThumb) {
       const thumbBase = nColsHalf * 2 * 3;
-      const thumbKeys = (isRight ? keyMap.rightKeys : keyMap.leftKeys).filter(k2 => k2.zone !== 'matrix');
+      // Use physRight for finding key's position in its physical group
+      const thumbKeys = (physRight ? keyMap.rightKeys : keyMap.leftKeys).filter(k2 => k2.zone !== 'matrix');
       const thumbIdx = thumbKeys.indexOf(key);
-      idx = thumbBase + (isRight ? 3 : 0) + thumbIdx;
+      // Use mapRight for keymap array offset
+      idx = thumbBase + (mapRight ? 3 : 0) + thumbIdx;
     } else {
-      // Right half: colIdx 0=pinky(outer) but layer0 stores right keys inner→outer,
-      // so reverse: colIdx 0 → nColsHalf-1, colIdx 4 → 0
-      const col = isRight ? (nColsHalf - 1 - key.colIdx) : key.colIdx;
-      idx = key.rowIdx * (nColsHalf * 2) + (isRight ? nColsHalf : 0) + col;
+      // Use mapRight for column reversal and keymap offset
+      const col = mapRight ? (nColsHalf - 1 - key.colIdx) : key.colIdx;
+      idx = key.rowIdx * (nColsHalf * 2) + (mapRight ? nColsHalf : 0) + col;
     }
     if (idx < 0 || idx >= layer0.length) return null;
     return zmkToLabel[layer0[idx]] || layer0[idx];
