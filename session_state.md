@@ -11,7 +11,7 @@ Phase 4 — Hardware / BOM / Assembly: **COMPLETE** (all SELF_PASS — R03, R10,
 Phase 5 — Hinge & Mechanism A: **COMPLETE** (all 19 requirements SELF_PASS)
 Phase 6 — Design Guidelines: **COMPLETE** (all 9 guidelines SELF_PASS)
 
-**118+ total requirements. 6 USER_FAIL (S07, S07.1-S07.5 — screw placement, user told AI to stop fixing), 1 NOT_STARTED (R35), 4 SUPERSEDED (R22-R25). 30+ total user corrections.**
+**128+ total requirements (REQ-KM01–KM10 added). 6 USER_FAIL (S07, S07.1-S07.5 — screw placement, user told AI to stop fixing), 1 NOT_STARTED (R35), 4 SUPERSEDED (R22-R25). 32+ total user corrections.**
 
 ## Session History
 
@@ -33,56 +33,62 @@ Phase 6 — Design Guidelines: **COMPLETE** (all 9 guidelines SELF_PASS)
 | 13 | 2026-05-10 | Per-layer visibility toggles (R26-R29) | **4/4 implemented. 6 layer groups with userData.layerId, setLayerVisible API, 6 checkboxes in toolbar, label sprites tagged for R28. 110/110 SELF_PASS** |
 | 14 | 2026-05-10 | R30-R34, R36 implemented + R37 axes fixed | **6/7 R30-R36 implemented (R35 remains NOT_STARTED). R37 axes fixed (3rd attempt — moved to scene, world-space coords). 113/118 SELF_PASS, 30 user corrections** |
 | 15-16 | 2026-05-14 | S07.1-S07.5 screw placement + T03 counter columns | **S07.1-S07.5 screw placement attempted 5-8× each, FAIL after multiple user corrections. User told AI to stop. T03 counter columns implemented in req-tracker.html. Counter data stored in per-commit status files.** |
+| 17-18 | 2026-06-07 | REQ-KM01–KM10 Key Mapping feature + 3D label fixes | **Key Mapping page implemented (page 1b, now step 2). Layout presets (QWERTY/Dvorak/Colemak/Colemak-DH), key picker, save/load/export/import. 3D preview labels: 3 bugs found and fixed (meta.mirrored unreliable, left/right swap from boardRoot 180° Z rotation, thumb label rotation using raw ergogen instead of stage 1 overrides). 2 user corrections (right-half labels swapped, thumb label angle).** |
 
 ## Last Session Summary
 
-**Sessions 15-16 — Screw Placement (S07.1-S07.5) + T03 Requirement Tracker Counters**
+**Sessions 17-18 — Key Mapping Feature (REQ-KM01–KM10) + 3D Label Bug Fixes**
 
 ### What was done:
 
-#### Screw Placement (S07.1-S07.5) — FAILED, deferred by user
-1. **S07.1 — Y key top-left diagonal**: Implemented rotation-aware `placeScrewOnDiag()` function that rotates corner offsets by key.r splay angle. Status: ASSUME (visually appears correct but not user-verified).
-2. **S07.2 — N key bottom-left diagonal**: Multiple attempts. Root confusion: left model half (Q,W,E,R,T / A,S,D,F,G / Z,X,C,V,B) appears on RIGHT side of screen due to boardRoot 180° Z rotation. The key the user calls "N" is on the right model half (screen-left). Screws computed on left model half are cloned to right. Status: FAIL.
-3. **S07.3 — P key top-right diagonal**: Status: ASSUME.
-4. **S07.4 — Outermost thumb key top-right diagonal**: Repeatedly swapped between thumb_t_inner_cluster (outermost in user view) and thumb_t_outer_cluster (hinge-side). User's green arrows indicated hinge-side. Status: FAIL.
-5. **S07.5 — Outermost thumb key bottom-right diagonal**: Same thumb key confusion as S07.4. Status: FAIL.
-6. User explicitly said "You failed again, update the score. Do not try to fix it."
+#### Key Mapping Page (REQ-KM01–KM10) — IMPLEMENTED
+1. **REQ-KM01**: New wizard page "Key Mapping" inserted as step 2 (between Finger Positions and 3D Preview). Wizard renumbered to 5 steps.
+2. **REQ-KM02**: Switch position naming scheme `{half}{column}{row}` using lowercase alpha only `[a-z]+` (e.g., `lmt` = left-middle-top, `rit` = right-index-top).
+3. **REQ-KM03**: Layout presets — QWERTY, Dvorak, Colemak, Colemak-DH (36-key, 3 layers each).
+4. **REQ-KM04**: Key picker with ZMK keycode groups (Alpha, Numbers, Symbols, Modifiers, Nav, Editing, Function, Special).
+5. **REQ-KM05**: Save/load keymap as standalone JSON files.
+6. **REQ-KM06**: Custom mapping names validated as lowercase alpha only `[a-z]+`.
+7. **REQ-KM07**: Dedicated save/load separate from project export/import.
+8. **REQ-KM08**: 3D preview uses `window.configuredKeymap` (render3d.js reads it via `getActiveKeymaps()`). Firmware generation and test suite also use configured keymap.
+9. **REQ-KM09**: Global `configuredKeymap` state object with `name`, `preset`, `customOverrides`, `layer0`–`layer2`.
+10. **REQ-KM10**: Export/import includes keymap in project JSON.
 
-**Key technical insight for future sessions**: boardRoot has 180° Z rotation, flipping both X and Y axes visually. Left model half (keys B,G,T etc.) appears on screen RIGHT. Right model half (keys N,H,Y etc.) appears on screen LEFT. Corner offset mapping: user top-left = model (+SW, -SH), user top-right = model (-SW, -SH), user bot-left = model (+SW, +SH), user bot-right = model (-SW, +SH). Switch half-dims: SW=7.1mm, SH=6.4mm.
+#### 3D Preview Label Bugs — 3 BUGS FIXED (2 user corrections)
 
-#### T03 — Requirement Tracker Counter Columns — IMPLEMENTED
-1. Added 3 counter columns to the right of Delete button in req-tracker.html:
-   - Self-attempts (🔄) — gray
-   - Self-fails (❌) — red-tinted
-   - User corrections (📝) — amber
-2. Hover on user-corrections counter shows requirement comment as tooltip
-3. Click on user-corrections counter pins/unpins the note permanently
-4. Global 📝 toggle in section header toggles all notes on/off
-5. Zero-value counters dimmed to 35% opacity
-6. Counter data stored in per-commit status JSON files (`selfAttempts`, `selfFails`, `userCorrections` fields)
-7. Fixed `ensureStatus()` in req-tracker.js to preserve counter fields when inheriting status to new commits
-8. User confirmed layout is correct. Counter values were initially showing 0 because data was in `a71a540.json` but server was serving `9b458be.json` (current commit). Fixed by merging counter data into current commit's status file.
+**Bug 1 — Right half showed "yuiop" layout (pre-existing)**:
+- Root cause: `getKeymapLabel()` didn't reverse `colIdx` for right-half keys. Ergogen's `colIdx 0` = pinky (outer) but `layer0` stores right keys inner→outer.
+- Fix: `col = isRight ? (nColsHalf - 1 - key.colIdx) : key.colIdx` in both render3d.js and wizard.html.
+
+**Bug 2 — Right half showed left-half labels (QAZ, QWERT) — USER CORRECTION #1**:
+- Root cause: `buildKeyPositionMap()` used `!!pt.meta?.mirrored` which was unreliable (could be undefined for mirror keys). The scene-building code already used the robust check `pt.meta?.mirrored === true || name.startsWith('mirror_')`.
+- Fix: Updated `buildKeyPositionMap()` in render3d.js, wizard.html, and test-headless.js to use the same robust `mirror_` name prefix fallback.
+- **Additional root cause**: Even with correct left/right detection, labels were visually swapped because `boardRoot.rotation.z = Math.PI` flips left↔right. Left-half geometry ends up on visual right and vice versa.
+- Fix: In render3d.js `getKeymapLabel()`, split into `physRight` (which half the key belongs to, for key list lookups) and `mapRight = !physRight` (which side of the keymap array to read). This maps left geometry to right-hand labels and vice versa, so after 180° rotation the labels match the visual sides.
+
+**Bug 3 — Thumb label angle mismatched keycaps — USER CORRECTION #2**:
+- Root cause: Labels used raw ergogen point positions/rotations (`pts[k.name]`), but thumb keycap geometry uses stage 1 override positions (`leftKeys` array with overridden x/y/r from `config._stage1Keys`). Stage 1 overrides change thumb rotation significantly.
+- Fix: Created `scenePositions` Map from the scene-building `leftKeys`/`rightKeys` arrays (which have stage 1 overrides applied). Label placement now uses `scenePositions.get(k.name)` instead of `pts[k.name]`.
 
 ### Changes made:
-- `wip/render3d.js`: Screw placement code with rotation-aware diagonals, debug labels, purple outlines fix for right half
-- `wip/req-tracker.html`: T03 counter columns (CSS + JS), hover notes, pin/toggle functionality
-- `wip/req-tracker.js`: `ensureStatus()` preserves counter fields + comments during inheritance
-- `wip/req-status/9b458be.json`: Added S07.1-S07.5 entries with counter values and comments
-- `wip/req-status/a71a540.json`: Original scorecard with counter data
-- `wip/final_requirements.md`: S07.4/S07.5 requirement text updated (outermost thumb key)
-- `wip/req-tracker-data.json`: Rebuilt for static mode
+- `wip/wizard.html`: New page 1b (Key Mapping) with toolbar/grid/tabs, 5-step navigation, layout presets, key picker, save/load, export/import integration, firmware/test keymap wiring. Fixed `buildKeyPositionMap()` mirrored detection. Fixed left/right point filtering for PCB texture and instanced meshes.
+- `wip/render3d.js`: Dynamic keymap via `getActiveKeymaps()`/`getZmkToLabel()`, fixed `buildKeyPositionMap()` mirrored detection, fixed `getKeymapLabel()` with `physRight`/`mapRight` split for boardRoot 180° rotation, added `scenePositions` Map for stage 1 thumb override positions, label placement uses scene positions.
+- `wip/test-headless.js`: Fixed mirrored detection to use `mirror_` name prefix fallback.
 
 ## What To Do Next
 
-**Priority 1: S07.2, S07.4, S07.5 — Screw placement fixes (USER_FAIL, deferred)**
+**Priority 1: Verify 3D label fix — user should confirm thumb labels now align with keycaps after hard refresh**
+
+The thumb label angle fix (using `scenePositions` instead of raw ergogen pts) was applied but not yet visually confirmed by the user. The left/right swap fix was confirmed working by user screenshot.
+
+**Priority 2: S07.2, S07.4, S07.5 — Screw placement fixes (USER_FAIL, deferred)**
 
 These were attempted 5-8 times each and failed. User said "Do not try to fix it." The core challenge is the boardRoot 180° Z rotation causing persistent confusion about which model half maps to which screen side. Key insight: screws are computed on left model half and cloned to right. The user sees the RIGHT model half on the LEFT side of screen (where Y, H, N keys appear). To fix S07.2 (N key), the screw needs to be placed at `matrix_inner_bottom` on the RIGHT model half, or the cloning logic needs rethinking.
 
-**Priority 2: R35 — Post-processing script for B.Cu footprint flip**
+**Priority 3: R35 — Post-processing script for B.Cu footprint flip**
 
 R35 is the only NOT_STARTED requirement. It requires a post-processing step in `generate.sh` to flip the nice!nano footprint from F.Cu to B.Cu in the generated `.kicad_pcb` file.
 
-**Priority 3: T03 verification**
+**Priority 4: T03 verification**
 
 T03 counter columns implemented and showing data. User confirmed layout but should verify hover notes and toggle functionality work correctly.
 
@@ -105,9 +111,13 @@ Other:
 - **Resolved**: Labels counter-rotated for boardRoot
 - **Resolved**: Hinge pivot at Z_SWITCH_PLATE_TOP for clean fold
 - **Resolved**: T03 — Counter columns in req-tracker (session 15-16). Counter data in per-commit status files.
+- **Resolved**: 3D label left/right swap — `buildKeyPositionMap()` now uses `mirror_` name prefix fallback; `getKeymapLabel()` uses `physRight`/`mapRight` split to account for boardRoot 180° Z rotation (session 17-18)
+- **Resolved**: Thumb label angle mismatch — labels now use `scenePositions` Map (stage 1 overrides) instead of raw ergogen pts (session 17-18)
+- **Resolved**: REQ-KM01–KM10 Key Mapping feature — wizard page 1b, presets, picker, save/load, export/import, firmware/test wiring (session 17-18)
 - **OPEN / USER_FAIL**: S07.2 — Screw at N key. Model-half/screen-side confusion. Left model half = screen right. Screws computed on left model half clone to right. User deferred fix.
 - **OPEN / USER_FAIL**: S07.4, S07.5 — Screws at thumb key. Repeatedly swapped between two thumb keys. User deferred fix.
 - **OPEN**: Purple outlines fix — `setOutlinesVisible` now traverses `rightContent` for cloned outlineGroup (fixed in session 15-16)
+- **OPEN**: Thumb label angle fix applied but not yet visually confirmed by user (session 17-18)
 - The ROTATED thumb mode algorithm is a placeholder that defaults to STRAIGHT behavior
 - Old `build3DScene()` dead code still in wizard.html (~1000 lines, no longer called)
 - `convert.py` and JS `ergopadToErgogen()` should be kept in sync
@@ -152,3 +162,18 @@ Other:
 ### Thumb Key Identifiers
 - `thumb_t_inner_cluster` (model pos ~242, 221) = highest model X = leftmost/outermost in user view
 - `thumb_t_outer_cluster` (model pos ~202, 193) = lowest model X = hinge-side in user view
+
+### 3D Label Placement (render3d.js)
+- **Mirrored detection**: Both `buildKeyPositionMap()` and `buildNewScene()` must use `pt.meta?.mirrored === true || name.startsWith('mirror_')`. The `meta.mirrored` property is unreliable — some ergogen points only have the `mirror_` name prefix.
+- **Left/right keymap inversion**: Because `boardRoot.rotation.z = Math.PI`, left-half geometry appears on the visual right (right hand) and vice versa. `getKeymapLabel()` uses `physRight` (actual half) for key list lookups and `mapRight = !physRight` for keymap array indexing.
+- **Thumb positions**: Labels must use `scenePositions` Map (populated from scene-building `leftKeys`/`rightKeys` which have stage 1 thumb overrides), NOT raw ergogen `pts`. The stage 1 override changes thumb rotation significantly.
+- **Label rotation formula**: `sp.r * Math.PI / 180 + Math.PI` where `sp.r` is scene degrees (already negated). The `+ Math.PI` counters `boardRoot`'s 180° Z rotation.
+- **Right-half label position**: `x = 2 * hingeX - leftSx` (mirror left match position around hingeX). Rotation: `-leftSr` (mirror + boardRoot counter).
+
+### Key Mapping Feature (REQ-KM01–KM10)
+- wizard.html page 1b (step 2 of 5), between Finger Positions and 3D Preview
+- `configuredKeymap` global: `{ name, preset, customOverrides, layer0, layer1, layer2 }`
+- `window.configuredKeymap` read by render3d.js (`getActiveKeymaps()`) and firmware/test generators
+- Custom mapping names: lowercase alpha only `[a-z]+` (for hardware requirement references)
+- Layout presets: QWERTY, Dvorak, Colemak, Colemak-DH (36-key, 3 layers)
+- Layer0 array format: rows interleaved `[L_pinky..L_inner, R_inner..R_pinky, ...]` (5 left + 5 right per row), then 3+3 thumb keys
