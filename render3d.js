@@ -466,6 +466,14 @@ function buildNewScene(ergogenResults, config, container) {
     }
   }
 
+  // ── Scene position map (for label placement) ──
+  // Maps key name → { x, y, r } in scene coordinates (with stage 1 thumb overrides applied).
+  // Labels must use these positions/rotations, NOT the raw ergogen pts, because thumb keys
+  // have their positions and rotations overridden by stage 1 data.
+  const scenePositions = new Map();
+  leftKeys.forEach(k => scenePositions.set(k.name, { x: k.x, y: k.y, r: k.r }));
+  rightKeys.forEach(k => scenePositions.set(k.name, { x: k.x, y: k.y, r: k.r }));
+
   // ── Diagnostic logging ──
   console.group('render3d diagnostics');
   console.log('Left keys (source half):');
@@ -1437,11 +1445,12 @@ function buildNewScene(ergogenResults, config, container) {
     const tex = makeLabelTex(label);
     const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false });
     const lm = new THREE.Mesh(labelGeo, mat);
-    const pt2 = pts[k.name]; if (!pt2) return;
-    // Apply same Y/rotation negation as entry construction
+    // Use scenePositions (has stage 1 thumb overrides) instead of raw ergogen pts
+    const sp = scenePositions.get(k.name); if (!sp) return;
+    // sp.x/y are already in scene coords (Y negated); sp.r is scene degrees (rotation negated)
     // Add Math.PI to Z rotation to counter boardRoot's 180° Z rotation (keeps text upright)
-    lm.position.set(pt2.x, -pt2.y, labelZ);
-    lm.rotation.set(0, 0, -pt2.r * Math.PI / 180 + Math.PI);
+    lm.position.set(sp.x, sp.y, labelZ);
+    lm.rotation.set(0, 0, sp.r * Math.PI / 180 + Math.PI);
     leftLabelGroup.add(lm);
   });
 
@@ -1450,10 +1459,10 @@ function buildNewScene(ergogenResults, config, container) {
     if (!label) return;
     const leftMatch = keyMap.leftKeys.find(lk => lk.zone === k.zone && lk.colIdx === k.colIdx && lk.rowIdx === k.rowIdx);
     if (!leftMatch) return;
-    const lpt = pts[leftMatch.name]; if (!lpt) return;
-    // Apply same Y/rotation negation as entry construction
-    // Add Math.PI to counter boardRoot's 180° Z rotation (keeps text upright)
-    rightLabelData.push({ label, leftSx: lpt.x, leftSy: -lpt.y, leftSr: -lpt.r * Math.PI / 180 + Math.PI });
+    // Use scenePositions for the matching left key (has stage 1 thumb overrides)
+    const sp = scenePositions.get(leftMatch.name); if (!sp) return;
+    // sp.x/y are already in scene coords; sp.r is scene degrees
+    rightLabelData.push({ label, leftSx: sp.x, leftSy: sp.y, leftSr: sp.r * Math.PI / 180 + Math.PI });
   });
 
   leftHalf.add(leftLabelGroup);
